@@ -3,12 +3,12 @@ import pytest
 import importlib
 import importlib.util
 
-# Assume econ.utility provides UCES and a reservation API consistent with docs.
-# Skip these tests if econ.utility isn't implemented yet in this workspace.
-econ_spec = importlib.util.find_spec("econ.utility")
+# Assume vmt_engine.econ.utility provides UCES and a reservation API consistent with docs.
+# Skip these tests if vmt_engine.econ.utility isn't implemented yet in this workspace.
+econ_spec = importlib.util.find_spec("vmt_engine.econ.utility")
 if econ_spec is None:
-    pytest.skip("econ.utility module not present yet; starter test only", allow_module_level=True)
-econ_utility = importlib.import_module("econ.utility")
+    pytest.skip("vmt_engine.econ.utility module not present yet; starter test only", allow_module_level=True)
+econ_utility = importlib.import_module("vmt_engine.econ.utility")
 
 EPSILONS = [1e-12, 1e-9, 1e-6]
 

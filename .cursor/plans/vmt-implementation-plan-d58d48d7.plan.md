@@ -151,19 +151,19 @@ resource_seed:
 
 - `Cell`: dataclass with position, resource (type: "A"|"B", amount:int)
 - `Grid`: class managing NxN grid
-                - `__init__(self, N:int)`
-                - `get_cell(x, y) -> Cell`
-                - `set_resource(x, y, good_type, amount)`
-                - `manhattan_distance(pos1, pos2) -> int`
-                - `cells_within_radius(pos, radius) -> list[Cell]`
+                                - `__init__(self, N:int)`
+                                - `get_cell(x, y) -> Cell`
+                                - `set_resource(x, y, good_type, amount)`
+                                - `manhattan_distance(pos1, pos2) -> int`
+                                - `cells_within_radius(pos, radius) -> list[Cell]`
 - Initialize from scenario resource_seed (density, amount distribution)
 
 **Create `vmt_engine/core/agent.py`**:
 
 - `Agent`: class with fields per typing_overview.md §3
-                - id, pos, inventory, utility (placeholder), quotes, vision_radius, move_budget_per_tick
-                - `__init__` from scenario config
-                - Utility object assigned later (after econ module)
+                                - id, pos, inventory, utility (placeholder), quotes, vision_radius, move_budget_per_tick
+                                - `__init__` from scenario config
+                                - Utility object assigned later (after econ module)
 
 **Test**: `tests/test_core_state.py`
 
@@ -176,12 +176,12 @@ resource_seed:
 **Create `vmt_engine/simulation.py`**:
 
 - `Simulation` class:
-                - `__init__(scenario_config, seed:int)`
-                - `grid: Grid`
-                - `agents: list[Agent]` (sorted by id)
-                - `tick: int = 0`
-                - `rng: np.random.Generator` (seeded for reproducibility)
-                - Initialize grid and agents from scenario
+                                - `__init__(scenario_config, seed:int)`
+                                - `grid: Grid`
+                                - `agents: list[Agent]` (sorted by id)
+                                - `tick: int = 0`
+                                - `rng: np.random.Generator` (seeded for reproducibility)
+                                - Initialize grid and agents from scenario
 - `run(max_ticks: int)` method with phases:
   ```python
   for tick in range(max_ticks):
@@ -551,9 +551,9 @@ def choose_partner(agent: Agent, perception: PerceptionView) -> int | None:
 **Update `Simulation.decision_phase()`**:
 
 - For each agent:
-                - Compute partner using `choose_partner()`
-                - If partner exists, set target to partner position
-                - Else, use forage target from M1
+                                - Compute partner using `choose_partner()`
+                                - If partner exists, set target to partner position
+                                - Else, use forage target from M1
 
 **Test**: `tests/test_partner_selection.py`
 

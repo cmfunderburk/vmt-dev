@@ -1,0 +1,23 @@
+schema_version: 1
+name: single_agent_forage_test
+N: 16
+agents: 1
+initial_inventories:
+  A: 0
+  B: 0
+utilities:
+  mix:
+  - {type: ces, weight: 1.0, params: {rho: -0.5, wA: 1.0, wB: 1.0}}
+params:
+  spread: 0.05
+  vision_radius: 5
+  interaction_radius: 1
+  move_budget_per_tick: 1
+  ΔA_max: 5
+  forage_rate: 1
+  epsilon: 0.000000000001
+  beta: 0.95
+resource_seed:
+  density: 0.1
+  amount: 3
+
