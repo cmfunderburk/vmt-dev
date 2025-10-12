@@ -4,7 +4,7 @@ Main simulation loop and orchestration.
 
 import numpy as np
 from typing import Optional
-from .core import Grid, Agent, Inventory, Position
+from .core import Grid, Agent, Inventory, Position, SpatialIndex
 from scenarios.schema import ScenarioConfig
 from .econ.utility import create_utility
 from .systems.perception import perceive
@@ -65,6 +65,13 @@ class Simulation:
         
         # Sort agents by id for deterministic processing
         self.agents.sort(key=lambda a: a.id)
+        
+        # Initialize spatial index for efficient proximity queries
+        # Bucket size = max query radius for optimal performance
+        max_radius = max(self.params['vision_radius'], self.params['interaction_radius'])
+        self.spatial_index = SpatialIndex(self.config.N, bucket_size=max_radius)
+        for agent in self.agents:
+            self.spatial_index.add_agent(agent.id, agent.pos)
         
         # Telemetry
         self.trade_logger = TradeLogger()
@@ -154,7 +161,14 @@ class Simulation:
     def perception_phase(self):
         """Phase 1: Agents perceive their environment."""
         for agent in self.agents:
-            perception = perceive(agent, self.grid, self.agents)
+            # Use spatial index to find nearby agents efficiently (O(N) instead of O(N²))
+            nearby_agent_ids = self.spatial_index.query_radius(
+                agent.pos, 
+                agent.vision_radius, 
+                exclude_id=agent.id
+            )
+            
+            perception = perceive(agent, self.grid, nearby_agent_ids, self.agent_by_id)
             agent.perception_cache = {
                 'neighbors': perception.neighbors,
                 'neighbor_quotes': perception.neighbor_quotes,
@@ -231,18 +245,14 @@ class Simulation:
                     self.params['move_budget_per_tick']
                 )
                 agent.pos = new_pos
+                # Update spatial index with new position
+                self.spatial_index.update_position(agent.id, new_pos)
     
     def trade_phase(self):
         """Phase 4: Agents trade with nearby partners."""
-        # Build list of agent pairs within interaction_radius
-        pairs = []
-        
-        for i, agent_i in enumerate(self.agents):
-            for agent_j in self.agents[i+1:]:  # Avoid double-counting
-                dist = self.grid.manhattan_distance(agent_i.pos, agent_j.pos)
-                if dist <= self.params['interaction_radius']:
-                    # Store as (min_id, max_id) for deterministic ordering
-                    pairs.append((min(agent_i.id, agent_j.id), max(agent_i.id, agent_j.id)))
+        # Use spatial index to find agent pairs within interaction_radius efficiently
+        # O(N) instead of O(N²) by only checking agents in nearby spatial buckets
+        pairs = self.spatial_index.query_pairs_within_radius(self.params['interaction_radius'])
         
         # Sort pairs by (min_id, max_id) for deterministic processing
         pairs.sort()

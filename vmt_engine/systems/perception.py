@@ -17,14 +17,18 @@ class PerceptionView:
     resource_cells: list['Cell']              # visible resource cells
 
 
-def perceive(agent: 'Agent', grid: 'Grid', all_agents: list['Agent']) -> PerceptionView:
+def perceive(agent: 'Agent', grid: 'Grid', nearby_agent_ids: list[int], 
+             agent_by_id: dict[int, 'Agent']) -> PerceptionView:
     """
     Compute what an agent can see within its vision_radius.
+    
+    Uses pre-filtered list of nearby agents from spatial index for efficiency.
     
     Args:
         agent: The perceiving agent
         grid: The simulation grid
-        all_agents: List of all agents in simulation
+        nearby_agent_ids: List of agent IDs within vision radius (pre-filtered by spatial index)
+        agent_by_id: Dictionary mapping agent IDs to Agent objects
         
     Returns:
         PerceptionView containing visible neighbors and resources
@@ -32,16 +36,12 @@ def perceive(agent: 'Agent', grid: 'Grid', all_agents: list['Agent']) -> Percept
     neighbors = []
     neighbor_quotes = {}
     
-    # Find agents within vision radius
-    for other in all_agents:
-        if other.id == agent.id:
-            continue  # Don't perceive self
-        
-        distance = grid.manhattan_distance(agent.pos, other.pos)
-        if distance <= agent.vision_radius:
-            neighbors.append((other.id, other.pos))
-            # Snapshot quotes (read-only copy)
-            neighbor_quotes[other.id] = other.quotes
+    # Build neighbor list from pre-filtered IDs (already within vision radius)
+    for other_id in nearby_agent_ids:
+        other = agent_by_id[other_id]
+        neighbors.append((other.id, other.pos))
+        # Snapshot quotes (read-only copy)
+        neighbor_quotes[other.id] = other.quotes
     
     # Get resource cells within vision radius
     resource_cells = []

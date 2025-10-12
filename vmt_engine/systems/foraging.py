@@ -43,6 +43,9 @@ def forage(agent: 'Agent', grid: 'Grid', forage_rate: int, current_tick: int = 0
     # ANY harvest resets the cooldown timer
     cell.resource.last_harvested_tick = current_tick
     
+    # Add to harvested cells set for efficient regeneration tracking
+    grid.harvested_cells.add(agent.pos)
+    
     # Mark that inventory changed (for quote refresh)
     agent.inventory_changed = True
     
@@ -54,6 +57,9 @@ def regenerate_resources(grid: 'Grid', growth_rate: int, max_amount: int,
     """
     Regenerate resources on the grid at a fixed rate after cooldown period.
     
+    Uses active set tracking to only check harvested cells, reducing complexity
+    from O(N_grid²) to O(harvested_cells).
+    
     Regeneration occurs on cells that:
     1. Have a resource type (from initial seeding)
     2. Are below their original amount
@@ -61,6 +67,10 @@ def regenerate_resources(grid: 'Grid', growth_rate: int, max_amount: int,
     
     Any harvest from a cell resets the cooldown timer. Regeneration only
     begins after cooldown_ticks have passed with no harvesting activity.
+    
+    Note: For backward compatibility with tests that manually deplete cells,
+    this function will scan all cells on first call if harvested_cells is empty
+    but there are depleted cells with last_harvested_tick set.
     
     Args:
         grid: The simulation grid
@@ -75,20 +85,36 @@ def regenerate_resources(grid: 'Grid', growth_rate: int, max_amount: int,
     if growth_rate <= 0:
         return 0
     
-    total_regenerated = 0
+    # Bootstrap: If harvested_cells is empty but there are depleted cells,
+    # scan once to build the active set (for backward compatibility with tests)
+    if not grid.harvested_cells:
+        for pos, cell in grid.cells.items():
+            if (cell.resource.type is not None and 
+                cell.resource.last_harvested_tick is not None and
+                cell.resource.amount < cell.resource.original_amount):
+                grid.harvested_cells.add(pos)
     
-    for cell in grid.cells.values():
+    total_regenerated = 0
+    cells_to_remove = []
+    
+    # Only iterate over harvested cells (O(harvested) instead of O(N²))
+    for pos in grid.harvested_cells:
+        cell = grid.cells[pos]
+        
         # Only process cells with a resource type
         if cell.resource.type is None:
+            cells_to_remove.append(pos)
             continue
         
-        # Only regenerate if below original amount
+        # Check if fully regenerated - remove from active set
         if cell.resource.amount >= cell.resource.original_amount:
+            cells_to_remove.append(pos)
             continue
         
         # Check if cell has been harvested
         if cell.resource.last_harvested_tick is None:
             # Never harvested, don't regenerate (stays at original seed amount)
+            cells_to_remove.append(pos)
             continue
         
         # Check if cooldown period has passed since last harvest
@@ -102,6 +128,14 @@ def regenerate_resources(grid: 'Grid', growth_rate: int, max_amount: int,
             
             cell.resource.amount = new_amount
             total_regenerated += regenerated
+            
+            # If fully regenerated, remove from active set
+            if cell.resource.amount >= cell.resource.original_amount:
+                cells_to_remove.append(pos)
+    
+    # Remove fully regenerated cells from active set
+    for pos in cells_to_remove:
+        grid.harvested_cells.discard(pos)
     
     return total_regenerated
 

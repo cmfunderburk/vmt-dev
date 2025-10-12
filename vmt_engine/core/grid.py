@@ -40,6 +40,10 @@ class Grid:
         self.N = N
         self.cells: dict[Position, Cell] = {}
         
+        # Track cells that have been harvested and need regeneration
+        # Reduces regeneration from O(N²) to O(harvested_cells)
+        self.harvested_cells: set[Position] = set()
+        
         # Initialize all cells
         for x in range(N):
             for y in range(N):
