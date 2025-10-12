@@ -1,8 +1,9 @@
 # VMT - Visualizing Microeconomic Theory
 
-[![Tests](https://img.shields.io/badge/tests-45%2F45%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-55%2F55%20passing-brightgreen)]()
 [![Status](https://img.shields.io/badge/status-production%20ready-blue)]()
 [![Python](https://img.shields.io/badge/python-3.11-blue)]()
+[![GUI](https://img.shields.io/badge/GUI-PyQt5-green)]()
 
 **A spatial agent-based simulation for teaching and researching microeconomic behavior through visualization.**
 
@@ -40,11 +41,13 @@ This system overcame fundamental challenges in bridging continuous economic theo
 - **🎯 Partner Selection** - Surplus-based matching with mutual improvement checks
 
 ### Technical Excellence
-- **🔬 45 Passing Tests** - Comprehensive coverage of all systems
+- **🔬 55 Passing Tests** - Comprehensive coverage including performance benchmarks
 - **🎮 Pygame Visualization** - Interactive real-time rendering
+- **🖥️ GUI Launcher** - Browse scenarios and create custom ones through forms
 - **📊 Enhanced Telemetry** - Logs every decision, trade attempt, and state change
 - **🎯 Deterministic** - Same seed → identical results every time
 - **⚙️ YAML Configuration** - Easy scenario customization
+- **⚡ Performance Optimized** - O(N) agent interactions via spatial indexing
 
 ---
 
@@ -66,6 +69,22 @@ pip install -r requirements.txt
 ```
 
 ### Run a Simulation
+
+#### Option 1: GUI Launcher (Recommended)
+
+```bash
+# Launch the GUI
+python launcher.py
+```
+
+The GUI launcher provides:
+- 📋 **Browse Scenarios** - See all available `.yaml` files
+- 🎲 **Easy Seed Entry** - Simple integer input field
+- ✨ **Create Custom Scenarios** - Build scenarios through forms (no YAML editing)
+- 📖 **Built-in Documentation** - In-context help for utility function parameters
+- ▶️ **One-Click Launch** - Run simulations with a button press
+
+#### Option 2: Command Line
 
 ```bash
 # Run with visualization
@@ -168,7 +187,8 @@ vmt-dev/
 │   ├── core/                # State structures
 │   │   ├── state.py         # Inventory, Quote, Position
 │   │   ├── grid.py          # Grid and Resource management
-│   │   └── agent.py         # Agent representation
+│   │   ├── agent.py         # Agent representation
+│   │   └── spatial_index.py # Spatial hash for O(N) proximity queries
 │   ├── econ/                # Economic utilities
 │   │   └── utility.py       # UCES, ULinear, base interface
 │   ├── systems/             # Subsystems
@@ -178,6 +198,10 @@ vmt-dev/
 │   │   ├── quotes.py        # Quote generation
 │   │   └── matching.py      # Trade matching and price search
 │   └── simulation.py        # Main simulation loop
+├── vmt_launcher/            # GUI Launcher
+│   ├── launcher.py          # Main launcher window
+│   ├── scenario_builder.py  # Custom scenario creator
+│   └── validator.py         # Input validation
 ├── telemetry/               # Logging and diagnostics
 │   ├── logger.py            # Trade logging
 │   ├── snapshots.py         # State snapshots
@@ -190,17 +214,19 @@ vmt-dev/
 │   └── three_agent_barter.yaml
 ├── vmt_pygame/              # Visualization
 │   └── renderer.py          # Pygame rendering
-├── tests/                   # Test suite (45 tests)
+├── tests/                   # Test suite (55 tests)
 │   ├── test_core_state.py
 │   ├── test_utility_ces.py
 │   ├── test_utility_linear.py
 │   ├── test_resource_regeneration.py
 │   ├── test_trade_cooldown.py
+│   ├── test_performance.py  # Performance benchmarks
 │   └── ... (and more)
 ├── PLANS/                   # Documentation
 │   ├── Planning-Post-v1.md  # Main specification
 │   └── docs/                # System docs
-└── main.py                  # Entry point
+├── launcher.py              # GUI entry point
+└── main.py                  # CLI entry point
 ```
 
 ### Tick Structure
@@ -214,6 +240,47 @@ Each simulation tick executes 7 phases in order:
 5. **Foraging** - Harvest resources
 6. **Resource Regeneration** - Regenerate depleted resources (with cooldown)
 7. **Housekeeping** - Refresh quotes, log telemetry
+
+---
+
+## ✨ Creating Custom Scenarios
+
+### Using the GUI Builder
+
+The easiest way to create custom scenarios is through the GUI:
+
+1. **Launch the GUI**: `python launcher.py`
+2. **Click "Create Custom Scenario"** at the top
+3. **Fill in the tabs**:
+   - **Basic Settings**: Name, grid size, agents, initial inventories
+   - **Simulation Parameters**: Spread, vision, movement, trade parameters
+   - **Resources**: Density, growth rate, regeneration cooldown
+   - **Utility Functions**: Add multiple utility types with custom parameters
+4. **Click "Generate Scenario"**
+5. **Save the YAML file** (default: `scenarios/` folder)
+6. **New scenario automatically appears** in the launcher list
+
+### Utility Function Options
+
+#### CES Utility
+- **rho** (ρ): Elasticity parameter (ρ ≠ 1)
+  - ρ → 0: Cobb-Douglas (U = A^wA × B^wB)
+  - ρ < 0: Complements (prefer balanced bundles)
+  - ρ > 0: Substitutes (more flexible trade-offs)
+- **wA, wB**: Preference weights (must be positive)
+
+#### Linear Utility
+- **vA, vB**: Value coefficients (U = vA×A + vB×B)
+- Perfect substitutes with constant MRS = vA/vB
+
+### Tips for Good Scenarios
+
+- **Grid Size**: 20-50 works well for visualization
+- **Agent Count**: 3-20 for educational demos, 50+ for experiments
+- **Vision Radius**: Should be ≥ interaction radius
+- **Resource Density**: 0.1-0.3 provides good scarcity
+- **Trade Cooldown**: 5-10 ticks prevents infinite retries
+- **Utility Mix**: Use complementary preferences for interesting trades
 
 ---
 

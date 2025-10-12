@@ -11,7 +11,7 @@ utilities:
   - {type: linear, weight: 0.33, params: {vA: 1.0, vB: 1.2}}
 params:
   # spread defaults to 0.0 (see schema.py) - true reservation prices
-  vision_radius: 3
+  vision_radius: 10
   interaction_radius: 1
   move_budget_per_tick: 1
   ΔA_max: 5

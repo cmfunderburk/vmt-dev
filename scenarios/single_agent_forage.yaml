@@ -10,7 +10,7 @@ utilities:
   - {type: ces, weight: 1.0, params: {rho: -0.5, wA: 1.0, wB: 1.0}}
 params:
   # spread defaults to 0.0 (see schema.py)
-  vision_radius: 5
+  vision_radius: 10
   interaction_radius: 1
   move_budget_per_tick: 1
   ΔA_max: 5

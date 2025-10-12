@@ -1,0 +1,48 @@
+schema_version: 1
+name: test40grid50agents
+N: 40
+agents: 50
+initial_inventories:
+  A: 12
+  B: 4
+params:
+  spread: 0.0
+  vision_radius: 10
+  interaction_radius: 1
+  move_budget_per_tick: 1
+  "\u0394A_max": 5
+  forage_rate: 1
+  epsilon: 1.0e-12
+  beta: 0.95
+  resource_growth_rate: 1
+  resource_max_amount: 2
+  resource_regen_cooldown: 5
+  trade_cooldown_ticks: 5
+resource_seed:
+  density: 0.26
+  amount: 5
+utilities:
+  mix:
+  - type: ces
+    weight: 0.25
+    params:
+      rho: 0.1
+      wA: 1.0
+      wB: 1.0
+  - type: ces
+    weight: 0.25
+    params:
+      rho: -0.5
+      wA: 0.2
+      wB: 0.8
+  - type: ces
+    weight: 0.25
+    params:
+      rho: 0.5
+      wA: 0.6
+      wB: 0.4
+  - type: linear
+    weight: 0.25
+    params:
+      vA: 0.5
+      vB: 1.0

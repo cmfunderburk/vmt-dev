@@ -49,6 +49,9 @@ vmt-dev/
     │   ├── BOOTSTRAP_FIX_ANALYSIS.md
     │   ├── DIAGNOSTIC_REPORT.md
     │   ├── IMPLEMENTATION_STATUS.md
+    │   ├── GUI_IMPLEMENTATION_SUMMARY.md
+    │   ├── GUI_LAUNCHER_GUIDE.md
+    │   ├── UTILITY_FUNCTION_DOCUMENTATION.md
     │   └── Log_system_problems.md
     │
     └── archive/                       🗄️  Historical (superseded)
@@ -120,6 +123,9 @@ Each document provides deep-dive implementation details for a specific system:
 | **BOOTSTRAP_FIX_ANALYSIS.md** | Economics | Zero-inventory problem, solution |
 | **DIAGNOSTIC_REPORT.md** | Debugging | Root cause analysis |
 | **IMPLEMENTATION_STATUS.md** | Project | Milestone completion, test results |
+| **GUI_IMPLEMENTATION_SUMMARY.md** | GUI | PyQt5 launcher, scenario builder, validation |
+| **GUI_LAUNCHER_GUIDE.md** | GUI | User guide, features, troubleshooting |
+| **UTILITY_FUNCTION_DOCUMENTATION.md** | GUI | In-context utility function help panel |
 | **Log_system_problems.md** | Historical | Original problem statement |
 
 ---
@@ -180,6 +186,14 @@ Each document provides deep-dive implementation details for a specific system:
 4. Ensure all 45 tests still pass
 5. Document your addition
 
+### Scenario 6: "I want to create a custom scenario"
+1. Run the GUI launcher: `python launcher.py`
+2. Click "Create Custom Scenario"
+3. Configure parameters in the tabs
+4. Read the utility function documentation panel for guidance
+5. Generate and save the YAML file
+6. Run your custom scenario from the launcher
+
 ---
 
 ## 🔍 Finding Specific Information
@@ -211,6 +225,13 @@ Each document provides deep-dive implementation details for a specific system:
 
 ### "What parameters are available?"
 → [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
+
+### "How do I use the GUI launcher?"
+→ [docs/GUI_LAUNCHER_GUIDE.md](docs/GUI_LAUNCHER_GUIDE.md)
+
+### "What do utility function parameters mean?"
+→ [docs/UTILITY_FUNCTION_DOCUMENTATION.md](docs/UTILITY_FUNCTION_DOCUMENTATION.md)  
+→ Or use the built-in documentation panel in the Custom Scenario Builder
 
 ---
 
