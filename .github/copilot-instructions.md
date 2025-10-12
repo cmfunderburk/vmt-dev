@@ -1,46 +1,43 @@
 # GitHub Copilot Instructions — VMT (Visualizing Microeconomic Theory)
 
-Use these project-specific rules to work productively in this deterministic barter/foraging simulation. Planning specs are in `PLANS/Planning-FINAL.md` and `PLANS/algorithmic_planning.md`. Behaviors are enforced by tests under `tests/`.
+Project-specific rules to make AI agents productive in this deterministic barter/foraging simulation. The authoritative spec is `PLANS/Planning-Post-v1.md`; behaviors are enforced by `tests/`.
 
-## Core architecture and determinism
-- **Python 3.11**; deps: `numpy` (engine RNG/arrays), `pyyaml` (scenarios), `pygame` (optional GUI). Use deterministic RNG: `np.random.Generator(np.random.PCG64(seed))` in `vmt_engine/simulation.py`.
-- **Fixed tick order** per `Simulation.step()`: Perception → Decision → Movement → Trade → Forage → Housekeeping. Do not reorder.
-- **Deterministic iteration**: agents in ascending `agent.id`; trade pairs in ascending `(min_id,max_id)`; use sorted structures, never `dict.values()` or `set` iteration.
-- **Module structure**: `vmt_engine/` (simulation core), `scenarios/` (YAML configs), `telemetry/` (CSV logging), `tests/` (pytest suite), `vmt_pygame/` (visualization).
+## Big picture and determinism
+- Python 3.11; deps: `numpy` (RNG/arrays), `pyyaml` (scenarios), `pygame` (GUI), `PyQt5` (GUI tools). Deterministic RNG: `np.random.Generator(np.random.PCG64(seed))` in `vmt_engine/simulation.py`.
+- Fixed 7-phase tick order (do not reorder): Perception → Decision → Movement → Trade → Forage → Resource Regeneration → Housekeeping.
+- Always iterate deterministically: agents by ascending `agent.id`; trade pairs by ascending `(min_id,max_id)`; use sorted containers—never rely on dict/set iteration.
 
-## Utilities, reservation bounds, and quotes
-- **Utility families** in `vmt_engine/econ/utility.py`: `UCES` (CES incl. Cobb–Douglas limit via ρ→0) and `ULinear` (perfect substitutes).
-- **Family-agnostic API**: Each utility exposes `reservation_bounds_A_in_B(A:int,B:int,eps)` → `(p_min,p_max)`; for CES/Linear these equal MRS but always use the bounds API, never hardcode MRS formulas.
-- **Zero-inventory guard**: compute MRS/bounds using `(A+ε,B+ε)` only when A==0 or B==0; keep raw `(A,B)` for `u()` and ΔU checks. Critical: epsilon only shifts ratio calculations, never distorts utility comparisons. See `tests/test_reservation_zero_guard.py`.
-- **Quote rule** (`vmt_engine/systems/quotes.py`): `ask = p_min*(1+spread)`, `bid = p_max*(1-spread)`. Refresh quotes after any inventory change (forage or trade) or at housekeeping.
+## Utilities → reservation bounds → quotes
+- Utilities in `vmt_engine/econ/utility.py`: `UCES` (CES incl. Cobb–Douglas limit as ρ→0) and `ULinear`.
+- Use family-agnostic API: `reservation_bounds_A_in_B(A:int,B:int,eps)` → `(p_min,p_max)`; for CES/Linear these equal MRS but always call the bounds API—do not hardcode MRS.
+- Zero-inventory guard: only shift ratios for bounds when A==0 or B==0 using `(A+ε,B+ε)`; never shift inputs to `u()` or ΔU checks. See `tests/test_reservation_zero_guard.py`.
+- Quote rule (`vmt_engine/systems/quotes.py`): `ask = p_min*(1+spread)`, `bid = p_max*(1-spread)`; refresh after any inventory change and again in housekeeping.
 
-## Partner selection, matching, and trading
-- **Surplus overlap** for i vs j: consider `i.bid - j.ask` (i buys from j) and `j.bid - i.ask` (j buys from i); pick the positive maximum. Tie-break by larger surplus, then lower partner id (`systems/matching.py:choose_partner`).
-- **Trade cooldown**: skip partners with recent failed trade attempts (tracked per-agent in `agent.trade_cooldowns` dict mapping partner_id → expiry_tick). Default cooldown: 5 ticks (`trade_cooldown_ticks` param).
-- **Interaction eligibility**: pairs with Manhattan distance ≤ `interaction_radius` (0=same cell, 1=adjacent). Order candidate pairs by `(min_id,max_id)` before trading.
-- **Price search**: searches candidate prices within `[ask_seller, bid_buyer]` range; includes prices yielding integer ΔB values and evenly-spaced samples. Finds mutually beneficial terms despite integer rounding constraints.
-- **Quantity rounding**: round-half-up for B per A lots: `ΔB = floor(p*ΔA + 0.5)`; avoid banker's rounding. Portable across platforms. See `tests/test_trade_rounding_and_adjacency.py`.
-- **Compensating multi-lot**: scan ΔA = 1..`ΔA_max`; choose first block with strict ΔU>0 for both (via `improves()` checking `u(A+dA,B+dB) > u(A,B)`) and feasible inventories; execute, log. **One trade per tick**: quotes refresh in housekeeping phase; agents can trade again next tick if surplus remains.
+## Matching and trading (one trade per tick)
+- Surplus overlap: consider `i.bid - j.ask` and `j.bid - i.ask`; pick positive max. Tie-break by larger surplus, then lower partner id (`systems/matching.py:choose_partner`).
+- Interaction eligibility: Manhattan distance ≤ `interaction_radius` (0=same cell, 1=adjacent). Order candidate pairs by `(min_id,max_id)` before trading.
+- Price search: probe prices within `[ask_seller, bid_buyer]`, including values that hit integer `ΔB` and evenly spaced samples. Quantity rounding is round-half-up: `ΔB = floor(p*ΔA + 0.5)`. See `tests/test_trade_rounding_and_adjacency.py`.
+- Compensating multi-lot scan: ΔA=1..`ΔA_max`; accept first feasible block with strict ΔU>0 for both using `u(A+dA,B+dB) > u(A,B)`. Execute at most one block per pair per tick; quotes update later.
+- Trade cooldown: on failed attempt set mutual cooldown for `trade_cooldown_ticks` (default 5) via per-agent `trade_cooldowns` dict. See `tests/test_trade_cooldown.py`.
 
-## Movement and perception
-- **Perception** collects neighbor ids/quotes and visible resource cells within `vision_radius` (`systems/perception.py`). Returns structured data: neighbors list, quotes snapshot, resource view.
-- **Movement toward target** uses deterministic Manhattan steps with tie-breaks: reduce |dx| before |dy|; prefer negative direction on ties; if still tied, choose lowest (x,y) (`systems/movement.py`).
-- **Foraging movement**: two modes (scenario-configurable): (1) distance-discounted utility-seeking: score = `ΔU_arrival * β^dist`, path to argmax; (2) random-nearest-resource fallback. Uses `beta` parameter for time discounting. **Critical**: ΔU_arrival computed using `min(cell.amount, forage_rate)`, not full cell amount.
+## Perception, movement, and foraging
+- Perception (`systems/perception.py`): collect neighbors/quotes/resources within `vision_radius`; use frozen snapshot in the tick.
+- Movement (`systems/movement.py`): deterministic Manhattan steps; reduce |dx| before |dy|; prefer negative direction on ties; if still tied choose lowest (x,y).
+- Foraging target score: `ΔU_arrival * β^dist` using `min(cell.amount, forage_rate)` for ΔU. Regeneration: harvest sets `last_harvested_tick`; wait `resource_regen_cooldown` then grow at `resource_growth_rate` up to `original_amount`. See `tests/test_resource_regeneration.py`.
 
-## Parameters, scenarios, telemetry
-- **Default params** (`scenarios/schema.py`): `spread=0.0`, `epsilon=1e-12`, `ΔA_max=5`, `vision_radius=5`, `interaction_radius=1`, `forage_rate=1`, `move_budget_per_tick=1`, `beta=0.95`, `resource_growth_rate=0`, `resource_max_amount=5`, `resource_regen_cooldown=5`, `trade_cooldown_ticks=5`.
-- **Scenarios** live in `scenarios/*.yaml`, loaded/validated by `scenarios/loader.py`/`schema.py`. Keys: `schema_version`, `name`, `N`, `agents`, `initial_inventories` (dict with 'A'/'B' keys; values can be int or list), `utilities.mix[{type,weight,params}]` (weights sum to 1), `params`, `resource_seed{density,amount}`.
-- **Utility config examples**: CES: `{type: ces, weight: 0.67, params: {rho: -0.5, wA: 1.0, wB: 1.0}}`; Linear: `{type: linear, weight: 0.33, params: {vA: 1.0, vB: 1.2}}`.
-- **Telemetry** writes CSVs under `./logs`: trades (`telemetry/logger.py`), trade attempts (`telemetry/trade_attempt_logger.py`), decisions (`telemetry/decision_logger.py`), and periodic agent/resource snapshots (`telemetry/snapshots.py`). Logs auto-flush for real-time analysis.
+## Scenarios, params, and conventions
+- Defaults in `scenarios/schema.py`: `spread=0.0` (critical), `epsilon=1e-12`, `ΔA_max=5`, `vision_radius=5`, `interaction_radius=1`, `forage_rate=1`, `move_budget_per_tick=1`, `beta=0.95`, `resource_growth_rate=0`, `resource_max_amount=5`, `resource_regen_cooldown=5`, `trade_cooldown_ticks=5`.
+- Scenarios in `scenarios/*.yaml` parsed by `scenarios/loader.py`. Keys: `initial_inventories` (A/B int or per-agent lists), `utilities.mix[{type,weight,params}]` (weights sum to 1), `params`, `resource_seed{density,amount}`.
+- Initialize utilities via factory `create_utility(type, params)`; don’t instantiate `UCES`/`ULinear` directly in systems code. Bootstrap inventories away from zeros for CES.
+
+## Telemetry and tools (v1.1+)
+- SQLite logging is default: `telemetry/{database.py,config.py,db_loggers.py}` with `LogConfig.{summary|standard|debug}()` and `TelemetryManager`; DB at `./logs/telemetry.db`. Use `view_logs.py` (PyQt5) to explore. Legacy CSV remains: `telemetry/{logger.py,trade_attempt_logger.py,decision_logger.py,snapshots.py}`.
 
 ## Developer workflow
-- **Install and test**: `pip install -r requirements.txt`; run `pytest -v` (set `PYTHONPATH=.` if needed). Key tests: utility CES/Linear, zero-guard, core state, simulation init, M1 foraging, trade rounding, resource regeneration, trade cooldown.
-- **Run a scenario**: `python main.py scenarios/three_agent_barter.yaml 42` (GUI via pygame). Controls: SPACE=pause, R=reset, S=step, UP/DOWN=speed, Q=quit.
-- **Headless runs**: Import `Simulation` from `vmt_engine.simulation` and call `sim.step()` or `sim.run(max_ticks)` directly.
-- **Creating utilities**: Use factory `create_utility(type, params)` from `vmt_engine.econ.utility`; never instantiate `UCES`/`ULinear` directly in systems code.
-- **Agent initialization**: Utilities sampled from scenario `utilities.mix` according to weights; inventories distributed from `initial_inventories` dict.
+- Install/tests: `pip install -r requirements.txt`; run `pytest -v` (set `PYTHONPATH=.` if needed). Core tests cover utilities, zero-guard, rounding, regeneration, cooldowns, and tick determinism.
+- Run simulation: CLI `python main.py scenarios/three_agent_barter.yaml 42`; GUI launcher `python launcher.py`; programmatic `Simulation(...).run(max_ticks)`.
 
 ## Do this, not that
-- DO derive quotes from reservation bounds; DON'T quote raw MRS directly in systems code.
-- DO use round-half-up for integer rounding: `floor(x + 0.5)`; DON'T use banker's rounding or float truncation.
-- DO preserve all ordering/tie-break rules and the fixed tick order; DON'T use nondeterministic iteration or data structures.
+- DO derive quotes from reservation bounds; DON’T quote raw MRS in systems code.
+- DO use round-half-up; DON’T use banker's rounding or platform-dependent rounding.
+- DO preserve ordering/tie-break rules and the 7-phase tick; DON’T introduce nondeterministic iteration.

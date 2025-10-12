@@ -363,7 +363,7 @@ def trade_pair(agent_i: 'Agent', agent_j: 'Agent', params: dict[str, Any],
     # Find compensating block (with price search)
     block = find_compensating_block(
         buyer, seller, price, 
-        params['ΔA_max'], params['epsilon'],
+        params['dA_max'], params['epsilon'],
         tick, direction, surplus, trade_attempt_logger
     )
     

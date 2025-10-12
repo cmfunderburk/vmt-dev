@@ -15,7 +15,7 @@ def test_load_single_agent_forage():
     assert scenario.N == 16
     assert scenario.agents == 1
     assert scenario.params.spread == 0.0  # Uses centralized default
-    assert scenario.params.vision_radius == 5
+    assert scenario.params.vision_radius == 10  # As specified in scenario file
     
     # Check utilities
     assert len(scenario.utilities.mix) == 1

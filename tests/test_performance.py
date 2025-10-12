@@ -24,7 +24,7 @@ def create_test_scenario(n_agents: int, grid_size: int) -> ScenarioConfig:
             vision_radius=5,
             interaction_radius=2,
             move_budget_per_tick=1,
-            ΔA_max=5,
+            dA_max=5,
             forage_rate=1,
             epsilon=1e-9,
             beta=0.95,

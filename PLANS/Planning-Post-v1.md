@@ -161,7 +161,7 @@ class ScenarioParams:
     # Trading
     spread: float = 0.0                  # Bid-ask spread (0.0 = true reservation prices)
     interaction_radius: int = 1          # Max distance for trade (0=same cell, 1=adjacent)
-    ΔA_max: int = 5                      # Max trade size to search
+    dA_max: int = 5                      # Max trade size to search
     trade_cooldown_ticks: int = 5        # Cooldown after failed trade
     
     # Foraging
@@ -372,7 +372,7 @@ def find_compensating_block(buyer, seller, ask, bid, params):
     Search for (dA, dB, price) that improves both agents.
     Returns 3-tuple or None.
     """
-    dA_max = params['ΔA_max']
+    dA_max = params['dA_max']
     epsilon = params['epsilon']
     
     for dA in range(1, dA_max + 1):
@@ -806,7 +806,7 @@ All parameters have sensible defaults. Scenarios only override what differs.
 **Trading:**
 - `spread: 0.0` ← Critical for CES utilities
 - `interaction_radius: 1`
-- `ΔA_max: 5`
+- `dA_max: 5`
 - `trade_cooldown_ticks: 5`
 
 **Foraging:**

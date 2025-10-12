@@ -34,7 +34,7 @@ class ScenarioParams:
     vision_radius: int = 5
     interaction_radius: int = 1
     move_budget_per_tick: int = 1
-    ΔA_max: int = 5
+    dA_max: int = 5  # Maximum trade size to search (formerly ΔA_max)
     forage_rate: int = 1
     epsilon: float = 1e-12
     beta: float = 0.95
@@ -79,8 +79,8 @@ class ScenarioConfig:
         if self.params.move_budget_per_tick <= 0:
             raise ValueError(f"move_budget_per_tick must be positive, got {self.params.move_budget_per_tick}")
         
-        if self.params.ΔA_max <= 0:
-            raise ValueError(f"ΔA_max must be positive, got {self.params.ΔA_max}")
+        if self.params.dA_max <= 0:
+            raise ValueError(f"dA_max must be positive, got {self.params.dA_max}")
         
         if self.params.forage_rate <= 0:
             raise ValueError(f"forage_rate must be positive, got {self.params.forage_rate}")

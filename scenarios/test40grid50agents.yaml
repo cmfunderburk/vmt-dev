@@ -10,7 +10,7 @@ params:
   vision_radius: 10
   interaction_radius: 1
   move_budget_per_tick: 1
-  "\u0394A_max": 5
+  dA_max: 5
   forage_rate: 1
   epsilon: 1.0e-12
   beta: 0.95

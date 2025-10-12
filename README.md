@@ -140,6 +140,30 @@ pytest tests/ --cov=vmt_engine --cov-report=html
 
 ---
 
+## 🤖 Quickstart for AI agents
+
+Start here to work productively with this codebase. For the full rule set, see `.github/copilot-instructions.md`.
+
+- Determinism and tick order: 7 phases in `vmt_engine/simulation.py` — Perception → Decision → Movement → Trade → Resource Regeneration → Housekeeping. Always iterate agents by ascending `id` and trade pairs by `(min_id,max_id)`.
+- Utilities → quotes: Use `reservation_bounds_A_in_B(A,B,eps)` from `vmt_engine/econ/utility.py` to derive `(p_min,p_max)`; compute quotes as `ask=p_min*(1+spread)`, `bid=p_max*(1-spread)` in `systems/quotes.py`. Zero-inventory guard applies only to ratio calculations, not to `u()`.
+- Trading: One trade per pair per tick. Use price search within `[ask_seller,bid_buyer]`; round-half-up for `ΔB=floor(p*ΔA+0.5)`; strict `ΔU>0` for both sides; apply mutual cooldown on failure. See `systems/matching.py` and tests `test_trade_rounding_and_adjacency.py`, `test_trade_cooldown.py`.
+- Foraging & regeneration: Movement is deterministic Manhattan with tie rules (`systems/movement.py`). Foraging score uses `ΔU_arrival * β^dist` with `min(cell.amount, forage_rate)`. Regeneration waits `resource_regen_cooldown` then grows at `resource_growth_rate` up to `original_amount` (`tests/test_resource_regeneration.py`).
+- Parameters & scenarios: Defaults in `scenarios/schema.py` (critical: `spread=0.0`). Load YAML via `scenarios/loader.py`.
+- Telemetry (v1.1+): SQLite logging is default via `telemetry/{config.py,db_loggers.py,database.py}` with `LogConfig.{summary|standard|debug}()`; DB at `./logs/telemetry.db`. Legacy CSV remains under `telemetry/*.py`.
+- Key files: `vmt_engine/simulation.py`, `vmt_engine/systems/{perception,movement,quotes,matching}.py`, `vmt_engine/econ/utility.py`, `scenarios/{schema.py,loader.py}`, `telemetry/{db_loggers.py,config.py,database.py}`.
+
+Quick run commands:
+
+```bash
+pip install -r requirements.txt
+pytest -v
+python main.py scenarios/three_agent_barter.yaml 42
+python launcher.py       # GUI launcher
+python view_logs.py      # SQLite log viewer
+```
+
+---
+
 ## 📖 Documentation
 
 ### Recent Updates (v1.1) 🆕

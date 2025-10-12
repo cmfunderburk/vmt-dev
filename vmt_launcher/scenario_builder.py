@@ -137,11 +137,11 @@ class ScenarioBuilderDialog(QDialog):
         self.move_budget_input.setValue(1)
         layout.addRow("Move Budget Per Tick:", self.move_budget_input)
         
-        # ΔA_max
+        # dA_max
         self.delta_a_max_input = QSpinBox()
         self.delta_a_max_input.setRange(1, 100)
         self.delta_a_max_input.setValue(5)
-        layout.addRow("ΔA_max:", self.delta_a_max_input)
+        layout.addRow("dA_max (Max trade size):", self.delta_a_max_input)
         
         # Forage rate
         self.forage_rate_input = QSpinBox()
@@ -606,7 +606,7 @@ class ScenarioBuilderDialog(QDialog):
                 'vision_radius': data['vision_radius'],
                 'interaction_radius': data['interaction_radius'],
                 'move_budget_per_tick': data['move_budget_per_tick'],
-                'ΔA_max': data['delta_a_max'],
+                'dA_max': data['delta_a_max'],
                 'forage_rate': data['forage_rate'],
                 'epsilon': data['epsilon'],
                 'beta': data['beta'],

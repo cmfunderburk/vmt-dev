@@ -48,7 +48,7 @@ class Simulation:
             'vision_radius': scenario_config.params.vision_radius,
             'interaction_radius': scenario_config.params.interaction_radius,
             'move_budget_per_tick': scenario_config.params.move_budget_per_tick,
-            'ΔA_max': scenario_config.params.ΔA_max,
+            'dA_max': scenario_config.params.dA_max,
             'forage_rate': scenario_config.params.forage_rate,
             'epsilon': scenario_config.params.epsilon,
             'beta': scenario_config.params.beta,
