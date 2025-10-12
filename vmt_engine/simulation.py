@@ -14,6 +14,8 @@ from .systems.quotes import compute_quotes, refresh_quotes_if_needed
 from .systems.matching import choose_partner, trade_pair
 from telemetry.logger import TradeLogger
 from telemetry.snapshots import AgentSnapshotLogger, ResourceSnapshotLogger
+from telemetry.decision_logger import DecisionLogger
+from telemetry.trade_attempt_logger import TradeAttemptLogger
 
 
 class Simulation:
@@ -62,8 +64,10 @@ class Simulation:
         
         # Telemetry
         self.trade_logger = TradeLogger()
-        self.agent_snapshot_logger = AgentSnapshotLogger(snapshot_frequency=10)
+        self.agent_snapshot_logger = AgentSnapshotLogger(snapshot_frequency=1)
         self.resource_snapshot_logger = ResourceSnapshotLogger(snapshot_frequency=10)
+        self.decision_logger = DecisionLogger()
+        self.trade_attempt_logger = TradeAttemptLogger()
     
     def _initialize_agents(self):
         """Initialize agents from scenario config."""
@@ -157,24 +161,51 @@ class Simulation:
         for agent in self.agents:
             # Try to find a trading partner first
             neighbors = agent.perception_cache.get('neighbors', [])
-            partner_id = choose_partner(agent, neighbors, self.agent_by_id)
+            partner_id, surplus, all_candidates = choose_partner(agent, neighbors, self.agent_by_id)
 
             if partner_id is not None:
                 # Move toward partner
                 partner = self.agent_by_id[partner_id]
                 agent.target_pos = partner.pos
                 agent.target_agent_id = partner_id
+                
+                # Log decision
+                alternatives_str = "; ".join([f"{nid}:{s:.4f}" for nid, s in all_candidates])
+                self.decision_logger.log_decision(
+                    self.tick, agent.id, partner_id, surplus,
+                    "trade", partner.pos[0], partner.pos[1],
+                    len(neighbors), alternatives_str
+                )
             else:
                 # Fall back to foraging
                 resource_cells = agent.perception_cache.get('resource_cells', [])
                 target = choose_forage_target(agent, resource_cells, self.params['beta'])
                 agent.target_pos = target
                 agent.target_agent_id = None
+                
+                # Log decision
+                target_type = "forage" if target is not None else "idle"
+                target_x = target[0] if target is not None else None
+                target_y = target[1] if target is not None else None
+                alternatives_str = "; ".join([f"{nid}:{s:.4f}" for nid, s in all_candidates])
+                self.decision_logger.log_decision(
+                    self.tick, agent.id, None, None,
+                    target_type, target_x, target_y,
+                    len(neighbors), alternatives_str
+                )
 
     def movement_phase(self):
         """Phase 3: Agents move toward targets."""
         for agent in self.agents:
             if agent.target_pos is not None:
+                # If targeting an agent, check if already in interaction range.
+                if agent.target_agent_id is not None:
+                    target_agent = self.agent_by_id.get(agent.target_agent_id)
+                    if target_agent:
+                        distance = self.grid.manhattan_distance(agent.pos, target_agent.pos)
+                        if distance <= self.params['interaction_radius']:
+                            continue  # Already in range, don't move.
+
                 # Check for diagonal deadlock with another agent
                 if agent.target_agent_id is not None:
                     target_agent = self.agent_by_id.get(agent.target_agent_id)
@@ -214,7 +245,8 @@ class Simulation:
         for id_i, id_j in pairs:
             agent_i = self.agent_by_id[id_i]
             agent_j = self.agent_by_id[id_j]
-            trade_pair(agent_i, agent_j, self.params, self.trade_logger, self.tick)
+            trade_pair(agent_i, agent_j, self.params, self.trade_logger, self.tick,
+                      self.trade_attempt_logger)
     
     def forage_phase(self):
         """Phase 5: Agents harvest resources."""
@@ -230,4 +262,12 @@ class Simulation:
         # Log telemetry
         self.agent_snapshot_logger.log_snapshot(self.tick, self.agents)
         self.resource_snapshot_logger.log_snapshot(self.tick, self.grid)
+    
+    def close(self):
+        """Close all loggers and release resources."""
+        self.trade_logger.close()
+        self.agent_snapshot_logger.close()
+        self.resource_snapshot_logger.close()
+        self.decision_logger.close()
+        self.trade_attempt_logger.close()
 

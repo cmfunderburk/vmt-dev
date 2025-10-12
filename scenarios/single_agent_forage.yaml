@@ -9,7 +9,7 @@ utilities:
   mix:
   - {type: ces, weight: 1.0, params: {rho: -0.5, wA: 1.0, wB: 1.0}}
 params:
-  spread: 0.05
+  # spread defaults to 0.0 (see schema.py)
   vision_radius: 5
   interaction_radius: 1
   move_budget_per_tick: 1

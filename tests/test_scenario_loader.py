@@ -14,7 +14,7 @@ def test_load_single_agent_forage():
     assert scenario.name == "single_agent_forage_test"
     assert scenario.N == 16
     assert scenario.agents == 1
-    assert scenario.params.spread == 0.05
+    assert scenario.params.spread == 0.0  # Uses centralized default
     assert scenario.params.vision_radius == 5
     
     # Check utilities
@@ -32,9 +32,9 @@ def test_load_three_agent_barter():
     assert scenario.N == 8
     assert scenario.agents == 3
     
-    # Check initial inventories
-    assert scenario.initial_inventories['A'] == [5, 0, 3]
-    assert scenario.initial_inventories['B'] == [0, 5, 3]
+    # Check initial inventories (updated to bootstrap with non-zero amounts)
+    assert scenario.initial_inventories['A'] == [8, 4, 6]
+    assert scenario.initial_inventories['B'] == [4, 8, 6]
     
     # Check utilities mix
     assert len(scenario.utilities.mix) == 2

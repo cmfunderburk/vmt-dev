@@ -46,7 +46,7 @@ class VMTRenderer:
         self.COLOR_YELLOW = (255, 255, 100)
         
         # Track trade events for visualization
-        self.recent_trades = []  # List of (tick, pos) for trade indicators
+        self.recent_trades = self.sim.trade_logger.recent_trades_for_renderer
     
     def render(self):
         """Render the current simulation state."""
@@ -142,29 +142,8 @@ class VMTRenderer:
     
     def draw_trade_indicators(self):
         """Draw indicators for recent trades."""
-        # Remove old trade indicators (older than 5 ticks)
-        self.recent_trades = [
-            (tick, pos) for tick, pos in self.recent_trades 
-            if self.sim.tick - tick < 5
-        ]
-        
-        # Draw circles around cells with recent trades
-        for tick, pos in self.recent_trades:
-            x, y = pos
-            px = x * self.cell_size + self.cell_size // 2
-            py = y * self.cell_size + self.cell_size // 2
-            
-            # Fade out over time
-            age = self.sim.tick - tick
-            alpha = 255 - (age * 50)
-            
-            surface = pygame.Surface((self.cell_size * 2, self.cell_size * 2), pygame.SRCALPHA)
-            pygame.draw.circle(
-                surface, (*self.COLOR_YELLOW, alpha),
-                (self.cell_size, self.cell_size),
-                self.cell_size // 2, 3
-            )
-            self.screen.blit(surface, (px - self.cell_size, py - self.cell_size))
+        # This method is now obsolete as trades are drawn on the HUD
+        pass
     
     def draw_hud(self):
         """Draw heads-up display with simulation info."""
@@ -197,6 +176,19 @@ class VMTRenderer:
         controls_text = "Controls: SPACE=Pause  R=Reset  S=Step  ↑↓=Speed  Q=Quit"
         controls_label = self.small_font.render(controls_text, True, self.COLOR_BLACK)
         self.screen.blit(controls_label, (10, hud_y + 60))
+
+        # Recent trades
+        trade_hud_y = hud_y
+        trade_title = self.font.render("Recent Trades:", True, self.COLOR_BLACK)
+        self.screen.blit(trade_title, (250, trade_hud_y))
+        for i, trade in enumerate(reversed(self.recent_trades)):
+            if i >= 5: break
+            trade_text = (
+                f"T{trade['tick']}: {trade['buyer_id']} buys {trade['dA']}A from {trade['seller_id']} "
+                f"for {trade['dB']}B @ {trade['price']:.2f}"
+            )
+            trade_label = self.small_font.render(trade_text, True, self.COLOR_BLACK)
+            self.screen.blit(trade_label, (250, trade_hud_y + 20 + i * 15))
     
     def add_trade_indicator(self, pos: tuple[int, int]):
         """Add a trade indicator at the given position."""

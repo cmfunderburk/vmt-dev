@@ -48,7 +48,7 @@ def load_scenario(path: str) -> ScenarioConfig:
         # Parse params (with defaults)
         params_data = data.get('params', {})
         params = ScenarioParams(
-            spread=params_data.get('spread', 0.05),
+            spread=params_data.get('spread', 0.0),
             vision_radius=params_data.get('vision_radius', 5),
             interaction_radius=params_data.get('interaction_radius', 1),
             move_budget_per_tick=params_data.get('move_budget_per_tick', 1),

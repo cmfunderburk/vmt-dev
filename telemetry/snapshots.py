@@ -13,13 +13,13 @@ if TYPE_CHECKING:
 class AgentSnapshotLogger:
     """Logs agent state snapshots at intervals."""
     
-    def __init__(self, log_dir: str = "./logs", snapshot_frequency: int = 10):
+    def __init__(self, log_dir: str = "./logs", snapshot_frequency: int = 1):
         """
         Initialize agent snapshot logger.
         
         Args:
             log_dir: Directory to write log files
-            snapshot_frequency: Log every K ticks
+            snapshot_frequency: Log every K ticks (default 1 = every tick)
         """
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
@@ -35,7 +35,9 @@ class AgentSnapshotLogger:
         self.file = open(self.log_file, 'w', newline='')
         self.writer = csv.writer(self.file)
         self.writer.writerow([
-            'tick', 'id', 'x', 'y', 'A', 'B', 'U', 'partner_id', 'utility_type'
+            'tick', 'id', 'x', 'y', 'A', 'B', 'U',
+            'ask_A_in_B', 'bid_A_in_B', 'p_min', 'p_max',
+            'target_agent_id', 'target_x', 'target_y', 'utility_type'
         ])
         self.file.flush()
     
@@ -64,14 +66,23 @@ class AgentSnapshotLogger:
             if agent.utility:
                 utility_type = agent.utility.__class__.__name__
             
-            # Get partner (if targeting another agent)
-            partner_id = ""
-            # This will be populated later when partner tracking is implemented
+            # Get quote data
+            ask_A = agent.quotes.ask_A_in_B
+            bid_A = agent.quotes.bid_A_in_B
+            p_min = agent.quotes.p_min
+            p_max = agent.quotes.p_max
+            
+            # Get target data
+            target_agent_id = "" if agent.target_agent_id is None else str(agent.target_agent_id)
+            target_x = "" if agent.target_pos is None else str(agent.target_pos[0])
+            target_y = "" if agent.target_pos is None else str(agent.target_pos[1])
             
             self.writer.writerow([
                 tick, agent.id, agent.pos[0], agent.pos[1],
                 agent.inventory.A, agent.inventory.B,
-                f"{utility_val:.6f}", partner_id, utility_type
+                f"{utility_val:.6f}",
+                f"{ask_A:.6f}", f"{bid_A:.6f}", f"{p_min:.6f}", f"{p_max:.6f}",
+                target_agent_id, target_x, target_y, utility_type
             ])
         
         self.file.flush()

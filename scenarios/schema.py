@@ -30,7 +30,7 @@ class ResourceSeed:
 @dataclass
 class ScenarioParams:
     """Simulation parameters."""
-    spread: float = 0.05
+    spread: float = 0.0
     vision_radius: int = 5
     interaction_radius: int = 1
     move_budget_per_tick: int = 1

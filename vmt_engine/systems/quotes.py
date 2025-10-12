@@ -18,13 +18,13 @@ def compute_quotes(agent: 'Agent', spread: float, epsilon: float) -> 'Quote':
         epsilon: Small value for zero-safe calculations
         
     Returns:
-        Quote with ask_A_in_B and bid_A_in_B
+        Quote with ask_A_in_B, bid_A_in_B, p_min, and p_max
     """
     from ..core.state import Quote
     
     if not agent.utility:
         # No utility function, return default quotes
-        return Quote(ask_A_in_B=1.0, bid_A_in_B=1.0)
+        return Quote(ask_A_in_B=1.0, bid_A_in_B=1.0, p_min=1.0, p_max=1.0)
     
     A = agent.inventory.A
     B = agent.inventory.B
@@ -40,7 +40,7 @@ def compute_quotes(agent: 'Agent', spread: float, epsilon: float) -> 'Quote':
     ask_A_in_B = max(0.0, ask_A_in_B)
     bid_A_in_B = max(0.0, bid_A_in_B)
     
-    return Quote(ask_A_in_B=ask_A_in_B, bid_A_in_B=bid_A_in_B)
+    return Quote(ask_A_in_B=ask_A_in_B, bid_A_in_B=bid_A_in_B, p_min=p_min, p_max=p_max)
 
 
 def refresh_quotes_if_needed(agent: 'Agent', spread: float, epsilon: float) -> bool:

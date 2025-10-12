@@ -23,6 +23,7 @@ class TradeLogger:
         self.log_file = self.log_dir / "trades.csv"
         self.file: TextIO | None = None
         self.writer: csv.writer | None = None
+        self.recent_trades_for_renderer: list = []
         self._open()
     
     def _open(self):
@@ -50,7 +51,7 @@ class TradeLogger:
             price: Trade price (A in terms of B)
             direction: Trade direction string
         """
-        if self.writer is None:
+        if self.writer is None or self.file is None:
             raise RuntimeError("Logger not initialized")
         
         self.writer.writerow([
@@ -58,6 +59,15 @@ class TradeLogger:
             dA, dB, f"{price:.6f}", direction
         ])
         self.file.flush()
+
+        # Also store in memory for renderer
+        self.recent_trades_for_renderer.append({
+            "tick": tick, "x": x, "y": y, "buyer_id": buyer_id, "seller_id": seller_id,
+            "dA": dA, "dB": dB, "price": price, "direction": direction
+        })
+        # Keep only recent trades
+        if len(self.recent_trades_for_renderer) > 20:
+            self.recent_trades_for_renderer.pop(0)
     
     def close(self):
         """Close log file."""

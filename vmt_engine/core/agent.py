@@ -17,7 +17,7 @@ class Agent:
     pos: Position
     inventory: Inventory
     utility: Optional['Utility'] = None
-    quotes: Quote = field(default_factory=lambda: Quote(ask_A_in_B=0.0, bid_A_in_B=0.0))
+    quotes: Quote = field(default_factory=lambda: Quote(ask_A_in_B=0.0, bid_A_in_B=0.0, p_min=0.0, p_max=0.0))
     vision_radius: int = 5
     move_budget_per_tick: int = 1
     

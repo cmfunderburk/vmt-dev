@@ -32,7 +32,7 @@ def compute_surplus(agent_i: 'Agent', agent_j: 'Agent') -> float:
 
 
 def choose_partner(agent: 'Agent', neighbors: list[tuple[int, tuple[int, int]]], 
-                   all_agents: dict[int, 'Agent']) -> int | None:
+                   all_agents: dict[int, 'Agent']) -> tuple[int | None, float | None, list[tuple[int, float]]]:
     """
     Choose best trading partner from visible neighbors.
     
@@ -44,12 +44,16 @@ def choose_partner(agent: 'Agent', neighbors: list[tuple[int, tuple[int, int]]],
         all_agents: Dictionary mapping agent_id to Agent
         
     Returns:
-        Partner agent_id or None if no positive surplus
+        Tuple of (partner_id, surplus_with_partner, all_candidates)
+        - partner_id: Chosen partner or None
+        - surplus_with_partner: Surplus with chosen partner or None
+        - all_candidates: List of (neighbor_id, surplus) for all positive surplus neighbors
     """
     if not neighbors:
-        return None
+        return None, None, []
     
     candidates = []
+    all_candidates_with_surplus = []
     
     for neighbor_id, _ in neighbors:
         if neighbor_id not in all_agents:
@@ -58,17 +62,21 @@ def choose_partner(agent: 'Agent', neighbors: list[tuple[int, tuple[int, int]]],
         neighbor = all_agents[neighbor_id]
         surplus = compute_surplus(agent, neighbor)
         
-        # Only consider positive surplus
+        # Record all candidates with their surplus (even if not positive)
         if surplus > 0:
+            all_candidates_with_surplus.append((neighbor_id, surplus))
             # Store (negative surplus for sorting, id for tie-breaking)
             candidates.append((-surplus, neighbor_id))
     
     if not candidates:
-        return None
+        return None, None, all_candidates_with_surplus
     
     # Sort by (-surplus, id) - highest surplus first, then lowest id
     candidates.sort()
-    return candidates[0][1]
+    chosen_id = candidates[0][1]
+    chosen_surplus = -candidates[0][0]
+    
+    return chosen_id, chosen_surplus, all_candidates_with_surplus
 
 
 def improves(agent: 'Agent', dA: int, dB: int, eps: float = 1e-12) -> bool:
@@ -94,36 +102,182 @@ def improves(agent: 'Agent', dA: int, dB: int, eps: float = 1e-12) -> bool:
     return u1 > u0 + eps
 
 
-def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
-                           dA_max: int, epsilon: float) -> tuple[int, int] | None:
+def generate_price_candidates(ask: float, bid: float, dA: int) -> list[float]:
     """
-    Find minimal ΔA ∈ [1..dA_max] such that ΔB = round_half_up(price * ΔA)
-    and both agents improve their utility.
+    Generate candidate prices to try within [ask, bid] range.
+    
+    Strategy: Try prices that would give integer dB values, plus some
+    evenly-spaced samples across the range.
+    
+    Args:
+        ask: Seller's minimum acceptable price
+        bid: Buyer's maximum acceptable price
+        dA: Trade size in units of A
+        
+    Returns:
+        List of candidate prices, sorted from low to high
+    """
+    if ask > bid:
+        return []
+    
+    candidates = set()
+    
+    # Add prices that give specific integer dB values
+    # This is key for finding mutually beneficial discrete trades
+    max_dB = int(bid * dA + 1)
+    for target_dB in range(1, min(max_dB + 1, 20)):  # Cap at 20 to avoid excessive candidates
+        price = target_dB / dA
+        if ask <= price <= bid:
+            candidates.add(price)
+    
+    # Also add evenly-spaced samples for coverage
+    num_samples = 5
+    for i in range(num_samples):
+        price = ask + i * (bid - ask) / (num_samples - 1) if num_samples > 1 else ask
+        candidates.add(price)
+    
+    # Sort from low to high (prefer lower prices for fairness)
+    return sorted(candidates)
+
+
+def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
+                           dA_max: int, epsilon: float, tick: int = 0,
+                           direction: str = "", surplus: float = 0.0,
+                           logger: Any = None) -> tuple[int, int, float] | None:
+    """
+    Find minimal ΔA ∈ [1..dA_max] and a price where both agents improve utility.
+    
+    Searches multiple candidate prices within [seller.ask, buyer.bid] range
+    to find mutually beneficial terms of trade. This handles the case where
+    the midpoint price doesn't work due to integer rounding effects.
     
     Args:
         buyer: Agent buying good A
         seller: Agent selling good A
-        price: Trade price (A in terms of B)
+        price: Midpoint price hint (kept for backward compatibility)
         dA_max: Maximum amount of A to trade
         epsilon: Epsilon for utility improvement check
+        tick: Current simulation tick (for logging)
+        direction: Trade direction string (for logging)
+        surplus: Computed surplus (for logging)
+        logger: TradeAttemptLogger instance (optional)
         
     Returns:
-        (dA, dB) tuple or None if no feasible block found
+        (dA, dB, actual_price) tuple or None if no feasible block found
     """
+    # Get the valid price range
+    ask = seller.quotes.ask_A_in_B
+    bid = buyer.quotes.bid_A_in_B
+    
+    # Iterate over trade sizes
     for dA in range(1, dA_max + 1):
-        # Round-half-up: floor(x + 0.5)
-        dB = int(floor(price * dA + 0.5))
+        # Generate candidate prices for this trade size
+        price_candidates = generate_price_candidates(ask, bid, dA)
         
-        if dB <= 0:
-            continue
-        
-        # Check feasibility (inventory constraints)
-        if seller.inventory.A < dA or buyer.inventory.B < dB:
-            continue
-        
-        # Check utility improvement for both agents
-        if improves(buyer, +dA, -dB, epsilon) and improves(seller, -dA, +dB, epsilon):
-            return (dA, dB)
+        # Try each price candidate
+        for test_price in price_candidates:
+            # Round-half-up: floor(x + 0.5)
+            dB = int(floor(test_price * dA + 0.5))
+            
+            # Get current states for logging
+            buyer_A_init = buyer.inventory.A
+            buyer_B_init = buyer.inventory.B
+            seller_A_init = seller.inventory.A
+            seller_B_init = seller.inventory.B
+            
+            buyer_U_init = buyer.utility.u(buyer_A_init, buyer_B_init) if buyer.utility else 0.0
+            seller_U_init = seller.utility.u(seller_A_init, seller_B_init) if seller.utility else 0.0
+            
+            buyer_A_final = buyer_A_init + dA
+            buyer_B_final = buyer_B_init - dB
+            seller_A_final = seller_A_init - dA
+            seller_B_final = seller_B_init + dB
+            
+            buyer_U_final = buyer.utility.u(buyer_A_final, buyer_B_final) if buyer.utility else 0.0
+            seller_U_final = seller.utility.u(seller_A_final, seller_B_final) if seller.utility else 0.0
+            
+            # Check if dB is valid
+            if dB <= 0:
+                if logger:
+                    logger.log_iteration(
+                        tick, buyer.id, seller.id, direction, test_price,
+                        buyer.quotes.ask_A_in_B, buyer.quotes.bid_A_in_B,
+                        seller.quotes.ask_A_in_B, seller.quotes.bid_A_in_B, surplus,
+                        dA, dB,
+                        buyer_A_init, buyer_B_init, buyer_U_init,
+                        buyer_A_final, buyer_B_final, buyer_U_final, False,
+                        seller_A_init, seller_B_init, seller_U_init,
+                        seller_A_final, seller_B_final, seller_U_final, False,
+                        True, True, "fail", "dB_nonpositive"
+                    )
+                continue
+            
+            # Check feasibility (inventory constraints)
+            buyer_feasible = buyer_B_init >= dB
+            seller_feasible = seller_A_init >= dA
+            
+            if not seller_feasible or not buyer_feasible:
+                if logger:
+                    reason = "inventory_infeasible"
+                    if not seller_feasible:
+                        reason = "seller_insufficient_A"
+                    if not buyer_feasible:
+                        reason = "buyer_insufficient_B"
+                    
+                    logger.log_iteration(
+                        tick, buyer.id, seller.id, direction, test_price,
+                        buyer.quotes.ask_A_in_B, buyer.quotes.bid_A_in_B,
+                        seller.quotes.ask_A_in_B, seller.quotes.bid_A_in_B, surplus,
+                        dA, dB,
+                        buyer_A_init, buyer_B_init, buyer_U_init,
+                        buyer_A_final, buyer_B_final, buyer_U_final, False,
+                        seller_A_init, seller_B_init, seller_U_init,
+                        seller_A_final, seller_B_final, seller_U_final, False,
+                        buyer_feasible, seller_feasible, "fail", reason
+                    )
+                continue
+            
+            # Check utility improvement for both agents
+            buyer_improves_flag = improves(buyer, +dA, -dB, epsilon)
+            seller_improves_flag = improves(seller, -dA, +dB, epsilon)
+            
+            if buyer_improves_flag and seller_improves_flag:
+                # Success! Found a mutually beneficial trade
+                if logger:
+                    logger.log_iteration(
+                        tick, buyer.id, seller.id, direction, test_price,
+                        buyer.quotes.ask_A_in_B, buyer.quotes.bid_A_in_B,
+                        seller.quotes.ask_A_in_B, seller.quotes.bid_A_in_B, surplus,
+                        dA, dB,
+                        buyer_A_init, buyer_B_init, buyer_U_init,
+                        buyer_A_final, buyer_B_final, buyer_U_final, buyer_improves_flag,
+                        seller_A_init, seller_B_init, seller_U_init,
+                        seller_A_final, seller_B_final, seller_U_final, seller_improves_flag,
+                        buyer_feasible, seller_feasible, "success", "utility_improves_both"
+                    )
+                return (dA, dB, test_price)  # Return the price that worked
+            else:
+                if logger:
+                    reason = "utility_no_improvement"
+                    if not buyer_improves_flag:
+                        reason = "buyer_utility_no_improvement"
+                    if not seller_improves_flag:
+                        reason = "seller_utility_no_improvement"
+                    if not buyer_improves_flag and not seller_improves_flag:
+                        reason = "both_utility_no_improvement"
+                    
+                    logger.log_iteration(
+                        tick, buyer.id, seller.id, direction, test_price,
+                        buyer.quotes.ask_A_in_B, buyer.quotes.bid_A_in_B,
+                        seller.quotes.ask_A_in_B, seller.quotes.bid_A_in_B, surplus,
+                        dA, dB,
+                        buyer_A_init, buyer_B_init, buyer_U_init,
+                        buyer_A_final, buyer_B_final, buyer_U_final, buyer_improves_flag,
+                        seller_A_init, seller_B_init, seller_U_init,
+                        seller_A_final, seller_B_final, seller_U_final, seller_improves_flag,
+                        buyer_feasible, seller_feasible, "fail", reason
+                    )
+                # Continue trying other prices for this dA
     
     return None
 
@@ -154,72 +308,72 @@ def execute_trade(buyer: 'Agent', seller: 'Agent', dA: int, dB: int):
 
 
 def trade_pair(agent_i: 'Agent', agent_j: 'Agent', params: dict[str, Any],
-               logger: 'TradeLogger', tick: int) -> bool:
+               trade_logger: 'TradeLogger', tick: int,
+               trade_attempt_logger: Any = None) -> bool:
     """
-    Attempt trade between a pair of agents.
+    Attempt ONE trade between a pair of agents this tick.
     
-    Supports multi-block continuation until surplus exhausted.
+    If a trade occurs, quotes will be recalculated at the end of the tick
+    (in housekeeping phase), and agents can trade again on the next tick.
+    This continues until no mutually beneficial trades remain, at which
+    point agents will unpair and seek other opportunities.
     
     Args:
         agent_i: First agent
         agent_j: Second agent
         params: Simulation parameters (ΔA_max, epsilon, spread)
-        logger: Trade logger
+        trade_logger: Trade logger for successful trades
         tick: Current tick
+        trade_attempt_logger: Trade attempt logger for diagnostics (optional)
         
     Returns:
-        True if any trade occurred
+        True if a trade occurred this tick
     """
-    from .quotes import compute_quotes
+    # Compute surplus in both directions
+    overlap_dir1 = agent_i.quotes.bid_A_in_B - agent_j.quotes.ask_A_in_B  # i buys from j
+    overlap_dir2 = agent_j.quotes.bid_A_in_B - agent_i.quotes.ask_A_in_B  # j buys from i
     
-    traded = False
+    if overlap_dir1 <= 0 and overlap_dir2 <= 0:
+        return False  # No positive surplus
     
-    while True:
-        # Compute surplus in both directions
-        overlap_dir1 = agent_i.quotes.bid_A_in_B - agent_j.quotes.ask_A_in_B  # i buys from j
-        overlap_dir2 = agent_j.quotes.bid_A_in_B - agent_i.quotes.ask_A_in_B  # j buys from i
-        
-        if overlap_dir1 <= 0 and overlap_dir2 <= 0:
-            break  # No positive surplus
-        
-        # Pick direction with larger surplus
-        if overlap_dir1 > overlap_dir2:
-            buyer, seller = agent_i, agent_j
-            direction = "i_buys_A"
-        else:
-            buyer, seller = agent_j, agent_i
-            direction = "j_buys_A"
-        
-        # Midpoint price
-        price = 0.5 * (seller.quotes.ask_A_in_B + buyer.quotes.bid_A_in_B)
-        
-        # Find compensating block
-        block = find_compensating_block(
-            buyer, seller, price, 
-            params['ΔA_max'], params['epsilon']
-        )
-        
-        if block is None:
-            break  # No feasible block
-        
-        dA, dB = block
-        
-        # Execute trade
-        execute_trade(buyer, seller, dA, dB)
-        traded = True
-        
-        # Log trade
-        logger.log_trade(
-            tick, buyer.pos[0], buyer.pos[1],
-            buyer.id, seller.id,
-            dA, dB, price, direction
-        )
-        
-        # Refresh quotes for both agents
-        agent_i.quotes = compute_quotes(agent_i, params['spread'], params['epsilon'])
-        agent_j.quotes = compute_quotes(agent_j, params['spread'], params['epsilon'])
-        agent_i.inventory_changed = False
-        agent_j.inventory_changed = False
+    # Pick direction with larger surplus
+    if overlap_dir1 > overlap_dir2:
+        buyer, seller = agent_i, agent_j
+        direction = "i_buys_A"
+        surplus = overlap_dir1
+    else:
+        buyer, seller = agent_j, agent_i
+        direction = "j_buys_A"
+        surplus = overlap_dir2
     
-    return traded
+    # Midpoint price hint
+    price = 0.5 * (seller.quotes.ask_A_in_B + buyer.quotes.bid_A_in_B)
+    
+    # Find compensating block (with price search)
+    block = find_compensating_block(
+        buyer, seller, price, 
+        params['ΔA_max'], params['epsilon'],
+        tick, direction, surplus, trade_attempt_logger
+    )
+    
+    if block is None:
+        return False  # No feasible block
+    
+    dA, dB, actual_price = block  # Returns the price that worked
+    
+    # Execute trade
+    execute_trade(buyer, seller, dA, dB)
+    
+    # Log trade with actual price used
+    trade_logger.log_trade(
+        tick, buyer.pos[0], buyer.pos[1],
+        buyer.id, seller.id,
+        dA, dB, actual_price, direction
+    )
+    
+    # Mark that inventories changed (quotes will be refreshed in housekeeping)
+    agent_i.inventory_changed = True
+    agent_j.inventory_changed = True
+    
+    return True
 

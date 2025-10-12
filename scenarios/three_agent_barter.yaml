@@ -3,14 +3,14 @@ name: three_agent_barter_test
 N: 8
 agents: 3
 initial_inventories:
-  A: [5, 0, 3]  # explicit list for testing
-  B: [0, 5, 3]
+  A: [8, 4, 6]  # More balanced to allow mutually beneficial trades
+  B: [4, 8, 6]  # Reduces extreme complementarity effects
 utilities:
   mix:
   - {type: ces, weight: 0.67, params: {rho: -0.5, wA: 1.0, wB: 1.0}}
   - {type: linear, weight: 0.33, params: {vA: 1.0, vB: 1.2}}
 params:
-  spread: 0.05
+  # spread defaults to 0.0 (see schema.py) - true reservation prices
   vision_radius: 3
   interaction_radius: 1
   move_budget_per_tick: 1
