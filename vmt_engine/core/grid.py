@@ -13,6 +13,8 @@ class Resource:
     """Resource on a cell."""
     type: Literal["A", "B"] | None = None
     amount: int = 0
+    original_amount: int = 0  # Initial seeded amount (cap for regeneration)
+    last_harvested_tick: int | None = None  # Tick when resource was last harvested (for regeneration cooldown)
 
 
 @dataclass
@@ -56,6 +58,7 @@ class Grid:
         cell = self.get_cell(x, y)
         cell.resource.type = good_type
         cell.resource.amount = amount
+        cell.resource.original_amount = amount  # Track original for regeneration cap
     
     def manhattan_distance(self, pos1: Position, pos2: Position) -> int:
         """Calculate Manhattan distance between two positions."""
@@ -97,4 +100,5 @@ class Grid:
                 resource_type = "A" if rng.random() < 0.5 else "B"
                 cell.resource.type = resource_type
                 cell.resource.amount = amount
+                cell.resource.original_amount = amount  # Track for regeneration cap
 

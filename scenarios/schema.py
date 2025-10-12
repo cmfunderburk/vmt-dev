@@ -38,6 +38,10 @@ class ScenarioParams:
     forage_rate: int = 1
     epsilon: float = 1e-12
     beta: float = 0.95
+    resource_growth_rate: int = 0          # Units that regenerate per tick (0 = no regen)
+    resource_max_amount: int = 5           # Maximum resource amount per cell
+    resource_regen_cooldown: int = 5       # Ticks to wait after depletion before regen starts
+    trade_cooldown_ticks: int = 5          # Ticks to wait after failed trade before re-attempting same partner
 
 
 @dataclass
@@ -86,6 +90,18 @@ class ScenarioConfig:
         
         if not 0 < self.params.beta <= 1:
             raise ValueError(f"beta must be in (0, 1], got {self.params.beta}")
+        
+        if self.params.resource_growth_rate < 0:
+            raise ValueError(f"resource_growth_rate must be non-negative, got {self.params.resource_growth_rate}")
+        
+        if self.params.resource_max_amount <= 0:
+            raise ValueError(f"resource_max_amount must be positive, got {self.params.resource_max_amount}")
+        
+        if self.params.resource_regen_cooldown < 0:
+            raise ValueError(f"resource_regen_cooldown must be non-negative, got {self.params.resource_regen_cooldown}")
+        
+        if self.params.trade_cooldown_ticks < 0:
+            raise ValueError(f"trade_cooldown_ticks must be non-negative, got {self.params.trade_cooldown_ticks}")
         
         # Resource seed validation
         if not 0 <= self.resource_seed.density <= 1:

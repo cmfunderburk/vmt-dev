@@ -55,7 +55,11 @@ def load_scenario(path: str) -> ScenarioConfig:
             ΔA_max=params_data.get('ΔA_max', 5),
             forage_rate=params_data.get('forage_rate', 1),
             epsilon=params_data.get('epsilon', 1e-12),
-            beta=params_data.get('beta', 0.95)
+            beta=params_data.get('beta', 0.95),
+            resource_growth_rate=params_data.get('resource_growth_rate', 0),
+            resource_max_amount=params_data.get('resource_max_amount', 5),
+            resource_regen_cooldown=params_data.get('resource_regen_cooldown', 5),
+            trade_cooldown_ticks=params_data.get('trade_cooldown_ticks', 5)
         )
         
         # Parse resource seed

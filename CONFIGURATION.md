@@ -9,14 +9,17 @@ The VMT simulation uses centralized default parameters defined in `scenarios/sch
 ```python
 # From scenarios/schema.py:
 class ScenarioParams:
-    spread: float = 0.0              # Bid-ask spread (0.0 = true reservation prices)
-    vision_radius: int = 5           # Manhattan distance for perception
-    interaction_radius: int = 1      # Manhattan distance for trading
-    move_budget_per_tick: int = 1    # Maximum Manhattan distance per tick
-    ΔA_max: int = 5                  # Maximum trade size per transaction
-    forage_rate: int = 1             # Resource harvest rate
-    epsilon: float = 1e-12           # Zero-safe epsilon for calculations
-    beta: float = 0.95               # Exploration parameter for foraging
+    spread: float = 0.0                    # Bid-ask spread (0.0 = true reservation prices)
+    vision_radius: int = 5                 # Manhattan distance for perception
+    interaction_radius: int = 1            # Manhattan distance for trading
+    move_budget_per_tick: int = 1          # Maximum Manhattan distance per tick
+    ΔA_max: int = 5                        # Maximum trade size per transaction
+    forage_rate: int = 1                   # Resource harvest rate per tick
+    epsilon: float = 1e-12                 # Zero-safe epsilon for calculations
+    beta: float = 0.95                     # Exploration parameter for foraging
+    resource_growth_rate: int = 0          # Resource regeneration rate (0 = disabled)
+    resource_max_amount: int = 5           # Maximum resource amount per cell
+    resource_regen_cooldown: int = 5       # Ticks to wait after depletion before regen
 ```
 
 ## Important: Spread Parameter
@@ -78,6 +81,33 @@ params:
 - Controls forage target selection bias toward higher-value resources
 - Higher beta (→1) = more exploitation, lower beta (→0) = more exploration
 - Default `0.95` balances exploration and exploitation
+
+### Resource Regeneration
+
+**resource_growth_rate** (default: 0)
+- Units that regenerate per tick after cooldown period
+- `0` = No regeneration (finite resources, backward compatible)
+- `1` = Slow regeneration (strategic resource management)
+- `2+` = Fast regeneration (sustainable foraging)
+
+**resource_max_amount** (default: 5)
+- Maximum resource units per cell
+- Caps regeneration to prevent unbounded growth
+- Should be ≥ initial resource amount for natural behavior
+
+**resource_regen_cooldown** (default: 5)
+- Ticks a depleted cell must wait before regeneration begins
+- Only applies to cells that were fully harvested to 0
+- Creates strategic timing element (when to return to harvested areas)
+
+**Regeneration Behavior:**
+1. Cell starts with resources (e.g., amount=3)
+2. Agent harvests: 3 → 2 → 1 → 0
+3. When amount hits 0, `depleted_at_tick` is recorded
+4. Cell waits for cooldown period (default 5 ticks)
+5. After cooldown, regeneration starts at `resource_growth_rate`
+6. Continues growing until `resource_max_amount` reached
+7. Can be harvested again, repeating the cycle
 
 ## Scenario File Best Practices
 

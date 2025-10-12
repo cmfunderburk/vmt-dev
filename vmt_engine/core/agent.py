@@ -26,6 +26,7 @@ class Agent:
     target_agent_id: Optional[int] = field(default=None, repr=False)
     perception_cache: dict = field(default_factory=dict, repr=False)
     inventory_changed: bool = field(default=True, repr=False)
+    trade_cooldowns: dict[int, int] = field(default_factory=dict, repr=False)  # partner_id -> cooldown_until_tick
     
     def __post_init__(self):
         if self.id < 0:

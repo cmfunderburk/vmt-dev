@@ -18,6 +18,12 @@ params:
   forage_rate: 1
   epsilon: 0.000000000001
   beta: 0.95
+  # Resource regeneration (enables sustainable foraging)
+  resource_growth_rate: 1        # 1 unit per tick after cooldown
+  resource_max_amount: 5         # Cap at 5 units
+  resource_regen_cooldown: 5     # 5-tick cooldown after depletion
+  # Trade cooldown (prevents futile retry loops)
+  trade_cooldown_ticks: 5        # 5-tick cooldown after failed trade
 resource_seed:
   density: 0.05
   amount: 1

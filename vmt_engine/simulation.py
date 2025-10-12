@@ -44,6 +44,10 @@ class Simulation:
             'forage_rate': scenario_config.params.forage_rate,
             'epsilon': scenario_config.params.epsilon,
             'beta': scenario_config.params.beta,
+            'resource_growth_rate': scenario_config.params.resource_growth_rate,
+            'resource_max_amount': scenario_config.params.resource_max_amount,
+            'resource_regen_cooldown': scenario_config.params.resource_regen_cooldown,
+            'trade_cooldown_ticks': scenario_config.params.trade_cooldown_ticks,
         }
         
         # Initialize grid
@@ -143,6 +147,7 @@ class Simulation:
         self.movement_phase()
         self.trade_phase()
         self.forage_phase()
+        self.resource_regeneration_phase()
         self.housekeeping_phase()
         self.tick += 1
     
@@ -161,7 +166,7 @@ class Simulation:
         for agent in self.agents:
             # Try to find a trading partner first
             neighbors = agent.perception_cache.get('neighbors', [])
-            partner_id, surplus, all_candidates = choose_partner(agent, neighbors, self.agent_by_id)
+            partner_id, surplus, all_candidates = choose_partner(agent, neighbors, self.agent_by_id, self.tick)
 
             if partner_id is not None:
                 # Move toward partner
@@ -179,7 +184,8 @@ class Simulation:
             else:
                 # Fall back to foraging
                 resource_cells = agent.perception_cache.get('resource_cells', [])
-                target = choose_forage_target(agent, resource_cells, self.params['beta'])
+                target = choose_forage_target(agent, resource_cells, self.params['beta'],
+                                              self.params['forage_rate'])
                 agent.target_pos = target
                 agent.target_agent_id = None
                 
@@ -251,10 +257,21 @@ class Simulation:
     def forage_phase(self):
         """Phase 5: Agents harvest resources."""
         for agent in self.agents:
-            forage(agent, self.grid, self.params['forage_rate'])
+            forage(agent, self.grid, self.params['forage_rate'], self.tick)
+    
+    def resource_regeneration_phase(self):
+        """Phase 6: Resources regenerate after cooldown period."""
+        from .systems.foraging import regenerate_resources
+        regenerate_resources(
+            self.grid,
+            self.params['resource_growth_rate'],
+            self.params['resource_max_amount'],
+            self.params['resource_regen_cooldown'],
+            self.tick
+        )
     
     def housekeeping_phase(self):
-        """Phase 6: Update quotes, log telemetry, cleanup."""
+        """Phase 7: Update quotes, log telemetry, cleanup."""
         # Refresh quotes for agents whose inventory changed
         for agent in self.agents:
             refresh_quotes_if_needed(agent, self.params['spread'], self.params['epsilon'])

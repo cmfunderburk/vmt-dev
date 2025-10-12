@@ -61,17 +61,26 @@ def next_step_toward(current: 'Position', target: 'Position', budget: int) -> 'P
     return (x, y)
 
 
-def choose_forage_target(agent: 'Agent', resource_cells: list['Cell'], beta: float) -> 'Position' | None:
+def choose_forage_target(agent: 'Agent', resource_cells: list['Cell'], beta: float, 
+                        forage_rate: int = 1) -> 'Position' | None:
     """
     Choose best foraging target using distance-discounted utility seeking.
     
-    Primary strategy: maximize ΔU_arrival * β^distance
+    Evaluates all resource cells including current position (if on resource).
+    Current position has distance=0, so score = ΔU * β^0 = ΔU (no discount).
+    Other cells are discounted by β^distance.
+    
+    Utility gain is calculated based on forage_rate (amount agent will harvest),
+    not the full amount on the cell.
+    
+    Strategy: maximize ΔU_from_one_harvest * β^distance
     Fallback: nearest resource (A before B, then lowest x, y)
     
     Args:
         agent: The deciding agent
         resource_cells: List of visible resource cells
         beta: Discount factor for distance (0 < β ≤ 1)
+        forage_rate: Amount agent harvests per tick (default: 1)
         
     Returns:
         Target position or None if no resources visible
@@ -91,18 +100,21 @@ def choose_forage_target(agent: 'Agent', resource_cells: list['Cell'], beta: flo
     best_score = float('-inf')
     best_target = None
     
-    # Evaluate each resource cell
+    # Evaluate each resource cell (including current position if it has resources)
     for cell in resource_cells:
         # Calculate distance from agent's current position
         distance = abs(cell.position[0] - agent.pos[0]) + abs(cell.position[1] - agent.pos[1])
         
-        # Calculate utility after harvesting this resource
+        # Amount agent will actually harvest (limited by forage_rate)
+        harvest_amount = min(cell.resource.amount, forage_rate)
+        
+        # Calculate utility after harvesting forage_rate units (not full cell amount)
         if cell.resource.type == "A":
-            new_A = current_A + cell.resource.amount
+            new_A = current_A + harvest_amount
             new_B = current_B
         else:  # "B"
             new_A = current_A
-            new_B = current_B + cell.resource.amount
+            new_B = current_B + harvest_amount
         
         new_u = agent.utility.u(new_A, new_B)
         delta_u = new_u - current_u

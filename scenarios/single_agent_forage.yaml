@@ -17,6 +17,9 @@ params:
   forage_rate: 1
   epsilon: 0.000000000001
   beta: 0.95
+  resource_growth_rate: 1        # Enable regeneration: 1 unit per tick
+  resource_max_amount: 5         # Cap resources at 5 units
+  resource_regen_cooldown: 5     # Wait 5 ticks after depletion before regen
 resource_seed:
   density: 0.1
   amount: 3

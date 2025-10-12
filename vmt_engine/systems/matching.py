@@ -32,16 +32,19 @@ def compute_surplus(agent_i: 'Agent', agent_j: 'Agent') -> float:
 
 
 def choose_partner(agent: 'Agent', neighbors: list[tuple[int, tuple[int, int]]], 
-                   all_agents: dict[int, 'Agent']) -> tuple[int | None, float | None, list[tuple[int, float]]]:
+                   all_agents: dict[int, 'Agent'],
+                   current_tick: int = 0) -> tuple[int | None, float | None, list[tuple[int, float]]]:
     """
     Choose best trading partner from visible neighbors.
     
     Picks partner with highest surplus. Tie-breaking: lowest id.
+    Skips partners in cooldown period (recently failed trade attempts).
     
     Args:
         agent: The choosing agent
         neighbors: List of (agent_id, position) tuples
         all_agents: Dictionary mapping agent_id to Agent
+        current_tick: Current simulation tick (for cooldown checking)
         
     Returns:
         Tuple of (partner_id, surplus_with_partner, all_candidates)
@@ -58,6 +61,14 @@ def choose_partner(agent: 'Agent', neighbors: list[tuple[int, tuple[int, int]]],
     for neighbor_id, _ in neighbors:
         if neighbor_id not in all_agents:
             continue
+        
+        # Skip if partner is in cooldown
+        if neighbor_id in agent.trade_cooldowns:
+            if current_tick < agent.trade_cooldowns[neighbor_id]:
+                continue  # Still in cooldown, skip this partner
+            else:
+                # Cooldown expired, remove from dict
+                del agent.trade_cooldowns[neighbor_id]
         
         neighbor = all_agents[neighbor_id]
         surplus = compute_surplus(agent, neighbor)
@@ -357,6 +368,10 @@ def trade_pair(agent_i: 'Agent', agent_j: 'Agent', params: dict[str, Any],
     )
     
     if block is None:
+        # Trade failed - set cooldown for both agents
+        cooldown_until = tick + params['trade_cooldown_ticks']
+        agent_i.trade_cooldowns[agent_j.id] = cooldown_until
+        agent_j.trade_cooldowns[agent_i.id] = cooldown_until
         return False  # No feasible block
     
     dA, dB, actual_price = block  # Returns the price that worked
