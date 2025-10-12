@@ -1,6 +1,7 @@
 # VMT - Visualizing Microeconomic Theory
 
-[![Tests](https://img.shields.io/badge/tests-55%2F55%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-54%2B%2F54%2B%20passing-brightgreen)]()
+[![Version](https://img.shields.io/badge/version-1.1.0-blue)]()
 [![Status](https://img.shields.io/badge/status-production%20ready-blue)]()
 [![Python](https://img.shields.io/badge/python-3.11-blue)]()
 [![GUI](https://img.shields.io/badge/GUI-PyQt5-green)]()
@@ -14,6 +15,26 @@ Agents with heterogeneous preferences forage for resources on a grid and engage 
   <img src="https://img.shields.io/badge/♻️-Sustainable%20Foraging-success" />
   <img src="https://img.shields.io/badge/📊-Enhanced%20Telemetry-success" />
 </p>
+
+---
+
+## 🆕 What's New in v1.1 (October 2025)
+
+### SQLite Database Logging System
+- **99.1% space reduction** - 644 MB → 5.88 MB for typical runs
+- **Three log levels**: SUMMARY, STANDARD, DEBUG
+- **Interactive log viewer** - PyQt5 application for exploring simulation data
+- **Fast queries** - Sub-second data retrieval vs 30-60s for CSV
+- **Backward compatible** - Export to CSV when needed
+
+### GUI Launcher & Scenario Builder
+- **Browse scenarios** - Visual list of all available `.yaml` files
+- **Create custom scenarios** - 4-tab form interface with validation
+- **Built-in documentation** - In-context help for utility function parameters
+- **No YAML knowledge needed** - Form-based with auto-validation
+- **CLI still works** - Both workflows coexist seamlessly
+
+**See [RECENT_UPDATES_OVERVIEW.md](RECENT_UPDATES_OVERVIEW.md) for complete details and [CHANGELOG.md](CHANGELOG.md) for version history.**
 
 ---
 
@@ -121,13 +142,19 @@ pytest tests/ --cov=vmt_engine --cov-report=html
 
 ## 📖 Documentation
 
+### Recent Updates (v1.1) 🆕
+- **[RECENT_UPDATES_OVERVIEW.md](RECENT_UPDATES_OVERVIEW.md)** - Comprehensive overview of logging & GUI enhancements
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history and changes
+
 ### Primary Documentation
-- **[Planning-Post-v1.md](PLANS/Planning-Post-v1.md)** - Complete authoritative specification
+- **[Planning-Post-v1.md](PLANS/Planning-Post-v1.md)** - Complete authoritative specification (updated v1.1)
 - **[V1_CHECKPOINT_REVIEW.md](PLANS/V1_CHECKPOINT_REVIEW.md)** - Implementation retrospective
 - **[Big_Review.md](PLANS/Big_Review.md)** - Comprehensive evaluation
 
 ### System Documentation
-- [TELEMETRY_IMPLEMENTATION.md](PLANS/docs/TELEMETRY_IMPLEMENTATION.md) - Enhanced logging system
+- [NEW_LOGGING_SYSTEM.md](PLANS/docs/NEW_LOGGING_SYSTEM.md) - SQLite database logging (v1.1)
+- [GUI_LAUNCHER_GUIDE.md](PLANS/docs/GUI_LAUNCHER_GUIDE.md) - GUI launcher complete guide (v1.1)
+- [TELEMETRY_IMPLEMENTATION.md](PLANS/docs/TELEMETRY_IMPLEMENTATION.md) - Original CSV logging (legacy)
 - [PRICE_SEARCH_IMPLEMENTATION.md](PLANS/docs/PRICE_SEARCH_IMPLEMENTATION.md) - Price discovery algorithm
 - [TRADE_COOLDOWN_IMPLEMENTATION.md](PLANS/docs/TRADE_COOLDOWN_IMPLEMENTATION.md) - Cooldown mechanics
 - [RESOURCE_REGENERATION_IMPLEMENTATION.md](PLANS/docs/RESOURCE_REGENERATION_IMPLEMENTATION.md) - Regeneration system

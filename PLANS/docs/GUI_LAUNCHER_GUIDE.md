@@ -1,8 +1,163 @@
-# GUI Launcher User Guide
+# GUI Launcher - Complete Guide
+
+**Version:** 1.0  
+**Date:** October 2025  
+**Status:** Production Ready
+
+---
 
 ## Overview
 
-The VMT GUI Launcher provides an intuitive interface for running simulations and creating custom scenarios without editing YAML files directly.
+The VMT GUI Launcher provides an intuitive interface for running simulations and creating custom scenarios without editing YAML files directly. This comprehensive system includes a main launcher window, a scenario builder with 4 organized tabs, comprehensive validation, and built-in documentation for utility functions.
+
+### Components Implemented
+
+#### 1. Main Launcher Window (`vmt_launcher/launcher.py` - 211 lines)
+- Scenario list populated from `scenarios/*.yaml` files
+- Seed input with integer validation
+- "Create Custom Scenario" button at top
+- Run button to launch simulations
+- Status label with color-coded feedback
+- Auto-refresh capability when new scenarios created
+- Subprocess-based simulation launching (keeps GUI responsive)
+
+#### 2. Scenario Builder Dialog (`vmt_launcher/scenario_builder.py` - 669 lines)
+- Modal dialog with 4 tabbed sections
+- Tab 1: Basic settings (name, grid, agents, inventories)
+- Tab 2: Simulation parameters (spread, vision, movement, etc.)
+- Tab 3: Resource configuration (density, growth, regeneration)
+- Tab 4: Utility function mix (CES and Linear) with built-in documentation panel
+- Add/remove utility rows dynamically
+- Auto-normalize weights option
+- Comprehensive input validation
+- YAML generation matching schema
+- File save dialog with defaults
+- Success/error feedback
+
+#### 3. Validator (`vmt_launcher/validator.py` - 125 lines)
+- Type-specific validation functions
+- Range checking for floats and ints
+- String sanitization
+- Inventory list parsing (single value or comma-separated)
+- Utility weight summation check (must equal 1.0)
+- CES parameter validation (ρ ≠ 1.0, positive weights)
+- Linear parameter validation (positive values)
+- User-friendly error messages
+
+#### 4. Built-in Documentation Panel
+- Split-panel layout in Utility Functions tab (60/40 split)
+- Rich HTML documentation with embedded CSS
+- Resizable panels via drag handle
+- Comprehensive explanations for CES and Linear utilities
+- Parameter-by-parameter behavior descriptions
+- Common configuration examples
+- Color-coded information boxes (green, blue, yellow)
+
+### Files Created
+- `vmt_launcher/launcher.py` - Main launcher window
+- `vmt_launcher/scenario_builder.py` - Scenario builder dialog
+- `vmt_launcher/validator.py` - Input validation
+- `vmt_launcher/__init__.py` - Package exports
+- `launcher.py` - Entry point script
+
+### Files Modified
+- `requirements.txt` - Added `PyQt5>=5.15.0`
+- `README.md` - Updated with GUI launcher quick start
+
+### Technical Decisions
+
+**GUI Framework:**
+- **Choice:** PyQt5
+- **Rationale:** Stable, cross-platform, native look, excellent documentation
+- **Version:** 5.15.11 (latest compatible with Python 3.11)
+
+**Layout Design:**
+- **Main Window:** QMainWindow (stays open)
+- **Builder:** QDialog (modal, blocks launcher)
+- **Tabs:** QTabWidget (organizes 20+ input fields)
+- **Forms:** QFormLayout (label-field pairs)
+
+**Simulation Launching:**
+- **Method:** subprocess.Popen
+- **Rationale:**
+  - Keeps GUI responsive
+  - Allows multiple simulations
+  - No threading complexity
+  - Existing main.py unchanged
+
+**YAML Generation:**
+- **Library:** PyYAML (already a dependency)
+- **Options:**
+  - `default_flow_style=False` (block style, readable)
+  - `sort_keys=False` (preserves field order)
+- **Validation:** Pre-generate validation using schema rules
+
+### User Experience Transformation
+
+**Before (CLI Only):**
+```bash
+# Edit YAML file manually
+vim scenarios/my_scenario.yaml
+
+# Run simulation
+python main.py scenarios/my_scenario.yaml 42
+```
+
+**Pain Points:**
+- Must know YAML syntax
+- Easy to make formatting errors
+- Schema not obvious
+- Tedious for experimentation
+- No parameter reference while editing
+
+**After (GUI + CLI):**
+```bash
+# Option 1: GUI (easy)
+python launcher.py
+# Click, fill forms, run - all parameters explained in-app
+
+# Option 2: CLI (still available)
+python main.py scenarios/my_scenario.yaml 42
+```
+
+**Benefits:**
+- No YAML knowledge needed
+- Form validation prevents errors
+- All parameters visible and explained
+- Quick iteration
+- Built-in documentation
+- Both methods coexist
+
+### Testing Results
+
+**Manual Testing:**
+- ✅ Launch GUI without errors
+- ✅ Scenario list populates correctly
+- ✅ Scenario selection works
+- ✅ Seed input validation
+- ✅ Run simulation launches Pygame window
+- ✅ Launcher stays open during simulation
+- ✅ Multiple simulations can run
+- ✅ Create Custom Scenario button opens builder
+- ✅ All tabs render correctly
+- ✅ All input fields accept valid values
+- ✅ Validation catches invalid inputs
+- ✅ YAML generation creates valid files
+- ✅ File save dialog works
+- ✅ Auto-refresh detects new scenarios
+- ✅ Auto-selection works
+- ✅ Generated scenarios load and run correctly
+- ✅ Documentation panel displays properly
+- ✅ Split-panel is resizable
+- ✅ No linter errors
+
+**Integration Testing:**
+- ✅ Generated YAML loads with scenarios.loader
+- ✅ Generated YAML runs with main.py
+- ✅ All 54+ existing tests still pass
+- ✅ GUI modules import without errors
+
+---
 
 ## Installation
 

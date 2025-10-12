@@ -1,8 +1,8 @@
 # VMT Planning Document — Post-v1 (As-Built Specification)
 
-**Version:** Post-v1 (Production)  
+**Version:** Post-v1.1 (Production)  
 **Date:** October 12, 2025  
-**Status:** Production Ready — 45/45 Tests Passing
+**Status:** Production Ready — 54+ Tests Passing
 
 ---
 
@@ -25,9 +25,11 @@ VMT is a modular, visualization-first simulation platform for demonstrating micr
 - ✅ **Foraging:** Distance-discounted utility seeking with sustainable regeneration
 - ✅ **Trading:** Price search algorithm with compensating multi-lot rounding
 - ✅ **Behavioral Systems:** Trade cooldowns and resource regeneration cooldowns
-- ✅ **Enhanced Telemetry:** Decision logging, trade attempt diagnostics, comprehensive snapshots
+- ✅ **SQLite Logging:** Database-backed telemetry with 99%+ space savings (v1.1+)
+- ✅ **Interactive Log Viewer:** PyQt5 application for exploring simulation data (v1.1+)
+- ✅ **GUI Launcher:** Form-based scenario creation with built-in documentation (v1.1+)
 - ✅ **Visualization:** Pygame renderer with interactive controls
-- ✅ **Testing:** 45 comprehensive tests covering all systems
+- ✅ **Testing:** 54+ comprehensive tests covering all systems
 
 ---
 
@@ -58,10 +60,26 @@ vmt-dev/
 │   │   └── matching.py      # Trade matching and price search
 │   └── simulation.py        # Main tick loop orchestration
 ├── telemetry/               # Logging and diagnostics
-│   ├── logger.py            # Trade logging
-│   ├── snapshots.py         # Agent/resource snapshots
-│   ├── decision_logger.py   # Partner selection and movement logging
-│   └── trade_attempt_logger.py  # Failed trade diagnostics
+│   ├── database.py          # SQLite database backend (v1.1+)
+│   ├── config.py            # LogConfig and LogLevel classes (v1.1+)
+│   ├── db_loggers.py        # TelemetryManager (v1.1+)
+│   ├── logger.py            # Trade logging (legacy CSV)
+│   ├── snapshots.py         # Agent/resource snapshots (legacy CSV)
+│   ├── decision_logger.py   # Partner selection logging (legacy CSV)
+│   └── trade_attempt_logger.py  # Failed trade diagnostics (legacy CSV)
+├── vmt_log_viewer/          # Log viewer application (v1.1+)
+│   ├── viewer.py            # Main PyQt5 window
+│   ├── queries.py           # SQL query builders
+│   ├── csv_export.py        # Database → CSV export
+│   └── widgets/             # UI components
+│       ├── timeline.py      # Timeline scrubber
+│       ├── agent_view.py    # Agent analysis
+│       ├── trade_view.py    # Trade visualization
+│       └── filters.py       # Query filters
+├── vmt_launcher/            # GUI launcher (v1.1+)
+│   ├── launcher.py          # Main launcher window
+│   ├── scenario_builder.py  # Custom scenario creator
+│   └── validator.py         # Input validation
 ├── scenarios/               # Configuration system
 │   ├── schema.py            # ScenarioConfig dataclasses
 │   ├── loader.py            # YAML parsing
@@ -491,43 +509,136 @@ def regenerate_resources(grid, params, current_tick):
 
 ## 9. Telemetry & Diagnostics
 
-### 9.1 Enhanced Logging System
+VMT provides two comprehensive telemetry systems: a modern SQLite database system (default) and a legacy CSV system (for backward compatibility).
 
-VMT includes comprehensive logging for debugging and analysis:
+### 9.1 SQLite Database Logging System (v1.1+)
 
-#### Trade Logs (`logs/trades.csv`)
+**Status:** Production ready, default since v1.1
+
+#### Architecture
+
+The modern telemetry system uses SQLite with configurable log levels:
+
+**Components:**
+- `telemetry/database.py` - SQLite schema and connection management
+- `telemetry/config.py` - LogConfig and LogLevel classes
+- `telemetry/db_loggers.py` - TelemetryManager (batch writing)
+- `vmt_log_viewer/` - Interactive PyQt5 log viewer application
+
+**Database Schema:**
+- `simulation_runs` - Metadata for each run
+- `agent_snapshots` - Agent state at each tick
+- `resource_snapshots` - Resource distribution over time
+- `decisions` - Partner selection and movement decisions
+- `trades` - Successful trades only
+- `trade_attempts` - All attempts including failures (DEBUG mode)
+
+#### Log Levels
+
+**SUMMARY** (Production):
+- Trades only, no periodic snapshots
+- **Size:** 0.01% of CSV (~0.09 MB for 500 ticks, 50 agents)
+- **Use case:** Final analysis, production runs
+
+**STANDARD** (Default):
+- Trades, decisions, agent/resource snapshots
+- **Size:** 0.9% of CSV (~5.88 MB for 500 ticks, 50 agents)
+- **Use case:** Development, normal analysis
+
+**DEBUG** (Diagnostic):
+- Everything including failed trade attempts with utility calculations
+- **Size:** 92% of CSV (~593 MB for 500 ticks, 50 agents)
+- **Use case:** Debugging trade issues, detailed analysis
+
+#### Usage
+
+```python
+from vmt_engine.simulation import Simulation
+from telemetry import LogConfig
+from scenarios.loader import load_scenario
+
+scenario = load_scenario("scenarios/three_agent_barter.yaml")
+
+# Use preset configurations
+log_config = LogConfig.standard()  # or .summary() or .debug()
+
+sim = Simulation(scenario, seed=42, log_config=log_config)
+sim.run(max_ticks=1000)
+sim.close()
+
+# Database saved to: ./logs/telemetry.db
+```
+
+#### Interactive Log Viewer
+
+Launch the PyQt5 log viewer:
+```bash
+python view_logs.py
+```
+
+**Features:**
+- Timeline scrubber (navigate through ticks)
+- Agent analysis (state, trajectories, trades)
+- Trade visualization (details, attempts, statistics)
+- Decision exploration (partner selection, movement)
+- Resource viewer (distribution over time)
+- CSV export (backward compatibility)
+
+#### Performance Benefits
+
+| Metric | CSV (Legacy) | SQLite (Standard) | Improvement |
+|--------|--------------|-------------------|-------------|
+| **File Size** | 644 MB | 5.88 MB | 99.1% reduction |
+| **Load Time** | 30-60s | <1s | 30-60x faster |
+| **Query Speed** | N/A | <0.5s | Instant queries |
+| **Multi-run Support** | No | Yes | Single database |
+
+### 9.2 Legacy CSV Logging System (v1.0)
+
+**Status:** Maintained for backward compatibility
+
+The original CSV-based system is still available:
+
+```python
+# Enable legacy logging
+sim = Simulation(scenario, seed=42, use_legacy_logging=True)
+```
+
+#### CSV Files (`logs/` directory)
+
+**Trade Logs (`logs/trades.csv`)**
 ```csv
 tick,x,y,buyer_id,seller_id,dA,dB,price,direction
 ```
 Logs every successful trade.
 
-#### Trade Attempt Logs (`logs/trade_attempts.csv`)
+**Trade Attempt Logs (`logs/trade_attempts.csv`)**
 ```csv
 tick,agent_i,agent_j,i_ask,i_bid,j_ask,j_bid,direction,surplus,success,dA,dB,price,reason
 ```
 Logs **all trade attempts**, including failures with diagnostic reasons.
 
-#### Agent Snapshots (`logs/agent_snapshots.csv`)
+**Agent Snapshots (`logs/agent_snapshots.csv`)**
 ```csv
 tick,agent_id,x,y,A,B,U,partner_id,ask,bid,p_min,p_max
 ```
-Logged **every tick** (not every 10) with complete quote information.
+Logged **every tick** with complete quote information.
 
-#### Decision Logs (`logs/decisions.csv`)
+**Decision Logs (`logs/decisions.csv`)**
 ```csv
 tick,agent_id,decision_type,target_id,target_x,target_y,reason
 ```
 Logs partner selection and movement decisions every tick.
 
-#### Resource Snapshots (`logs/resource_snapshots.csv`)
+**Resource Snapshots (`logs/resource_snapshots.csv`)**
 ```csv
 tick,x,y,type,amount,last_harvested_tick
 ```
 Periodic snapshots of resource states.
 
-### 9.2 Diagnostic Capabilities
+### 9.3 Diagnostic Capabilities
 
-The enhanced telemetry enables:
+Both telemetry systems enable:
 - **Trade failure diagnosis:** See exactly why trades fail (no block found, inventory constraints, etc.)
 - **Partner lock-in detection:** Identify when agents target each other repeatedly
 - **Quote evolution tracking:** Observe how quotes change as inventories shift
@@ -535,6 +646,15 @@ The enhanced telemetry enables:
 - **Resource dynamics:** Track harvest/regeneration cycles
 
 **Key Insight:** Logging failures was as important as logging successes for building a working system.
+
+### 9.4 Migration and Export
+
+**Backward Compatibility:**
+- Export database runs to CSV: Use log viewer or `vmt_log_viewer.csv_export`
+- Existing analysis scripts work with exported CSV
+- No breaking changes to simulation API
+
+**See Also:** `PLANS/docs/NEW_LOGGING_SYSTEM.md` for complete documentation
 
 ---
 
@@ -702,6 +822,98 @@ All parameters have sensible defaults. Scenarios only override what differs.
 
 **Numerical:**
 - `epsilon: 1e-12`
+
+### 13.3 GUI Launcher & Scenario Builder (v1.1+)
+
+**Status:** Production ready, available since v1.1
+
+VMT provides a comprehensive PyQt5-based GUI for running simulations and creating custom scenarios without manual YAML editing.
+
+#### Components
+
+**Main Launcher Window (`vmt_launcher/launcher.py`)**
+- Browse scenarios from `scenarios/` folder
+- Seed input with validation
+- One-click simulation launching
+- Auto-refresh when new scenarios created
+- Subprocess-based (GUI stays responsive)
+
+**Scenario Builder (`vmt_launcher/scenario_builder.py`)**
+- 4-tab interface for organized input:
+  - **Tab 1: Basic Settings** - Name, grid, agents, inventories
+  - **Tab 2: Simulation Parameters** - Spread, vision, movement, cooldowns
+  - **Tab 3: Resources** - Density, growth, regeneration cooldown
+  - **Tab 4: Utility Functions** - CES and Linear with built-in documentation
+- Dynamic utility rows (add/remove)
+- Auto-normalize weights (ensures sum to 1.0)
+- Comprehensive validation (ranges, constraints, economic rules)
+- YAML generation matching schema
+- File save dialog with defaults
+
+**Validator (`vmt_launcher/validator.py`)**
+- Type-specific validation
+- Range checking
+- Inventory list parsing (single value or comma-separated)
+- Utility weight summation checks
+- CES parameter validation (ρ ≠ 1.0)
+- User-friendly error messages
+
+**Built-in Documentation Panel**
+- Split-panel layout in Utility Functions tab (60/40)
+- Rich HTML documentation with embedded CSS
+- Resizable panels
+- Comprehensive CES and Linear explanations
+- Parameter-by-parameter behavior descriptions
+- Common configuration examples
+- Color-coded information boxes
+
+#### Usage
+
+**Launch GUI:**
+```bash
+python launcher.py
+```
+
+**Create Custom Scenario:**
+1. Click "Create Custom Scenario"
+2. Fill in the 4 tabs
+3. Use built-in docs for utility function guidance
+4. Click "Generate Scenario"
+5. Save YAML (default: `scenarios/` folder)
+6. New scenario automatically appears in launcher list
+
+**Run Simulation:**
+1. Select scenario from list
+2. Enter seed (default: 42)
+3. Click "Run Simulation"
+4. Pygame window opens (launcher stays open)
+
+#### Benefits
+
+**Accessibility:**
+- No YAML syntax knowledge required
+- Form validation prevents common errors
+- In-context parameter explanations
+- Educational value (explains economic concepts)
+
+**Workflow:**
+- CLI and GUI methods coexist
+- Generated YAMLs identical to hand-written ones
+- No changes to simulation engine required
+- All existing tests pass
+
+**User Experience:**
+```bash
+# Before: Manual YAML editing
+vim scenarios/my_scenario.yaml
+python main.py scenarios/my_scenario.yaml 42
+
+# After: GUI-based creation
+python launcher.py
+# Click, fill forms, run - all explained in-app
+```
+
+**See Also:** `PLANS/docs/GUI_LAUNCHER_GUIDE.md` for complete user guide
 
 ---
 
@@ -908,7 +1120,8 @@ This document consolidates information from:
 | v2 | 2025-09 | Architectural revisions |
 | v3 | 2025-10 | Operational specs |
 | vFinal | 2025-10-11 | Multi-utility architecture planning |
-| **Post-v1** | **2025-10-12** | **As-built specification with all enhancements** |
+| **Post-v1.0** | **2025-10-11** | **As-built specification with core enhancements** |
+| **Post-v1.1** | **2025-10-12** | **Added SQLite logging system, GUI launcher, log viewer** |
 
 ---
 

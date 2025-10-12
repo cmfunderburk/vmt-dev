@@ -1,6 +1,7 @@
 # VMT Documentation Index
 
 **Last Updated:** October 12, 2025  
+**Version:** 1.1.0  
 **Status:** Production Ready
 
 ---
@@ -29,17 +30,21 @@
 ```
 vmt-dev/
 ├── README.md                          ⭐ START HERE - Project overview
+├── CHANGELOG.md                       📝 Version history and changes (NEW v1.1)
+├── RECENT_UPDATES_OVERVIEW.md         🆕 Recent logging & GUI updates (NEW v1.1)
 └── PLANS/
     ├── README.md                      📂 Navigation guide
     ├── DOCUMENTATION_INDEX.md         📋 This file
     │
-    ├── Planning-Post-v1.md            🎯 AUTHORITATIVE SPEC (as-built)
+    ├── Planning-Post-v1.md            🎯 AUTHORITATIVE SPEC (as-built v1.1)
     ├── V1_CHECKPOINT_REVIEW.md        📊 Implementation retrospective
     ├── Big_Review.md                  🔍 Evaluation vs. original plans
     ├── typing_overview.md             📝 Type system documentation
     │
     ├── docs/                          📖 System-specific documentation
     │   ├── CONFIGURATION.md           ⚙️  Parameter reference
+    │   ├── NEW_LOGGING_SYSTEM.md      💾 SQLite logging (CONSOLIDATED v1.1)
+    │   ├── GUI_LAUNCHER_GUIDE.md      🖥️  GUI launcher (CONSOLIDATED v1.1)
     │   ├── TELEMETRY_IMPLEMENTATION.md
     │   ├── PRICE_SEARCH_IMPLEMENTATION.md
     │   ├── ONE_TRADE_PER_TICK.md
@@ -49,15 +54,17 @@ vmt-dev/
     │   ├── BOOTSTRAP_FIX_ANALYSIS.md
     │   ├── DIAGNOSTIC_REPORT.md
     │   ├── IMPLEMENTATION_STATUS.md
-    │   ├── GUI_IMPLEMENTATION_SUMMARY.md
-    │   ├── GUI_LAUNCHER_GUIDE.md
     │   ├── UTILITY_FUNCTION_DOCUMENTATION.md
-    │   └── Log_system_problems.md
+    │   └── UTILITY_DOCUMENTATION_IMPLEMENTATION_SUMMARY.md
     │
     └── archive/                       🗄️  Historical (superseded)
         ├── Planning-FINAL.md          ⚠️  Original v1 plan (obsolete)
         ├── algorithmic_planning.md    ⚠️  Original algorithms (obsolete)
-        └── Developer Checklist v1.md  ⚠️  Original checklist (obsolete)
+        ├── Developer Checklist v1.md  ⚠️  Original checklist (obsolete)
+        ├── LOGGING_UPGRADE_SUMMARY.md ⚠️  Merged into NEW_LOGGING_SYSTEM.md
+        ├── LOGGING_BUGS_FIXED.md      ⚠️  Merged into NEW_LOGGING_SYSTEM.md
+        ├── GUI_IMPLEMENTATION_SUMMARY.md ⚠️  Merged into GUI_LAUNCHER_GUIDE.md
+        └── Log_system_problems.md     ⚠️  Historical problem statement
 ```
 
 ---
@@ -66,13 +73,35 @@ vmt-dev/
 
 ### Active Documentation
 
+#### [RECENT_UPDATES_OVERVIEW.md](../RECENT_UPDATES_OVERVIEW.md) 🆕
+**Purpose:** Comprehensive overview of logging and GUI enhancements added in v1.1  
+**Audience:** All users, especially those returning after v1.0  
+**Use When:** You want to understand what's new in v1.1  
+**Highlights:**
+- SQLite logging system (99%+ space savings)
+- Interactive log viewer
+- GUI launcher with scenario builder
+- Built-in documentation panel
+- Performance comparisons
+- Migration guides
+
+#### [CHANGELOG.md](../CHANGELOG.md) 📝
+**Purpose:** Version history and change tracking  
+**Audience:** All users, maintainers  
+**Use When:** You need to know what changed between versions  
+**Sections:**
+- Unreleased changes
+- Version 1.1.0 (logging & GUI)
+- Version 1.0.0 (initial release)
+- Maintenance guidelines
+
 #### [Planning-Post-v1.md](Planning-Post-v1.md) ⭐
-**Purpose:** Authoritative specification of the system as actually implemented.  
+**Purpose:** Authoritative specification of the system as actually implemented (v1.1)  
 **Audience:** All developers, maintainers, researchers  
 **Use When:** You need to understand how the system works  
 **Sections:**
 - Complete architecture
-- All implemented systems (trading, foraging, cooldowns, regeneration)
+- All implemented systems (trading, foraging, cooldowns, regeneration, logging, GUI)
 - Actual algorithms (price search, one trade per tick)
 - Parameter reference with defaults
 - Critical production rules
@@ -114,7 +143,9 @@ Each document provides deep-dive implementation details for a specific system:
 | Document | System | Key Topics |
 |----------|--------|------------|
 | **CONFIGURATION.md** | Parameters | All defaults, validation, usage |
-| **TELEMETRY_IMPLEMENTATION.md** | Logging | DecisionLogger, TradeAttemptLogger, enhanced snapshots |
+| **NEW_LOGGING_SYSTEM.md** | Logging | SQLite database, log levels, log viewer (CONSOLIDATED) |
+| **GUI_LAUNCHER_GUIDE.md** | GUI | Launcher, scenario builder, documentation panel (CONSOLIDATED) |
+| **TELEMETRY_IMPLEMENTATION.md** | Logging (v1.0) | Original CSV-based telemetry (legacy reference) |
 | **PRICE_SEARCH_IMPLEMENTATION.md** | Trading | Price candidate generation, why midpoint failed |
 | **ONE_TRADE_PER_TICK.md** | Trading | Flow change, deferred quote refresh |
 | **TRADE_COOLDOWN_IMPLEMENTATION.md** | Behavioral | Cooldown lifecycle, partner filtering |
@@ -123,10 +154,8 @@ Each document provides deep-dive implementation details for a specific system:
 | **BOOTSTRAP_FIX_ANALYSIS.md** | Economics | Zero-inventory problem, solution |
 | **DIAGNOSTIC_REPORT.md** | Debugging | Root cause analysis |
 | **IMPLEMENTATION_STATUS.md** | Project | Milestone completion, test results |
-| **GUI_IMPLEMENTATION_SUMMARY.md** | GUI | PyQt5 launcher, scenario builder, validation |
-| **GUI_LAUNCHER_GUIDE.md** | GUI | User guide, features, troubleshooting |
-| **UTILITY_FUNCTION_DOCUMENTATION.md** | GUI | In-context utility function help panel |
-| **Log_system_problems.md** | Historical | Original problem statement |
+| **UTILITY_FUNCTION_DOCUMENTATION.md** | GUI | In-context utility function help panel feature |
+| **UTILITY_DOCUMENTATION_IMPLEMENTATION_SUMMARY.md** | GUI | Documentation panel implementation details |
 
 ---
 
@@ -198,6 +227,21 @@ Each document provides deep-dive implementation details for a specific system:
 
 ## 🔍 Finding Specific Information
 
+### "What's new in v1.1?"
+→ [RECENT_UPDATES_OVERVIEW.md](../RECENT_UPDATES_OVERVIEW.md)  
+→ [CHANGELOG.md](../CHANGELOG.md)
+
+### "How do I use the new SQLite logging system?"
+→ [docs/NEW_LOGGING_SYSTEM.md](docs/NEW_LOGGING_SYSTEM.md)
+
+### "How do I view logs interactively?"
+→ [docs/NEW_LOGGING_SYSTEM.md](docs/NEW_LOGGING_SYSTEM.md) (Log Viewer section)  
+→ Run `python view_logs.py`
+
+### "How do I create custom scenarios?"
+→ [docs/GUI_LAUNCHER_GUIDE.md](docs/GUI_LAUNCHER_GUIDE.md)  
+→ Run `python launcher.py`
+
 ### "How do I configure...?"
 → [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
 
@@ -212,7 +256,8 @@ Each document provides deep-dive implementation details for a specific system:
 → [docs/REGENERATION_COOLDOWN_FIX.md](docs/REGENERATION_COOLDOWN_FIX.md)
 
 ### "What logs are available?"
-→ [docs/TELEMETRY_IMPLEMENTATION.md](docs/TELEMETRY_IMPLEMENTATION.md)
+→ [docs/NEW_LOGGING_SYSTEM.md](docs/NEW_LOGGING_SYSTEM.md) (current system)  
+→ [docs/TELEMETRY_IMPLEMENTATION.md](docs/TELEMETRY_IMPLEMENTATION.md) (legacy CSV)
 
 ### "What changed from the original plan?"
 → [Big_Review.md](Big_Review.md)
