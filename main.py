@@ -29,7 +29,7 @@ def main():
     sim = Simulation(scenario, seed=seed)
     
     print("Starting visualization...")
-    renderer = VMTRenderer(sim, cell_size=50)
+    renderer = VMTRenderer(sim)  # Auto-detect optimal cell size
     
     clock = pygame.time.Clock()
     running = True
@@ -41,6 +41,8 @@ def main():
     print("  R: Reset simulation")
     print("  S: Step one tick (when paused)")
     print("  UP/DOWN: Increase/decrease speed")
+    if renderer.needs_scrolling:
+        print("  ARROW KEYS: Scroll camera (large grid)")
     print("  Q: Quit")
     print()
     
@@ -76,6 +78,10 @@ def main():
                 
                 elif event.key == pygame.K_q:
                     running = False
+        
+        # Handle camera scrolling (for large grids)
+        keys = pygame.key.get_pressed()
+        renderer.handle_camera_input(keys)
         
         # Update simulation
         if not paused:
