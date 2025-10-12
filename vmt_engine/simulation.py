@@ -12,22 +12,30 @@ from .systems.movement import choose_forage_target, next_step_toward
 from .systems.foraging import forage
 from .systems.quotes import compute_quotes, refresh_quotes_if_needed
 from .systems.matching import choose_partner, trade_pair
+
+# Legacy CSV loggers
 from telemetry.logger import TradeLogger
 from telemetry.snapshots import AgentSnapshotLogger, ResourceSnapshotLogger
 from telemetry.decision_logger import DecisionLogger
 from telemetry.trade_attempt_logger import TradeAttemptLogger
 
+# New database-backed logging
+from telemetry import TelemetryManager, LogConfig
+
 
 class Simulation:
     """Main simulation class coordinating all phases."""
     
-    def __init__(self, scenario_config: ScenarioConfig, seed: int):
+    def __init__(self, scenario_config: ScenarioConfig, seed: int, 
+                 log_config: Optional[LogConfig] = None, use_legacy_logging: bool = False):
         """
         Initialize simulation from scenario configuration.
         
         Args:
             scenario_config: Loaded and validated scenario
             seed: Random seed for reproducibility
+            log_config: Configuration for new database logging system (optional)
+            use_legacy_logging: If True, use old CSV loggers instead of database
         """
         self.config = scenario_config
         self.seed = seed
@@ -73,12 +81,36 @@ class Simulation:
         for agent in self.agents:
             self.spatial_index.add_agent(agent.id, agent.pos)
         
-        # Telemetry
-        self.trade_logger = TradeLogger()
-        self.agent_snapshot_logger = AgentSnapshotLogger(snapshot_frequency=1)
-        self.resource_snapshot_logger = ResourceSnapshotLogger(snapshot_frequency=10)
-        self.decision_logger = DecisionLogger()
-        self.trade_attempt_logger = TradeAttemptLogger()
+        # Telemetry - support both old and new systems
+        self.use_legacy_logging = use_legacy_logging
+        
+        if use_legacy_logging:
+            # Legacy CSV loggers
+            self.trade_logger = TradeLogger()
+            self.agent_snapshot_logger = AgentSnapshotLogger(snapshot_frequency=1)
+            self.resource_snapshot_logger = ResourceSnapshotLogger(snapshot_frequency=10)
+            self.decision_logger = DecisionLogger()
+            self.trade_attempt_logger = TradeAttemptLogger()
+            self.telemetry = None
+        else:
+            # New database-backed logging
+            if log_config is None:
+                log_config = LogConfig.standard()  # Default to standard logging
+            
+            self.telemetry = TelemetryManager(log_config, scenario_name=scenario_config.name or "simulation")
+            self.telemetry.start_run(
+                num_agents=len(self.agents),
+                grid_width=self.config.N,
+                grid_height=self.config.N,
+                config_dict={'seed': seed, 'params': self.params}
+            )
+            
+            # Set legacy loggers to None
+            self.trade_logger = None
+            self.agent_snapshot_logger = None
+            self.resource_snapshot_logger = None
+            self.decision_logger = None
+            self.trade_attempt_logger = None
     
     def _initialize_agents(self):
         """Initialize agents from scenario config."""
@@ -146,6 +178,10 @@ class Simulation:
         """
         for _ in range(max_ticks):
             self.step()
+        
+        # Finalize logging
+        if self.telemetry:
+            self.telemetry.finalize_run(max_ticks)
     
     def step(self):
         """Execute one simulation tick."""
@@ -190,11 +226,18 @@ class Simulation:
                 
                 # Log decision
                 alternatives_str = "; ".join([f"{nid}:{s:.4f}" for nid, s in all_candidates])
-                self.decision_logger.log_decision(
-                    self.tick, agent.id, partner_id, surplus,
-                    "trade", partner.pos[0], partner.pos[1],
-                    len(neighbors), alternatives_str
-                )
+                if self.use_legacy_logging:
+                    self.decision_logger.log_decision(
+                        self.tick, agent.id, partner_id, surplus,
+                        "trade", partner.pos[0], partner.pos[1],
+                        len(neighbors), alternatives_str
+                    )
+                else:
+                    self.telemetry.log_decision(
+                        self.tick, agent.id, partner_id, surplus,
+                        "trade", partner.pos[0], partner.pos[1],
+                        len(neighbors), alternatives_str
+                    )
             else:
                 # Fall back to foraging
                 resource_cells = agent.perception_cache.get('resource_cells', [])
@@ -208,11 +251,18 @@ class Simulation:
                 target_x = target[0] if target is not None else None
                 target_y = target[1] if target is not None else None
                 alternatives_str = "; ".join([f"{nid}:{s:.4f}" for nid, s in all_candidates])
-                self.decision_logger.log_decision(
-                    self.tick, agent.id, None, None,
-                    target_type, target_x, target_y,
-                    len(neighbors), alternatives_str
-                )
+                if self.use_legacy_logging:
+                    self.decision_logger.log_decision(
+                        self.tick, agent.id, None, None,
+                        target_type, target_x, target_y,
+                        len(neighbors), alternatives_str
+                    )
+                else:
+                    self.telemetry.log_decision(
+                        self.tick, agent.id, None, None,
+                        target_type, target_x, target_y,
+                        len(neighbors), alternatives_str
+                    )
 
     def movement_phase(self):
         """Phase 3: Agents move toward targets."""
@@ -261,8 +311,13 @@ class Simulation:
         for id_i, id_j in pairs:
             agent_i = self.agent_by_id[id_i]
             agent_j = self.agent_by_id[id_j]
-            trade_pair(agent_i, agent_j, self.params, self.trade_logger, self.tick,
-                      self.trade_attempt_logger)
+            
+            if self.use_legacy_logging:
+                trade_pair(agent_i, agent_j, self.params, self.trade_logger, self.tick,
+                          self.trade_attempt_logger)
+            else:
+                trade_pair(agent_i, agent_j, self.params, self.telemetry, self.tick,
+                          self.telemetry)
     
     def forage_phase(self):
         """Phase 5: Agents harvest resources."""
@@ -287,14 +342,22 @@ class Simulation:
             refresh_quotes_if_needed(agent, self.params['spread'], self.params['epsilon'])
         
         # Log telemetry
-        self.agent_snapshot_logger.log_snapshot(self.tick, self.agents)
-        self.resource_snapshot_logger.log_snapshot(self.tick, self.grid)
+        if self.use_legacy_logging:
+            self.agent_snapshot_logger.log_snapshot(self.tick, self.agents)
+            self.resource_snapshot_logger.log_snapshot(self.tick, self.grid)
+        else:
+            self.telemetry.log_agent_snapshots(self.tick, self.agents)
+            self.telemetry.log_resource_snapshots(self.tick, self.grid)
     
     def close(self):
         """Close all loggers and release resources."""
-        self.trade_logger.close()
-        self.agent_snapshot_logger.close()
-        self.resource_snapshot_logger.close()
-        self.decision_logger.close()
-        self.trade_attempt_logger.close()
+        if self.use_legacy_logging:
+            self.trade_logger.close()
+            self.agent_snapshot_logger.close()
+            self.resource_snapshot_logger.close()
+            self.decision_logger.close()
+            self.trade_attempt_logger.close()
+        else:
+            if self.telemetry:
+                self.telemetry.close()
 

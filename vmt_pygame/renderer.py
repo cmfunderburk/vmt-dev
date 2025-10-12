@@ -95,8 +95,11 @@ class VMTRenderer:
         self.COLOR_PURPLE = (200, 100, 255)
         self.COLOR_YELLOW = (255, 255, 100)
         
-        # Track trade events for visualization
-        self.recent_trades = self.sim.trade_logger.recent_trades_for_renderer
+        # Track trade events for visualization - support both logging systems
+        if self.sim.use_legacy_logging:
+            self.recent_trades = self.sim.trade_logger.recent_trades_for_renderer
+        else:
+            self.recent_trades = self.sim.telemetry.recent_trades_for_renderer
     
     def handle_camera_input(self, keys):
         """Handle camera movement with arrow keys."""
