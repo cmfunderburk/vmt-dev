@@ -1,0 +1,133 @@
+# ---- Python: Byte-compiled / cache ----
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PEP 582; used by e.g. pipx/uv
+__pypackages__/
+
+# ---- Python: Packaging / build ----
+.Python
+build/
+dist/
+.eggs/
+*.egg-info/
+*.egg
+wheels/
+share/python-wheels/
+pip-wheel-metadata/
+
+# ---- Python: Virtual environments ----
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ---- Python: Testing / Coverage ----
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+nosetests.xml
+junit*.xml
+.pyre/
+.pytype/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# ---- Editors / IDEs ----
+# VS Code
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# JetBrains
+.idea/
+*.iml
+
+# Others
+.history/
+*.swp
+*.swo
+*~
+
+# ---- OS-specific cruft ----
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+# Thumbnails
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.TemporaryItems
+.DocumentRevisions-V100
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+.cache/
+
+# ---- Jupyter / Notebooks ----
+.ipynb_checkpoints/
+.jupyter/
+
+# ---- Logs / runtime output ----
+logs/
+*.log
+*.out
+*.err
+
+# ---- Local environment / secrets ----
+.env
+.env.*
+*.env
+*.local
+*.secret
+
+# ---- Data / tmp (keep if you later want to version data) ----
+# Common scratch directories
+.tmp/
+tmp/
+.temp/
+local/
+.dump/
+
+# ---- Docs builds ----
+docs/_build/
+site/
+
+# ---- Node (if present) ----
+node_modules/
+.npm/
+
+# ---- Misc tool caches ----
+.tox/
+.nox/
+.pyright/
+.cache/pypoetry/
+
+# ---- Binary artifacts ----
+*.so
+*.dylib
+*.dll
+*.o
+*.a
+*.obj
+
+# ---- Project-specific (telemetry/data suggested by planning docs) ----
+# Add any generated telemetry or snapshot directories here if created later
+# telemetry/
+# snapshots/

@@ -1,155 +1,46 @@
-# Copilot Instructions for VMT (Visualizing Microeconomic Theory)
+# GitHub Copilot Instructions for the VMT Codebase
 
-## Project Overview
+This document provides essential guidance for AI agents working on the Visualizing Microeconomic Theory (VMT) project. The project is a Python-based microeconomic simulation.
 
-VMT is a **Python-only desktop application** for simulating microeconomic behavior through grid-based agent interactions. Built on **Pygame** with a deterministic, delta-based engine running at 10 Hz (configurable) and rendering at 60 FPS.
+Refer to `Planning-FINAL.md` for the high-level architecture and `algorithmic_planning.md` for the detailed, source-of-truth agent behavior.
 
-## Core Architecture Principles
+## 1. Core Architecture & Principles
 
-### 1. Decoupled Engine & Renderer
-- **`vmt_engine/`**: UI-agnostic simulation logic (agents, grid, utilities, matching, deltas)
-- **`vmt_pygame/`**: Event loop, rendering, HUD, and input handling
-- **Never mix engine state mutations with Pygame rendering code**
+- **Language:** Python 3.11 with `pygame` for visualization and `numpy`.
+- **Determinism is Critical:** The simulation must be fully deterministic.
+    - Agent processing loops must iterate in ascending `agent.id`.
+    - Trade-matching loops must process pairs in ascending `(min_id, max_id)`.
+    - Tie-breaking rules (e.g., for partner selection) are specified in the planning documents and must be followed precisely.
+- **Utility-Agnostic Engine:** The core trading logic in the simulation engine is designed to be independent of specific utility functions. It interacts with utility models through a shared interface defined in the `econ` module.
+- **Tick Order:** The simulation proceeds in discrete, ordered ticks:
+    1.  Perception
+    2.  Decision
+    3.  Movement
+    4.  Trade
+    5.  Forage
+    6.  Housekeeping (e.g., quote refreshes, logging)
 
-### 2. Delta-Based Simulation Contract
-All state changes flow through a strict delta system:
+## 2. Key Economic Logic & Algorithms
 
-```python
-# Engine API (vmt_engine/core/)
-initialize_state(params) -> dict          # Creates immutable initial state
-step(state, dt) -> list[delta]            # Pure function, NO mutations
-apply_delta(state, deltas) -> None        # Single mutation point
-analytics(state) -> dict                  # Optional metrics
-```
+The agent interaction logic is highly specific. Do not use generic trading algorithms.
 
-**Delta vocabulary** (see Planning.md §2.2):
-- Movement: `{"op":"move","id":i,"to":[x,y]}`
-- Harvest/Deposit: `{"op":"harvest"|"deposit","id":i,"cell":[x,y],"resource":"A","d":float}`
-- Trades: `{"op":"trade","i":i,"j":j,"give":{...},"take":{...}}`
-- Offers: `{"op":"post_offer"|"retract_offer","cell":[x,y],...}`
+- **Utility Module (`econ/utility.py`):** This is the heart of the economic logic. For v1, it should contain implementations for `UCES` (Constant Elasticity of Substitution) and `ULinear` utility functions.
+    - Each utility class must implement the `reservation_bounds_A_in_B(A, B, eps)` method, which is the primary interface for the trade engine.
+- **Quote Generation:** Agent quotes are **not** directly their Marginal Rate of Substitution (MRS). They are derived from reservation price bounds:
+    - `p_min, p_max = agent.utility.reservation_bounds_A_in_B(...)`
+    - `ask_A_in_B = p_min * (1 + spread)`
+    - `bid_A_in_B = p_max * (1 - spread)`
+    - Quotes must be refreshed any time an agent's inventory changes (from trading or foraging).
+- **Partner Selection:** Agents find partners by identifying the largest positive "surplus overlap" between their bid/ask quotes and those of their neighbors.
+- **Trade Execution:**
+    - **Price:** The trade price is the **midpoint** of the seller's ask and the buyer's bid.
+    - **Compensating Multi-Lot Rounding:** This is a critical, non-obvious algorithm. Given a price, the engine must search for the smallest integer quantity `ΔA >= 1` such that the corresponding `ΔB = round(p * ΔA)` results in a strict utility improvement (`ΔU > 0`) for **both** the buyer and seller. See `algorithmic_planning.md` for the exact procedure.
+- **Zero-Inventory Guard:** For CES utility, when an agent has zero inventory (`A=0, B=0`), the reservation bounds calculation must use `(A+epsilon, B+epsilon)` to avoid division by zero, but only for the internal MRS calculation. The agent's actual inventory and `u()` calculations remain `(0,0)`.
 
-**Critical**: Never mutate state directly in step() functions. Always return deltas.
+## 3. Development & Testing
 
-### 3. Five-Stage Step Pipeline
-Each simulation tick follows this rigid sequence (§2.3):
-1. **Perception**: Agents scan neighborhoods (resources, offers, neighbors, price signals)
-2. **Decision**: Generate movement intents, barter proposals, or order postings
-3. **Matching**: Execute barter/cash trades based on mode
-4. **Transitions**: Craft deltas for all state changes
-5. **Apply & Housekeeping**: Apply deltas, update utilities/beliefs, emit telemetry
+- **Testing Framework:** `pytest` is used for testing. See the `tests/` directory for examples.
+- **Test Focus:** Tests should cover economic edge cases, deterministic behavior, and adherence to the specified algorithms. `test_reservation_zero_guard.py` is a good example of a targeted test for a specific rule.
+- **Scenarios:** Simulation runs are configured via YAML files in the `scenarios/` directory. These files define grid size, agent populations, utility functions, and economic parameters.
 
-## State Schema (Grid-First Design)
-
-Reference `Planning.md §2.1` for the canonical state structure. Key points:
-
-- **Grid**: N×N cells (default 32×32), each with resources and optional posted offers
-- **Agents**: Position `[x,y]`, inventory `{"A":float, "B":float, "$":float}`, traits, policies, beliefs
-- **Modes**: 
-  - `exchange_mode="barter"`: Integer bundle trades, ΔU>0 for both parties
-  - `exchange_mode="cash"`: Per-cell order books with lot sizes and tick prices
-
-## Technology Stack Requirements
-
-- **Runtime**: Python 3.11+
-- **Core Dependencies**: Pygame, NumPy (required)
-- **Optional**: Numba (hot paths), Matplotlib (post-run analysis)
-- **Packaging**: PyInstaller for Win/macOS
-
-When adding dependencies, update `pyproject.toml` with pinned versions.
-
-## Scenario Presets (Configuration over Code)
-
-Three educational modules share one engine, controlled by behavior toggles (§3):
-
-1. **Foraging**: `foraging=True`, trading off → spatial resource gathering
-2. **Bilateral Exchange**: `exchange_mode="barter"`, `search_trade=True` → integer bundle trades
-3. **Market Clearing**: `exchange_mode="cash"`, `post_offers=True` → per-cell order books
-
-**Never create separate model classes per scenario**. Use parameter configurations in `vmt_engine/presets/`.
-
-## Utility Functions
-
-Support **six utility types** (§2.3, Open Decision #3):
-- **Cobb-Douglas** (v1 must-have)
-- **CES** (v1 must-have)
-- **Leontief** (v1 must-have)
-- **Linear** (v1 must-have)
-- **Stone-Geary (LES)** (confirm for v1)
-- **Quasi-linear** (confirm for v1)
-
-Implement in `vmt_engine/econ/utility.py` with a **registry pattern**. MRS calculation must work for multi-good cases in barter mode.
-
-## Testing & Validation Standards
-
-Write tests for (`tests/`):
-- **Conservation laws**: Total inventory preserved across trades
-- **ΔU>0 acceptance**: Both parties improve utility in barter
-- **Integer invariants**: Barter uses integer lots only
-- **Determinism**: Same seed → same outcome
-- **Matcher fairness**: FIFO within price levels (cash mode)
-
-Use fixed `rng_seed` values in all tests for reproducibility.
-
-## Critical Constraints
-
-### Barter Mode (Open Decision #1)
-- Trades use **integer lots only** (e.g., `{"A":2, "B":1}`)
-- Goods are integers; money `$` is float
-- Max lots per tick (configurable)
-- Acceptance requires **mutual ΔU>0**
-
-### Cash Mode (Open Decision #2)
-- Orders posted with `lot_size` (integer) and `cash_tick_size` (float, e.g., 0.1)
-- Per-cell "bulletin board" matcher crossing bids/asks
-- Price signals updated on fills (last trade price)
-- TTL (time-to-live) for order expiration
-
-### Performance Targets
-- 10 Hz simulation default (5–60 Hz configurable)
-- 60 FPS rendering
-- Support 50–100 agents initially; scale with Numba if needed
-- Deterministic fixed-timestep accumulator pattern
-
-## File Organization Conventions
-
-```
-vmt_engine/
-  core/         # state.py, grid.py, agent.py, delta.py
-  econ/         # utility.py (registry), pricing.py
-  systems/      # perception.py, decision.py, matching.py, transitions.py, housekeeping.py
-  models/       # base.py (BaseSimulationModel)
-  presets/      # foraging.py, exchange.py, market.py
-
-vmt_pygame/
-  app.py        # Main loop, sim_dt control, pause/reset/speed
-  renderers.py  # Grid/agents/overlays/HUD
-  input.py      # Hotkeys, preset picker
-
-scripts/        # run_pygame.py, export_run.py
-tests/          # Engine + matcher + utility suites
-```
-
-Keep engine code in `vmt_engine/` completely independent of Pygame imports.
-
-## Development Workflow
-
-1. **Run app**: `python scripts/run_pygame.py`
-2. **Tests**: Standard pytest in `tests/`
-3. **Logging**: CSV exports every N ticks for analysis
-4. **Hotkeys**: Space (pause/resume), R (reset), 1/2 (speed), Esc (quit)
-
-## Milestones (See Planning.md)
-
-- **M1 (Week 1)**: Engine skeleton + Pygame loop + Foraging preset
-- **M2 (Week 2)**: Barter mode with integer bundles
-- **M3 (Week 3)**: Cash mode with order books
-- **M4 (Week 4)**: Polish, packaging, teacher notes
-
-## References
-
-All architectural details, open decisions, and rationale documented in `Planning.md`. Consult sections:
-- §1: Architecture patterns
-- §2: Engine design & delta vocabulary
-- §3: Scenario presets
-- §4: Pygame UX
-- "Open Decision Points": Unresolved design choices requiring discussion before implementation
+When implementing new features, always refer back to the planning documents to ensure your implementation matches the specified logic and maintains determinism.
