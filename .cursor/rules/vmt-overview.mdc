@@ -1,0 +1,46 @@
+---
+alwaysApply: true
+---
+# GitHub Copilot Instructions — VMT (Visualizing Microeconomic Theory)
+
+Project-specific rules to make AI agents productive in this deterministic barter/foraging simulation. The authoritative spec is `PLANS/Planning-Post-v1.md`; behaviors are enforced by `tests/`.
+
+## Big picture and determinism
+- Python 3.11; deps: `numpy` (RNG/arrays), `pyyaml` (scenarios), `pygame` (GUI), `PyQt5` (GUI tools). Deterministic RNG: `np.random.Generator(np.random.PCG64(seed))` in `vmt_engine/simulation.py`.
+- Fixed 7-phase tick order (do not reorder): Perception → Decision → Movement → Trade → Forage → Resource Regeneration → Housekeeping.
+- Always iterate deterministically: agents by ascending `agent.id`; trade pairs by ascending `(min_id,max_id)`; use sorted containers—never rely on dict/set iteration.
+
+## Utilities → reservation bounds → quotes
+- Utilities in `vmt_engine/econ/utility.py`: `UCES` (CES incl. Cobb–Douglas limit as ρ→0) and `ULinear`.
+- Use family-agnostic API: `reservation_bounds_A_in_B(A:int,B:int,eps)` → `(p_min,p_max)`; for CES/Linear these equal MRS but always call the bounds API—do not hardcode MRS.
+- Zero-inventory guard: only shift ratios for bounds when A==0 or B==0 using `(A+ε,B+ε)`; never shift inputs to `u()` or ΔU checks. See `tests/test_reservation_zero_guard.py`.
+- Quote rule (`vmt_engine/systems/quotes.py`): `ask = p_min*(1+spread)`, `bid = p_max*(1-spread)`; refresh after any inventory change and again in housekeeping.
+
+## Matching and trading (one trade per tick)
+- Surplus overlap: consider `i.bid - j.ask` and `j.bid - i.ask`; pick positive max. Tie-break by larger surplus, then lower partner id (`systems/matching.py:choose_partner`).
+- Interaction eligibility: Manhattan distance ≤ `interaction_radius` (0=same cell, 1=adjacent). Order candidate pairs by `(min_id,max_id)` before trading.
+- Price search: probe prices within `[ask_seller, bid_buyer]`, including values that hit integer `ΔB` and evenly spaced samples. Quantity rounding is round-half-up: `ΔB = floor(p*ΔA + 0.5)`. See `tests/test_trade_rounding_and_adjacency.py`.
+- Compensating multi-lot scan: ΔA=1..`ΔA_max`; accept first feasible block with strict ΔU>0 for both using `u(A+dA,B+dB) > u(A,B)`. Execute at most one block per pair per tick; quotes update later.
+- Trade cooldown: on failed attempt set mutual cooldown for `trade_cooldown_ticks` (default 5) via per-agent `trade_cooldowns` dict. See `tests/test_trade_cooldown.py`.
+
+## Perception, movement, and foraging
+- Perception (`systems/perception.py`): collect neighbors/quotes/resources within `vision_radius`; use frozen snapshot in the tick.
+- Movement (`systems/movement.py`): deterministic Manhattan steps; reduce |dx| before |dy|; prefer negative direction on ties; if still tied choose lowest (x,y).
+- Foraging target score: `ΔU_arrival * β^dist` using `min(cell.amount, forage_rate)` for ΔU. Regeneration: harvest sets `last_harvested_tick`; wait `resource_regen_cooldown` then grow at `resource_growth_rate` up to `original_amount`. See `tests/test_resource_regeneration.py`.
+
+## Scenarios, params, and conventions
+- Defaults in `scenarios/schema.py`: `spread=0.0` (critical), `epsilon=1e-12`, `ΔA_max=5`, `vision_radius=5`, `interaction_radius=1`, `forage_rate=1`, `move_budget_per_tick=1`, `beta=0.95`, `resource_growth_rate=0`, `resource_max_amount=5`, `resource_regen_cooldown=5`, `trade_cooldown_ticks=5`.
+- Scenarios in `scenarios/*.yaml` parsed by `scenarios/loader.py`. Keys: `initial_inventories` (A/B int or per-agent lists), `utilities.mix[{type,weight,params}]` (weights sum to 1), `params`, `resource_seed{density,amount}`.
+- Initialize utilities via factory `create_utility(type, params)`; don’t instantiate `UCES`/`ULinear` directly in systems code. Bootstrap inventories away from zeros for CES.
+
+## Telemetry and tools (v1.1+)
+- SQLite logging is default: `telemetry/{database.py,config.py,db_loggers.py}` with `LogConfig.{summary|standard|debug}()` and `TelemetryManager`; DB at `./logs/telemetry.db`. Use `view_logs.py` (PyQt5) to explore. Legacy CSV remains: `telemetry/{logger.py,trade_attempt_logger.py,decision_logger.py,snapshots.py}`.
+
+## Developer workflow
+- Install/tests: `pip install -r requirements.txt`; run `pytest -v` (set `PYTHONPATH=.` if needed). Core tests cover utilities, zero-guard, rounding, regeneration, cooldowns, and tick determinism.
+- Run simulation: CLI `python main.py scenarios/three_agent_barter.yaml 42`; GUI launcher `python launcher.py`; programmatic `Simulation(...).run(max_ticks)`.
+
+## Do this, not that
+- DO derive quotes from reservation bounds; DON’T quote raw MRS in systems code.
+- DO use round-half-up; DON’T use banker's rounding or platform-dependent rounding.
+- DO preserve ordering/tie-break rules and the 7-phase tick; DON’T introduce nondeterministic iteration.
