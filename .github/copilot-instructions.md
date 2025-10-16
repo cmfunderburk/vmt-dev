@@ -1,6 +1,6 @@
 # GitHub Copilot Instructions — VMT (Visualizing Microeconomic Theory)
 
-Project-specific rules to make AI agents productive in this deterministic barter/foraging simulation. The authoritative spec is `PLANS/Planning-Post-v1.md`; behaviors are enforced by `tests/`.
+The authoritative spec is `PLANS/Planning-Post-v1.md`; behaviors are enforced by `tests/`.
 
 ## Big picture and determinism
 - Python 3.11; deps: `numpy` (RNG/arrays), `pyyaml` (scenarios), `pygame` (GUI), `PyQt5` (GUI tools). Deterministic RNG: `np.random.Generator(np.random.PCG64(seed))` in `vmt_engine/simulation.py`.
