@@ -127,6 +127,9 @@ node_modules/
 *.a
 *.obj
 
+# ---- LLM Counter ----
+llm_counter/
+
 # ---- Project-specific (telemetry/data suggested by planning docs) ----
 # Add any generated telemetry or snapshot directories here if created later
 # telemetry/
