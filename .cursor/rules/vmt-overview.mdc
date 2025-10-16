@@ -1,8 +1,6 @@
 ---
 alwaysApply: true
 ---
-# GitHub Copilot Instructions — VMT (Visualizing Microeconomic Theory)
-
 The authoritative spec is `PLANS/Planning-Post-v1.md`; behaviors are enforced by `tests/`.
 
 ## Big picture and determinism
