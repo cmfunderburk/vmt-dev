@@ -130,7 +130,10 @@ node_modules/
 # ---- LLM Counter ----
 llm_counter/
 
-# ---- Project-specific (telemetry/data suggested by planning docs) ----
+# ---- Project-specific ----
+# Archive folder for old planning documents
+PLANS/archive/
+
 # Add any generated telemetry or snapshot directories here if created later
 # telemetry/
 # snapshots/
