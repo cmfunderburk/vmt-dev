@@ -1,52 +1,98 @@
-# VMT-Dev Copilot Instructions
+# VMT Copilot Instructions
 
-This document provides guidance for AI agents working on the Visualizing Microeconomic Theory (VMT) codebase.
+The authoritative spec is `PLANS/Planning-Post-v1.md`; behaviors are enforced by `tests/`. Always ignore the `llm_counter` directory.
 
-## Overall Architecture
+## Architecture & Determinism
 
-The project is a deterministic agent-based simulation of economic principles. The core logic is in `src/vmt_engine/`.
+VMT is a deterministic spatial agent-based economic simulation (Python 3.11). Core dependencies: `numpy` (RNG/arrays), `pyyaml` (scenarios), `pygame` (GUI), `PyQt5` (log viewer).
 
--   **Simulation Core**: `src/vmt_engine/simulation.py` orchestrates the simulation tick by tick. `src/vmt_engine/core/state.py` holds the simulation state, including agents and the grid.
--   **Agent Behavior**: Agent actions are divided into systems within `src/vmt_engine/systems/`. These systems are executed in a fixed order during each simulation tick.
--   **Economic Model**: Economic logic, including utility functions (`UCES`, `ULinear`), is defined in `src/vmt_engine/econ/`.
--   **Scenarios**: Simulation setups are defined in YAML files in `scenarios/`. See `src/scenarios/schema.py` for the structure.
--   **Data Logging**: The primary logging mechanism uses SQLite (`src/telemetry/database.py`, `src/telemetry/db_loggers.py`). Logs are stored in `logs/telemetry.db`. A PyQt5-based viewer is available in `view_logs.py`.
+**Fixed 7-phase tick order** (NEVER reorder):
+1. **Perception** → 2. **Decision** → 3. **Movement** → 4. **Trade** → 5. **Forage** → 6. **Resource Regeneration** → 7. **Housekeeping**
 
-## Determinism and Tick Order
+**Determinism rules:**
+- RNG: `np.random.Generator(np.random.PCG64(seed))` in `vmt_engine/simulation.py`
+- Always iterate agents by ascending `agent.id`
+- Trade pairs by ascending `(min_id,max_id)`
+- Use sorted containers—never rely on dict/set iteration
 
-Determinism is critical. All randomness is controlled by a central RNG in `src/vmt_engine/simulation.py`.
+## Economic Logic & Trading
 
-The simulation proceeds in a fixed 7-phase tick order. When modifying or adding behavior, respect this order:
-1.  Perception (`src/vmt_engine/systems/perception.py`)
-2.  Decision
-3.  Movement (`src/vmt_engine/systems/movement.py`)
-4.  Trade (`src/vmt_engine/systems/matching.py`)
-5.  Forage (`src/vmt_engine/systems/foraging.py`)
-6.  Resource Regeneration
-7.  Housekeeping
+**Utilities** (`vmt_engine/econ/utility.py`):
+- `UCES` (CES including Cobb-Douglas limit as ρ→0) and `ULinear`
+- Use factory `create_utility(type, params)`—don't instantiate directly
+- Bootstrap CES inventories away from zeros
 
-Always iterate over agents by their ID (`agent.id`) and trade pairs by `(min_id, max_id)` to ensure deterministic outcomes.
+**Reservation bounds → Quotes** (critical pattern):
+```python
+# DO: Use family-agnostic API
+p_min, p_max = reservation_bounds_A_in_B(A, B, eps)
+# DON'T: Calculate MRS directly
+```
+- Zero-inventory guard: Only shift ratios for bounds when A==0 or B==0 using `(A+ε,B+ε)`
+- Never shift inputs to `u()` or ΔU checks (see `tests/test_reservation_zero_guard.py`)
+- Quote rule: `ask = p_min*(1+spread)`, `bid = p_max*(1-spread)`
+- Refresh quotes after inventory changes and in housekeeping
 
-## Economic Logic and Trading
+**Trade execution** (one trade per tick per pair):
+- Surplus overlap: Consider both `i.bid - j.ask` and `j.bid - i.ask`
+- Interaction eligibility: Manhattan distance ≤ `interaction_radius`
+- Price search within `[ask_seller, bid_buyer]` includes integer-ΔB targets
+- **Rounding**: Round-half-up: `ΔB = floor(p*ΔA + 0.5)`—NOT banker's rounding
+- Compensating scan: ΔA=1..`ΔA_max`, accept first with strict ΔU>0 for both
+- Trade cooldown: Failed attempts set `trade_cooldown_ticks` (default 5)
 
--   **Utility Functions**: Use the factory `create_utility(type, params)` instead of instantiating `UCES` or `ULinear` directly.
--   **Reservation Prices**: Do not calculate Marginal Rate of Substitution (MRS) directly. Use `reservation_bounds_A_in_B(A, B, eps)` from `src/vmt_engine/econ/utility.py` to get reservation prices. This handles edge cases like zero inventory correctly.
--   **Quotes**: Quotes are derived from reservation prices with a spread. See `src/vmt_engine/systems/quotes.py`. Quotes must be refreshed after any inventory change.
--   **Trading**: A single trade can occur per agent pair per tick. The process involves finding surplus overlaps, price searching, and executing one feasible trade. See `src/vmt_engine/systems/matching.py`. Note the round-half-up rule for quantity calculations: `floor(p*ΔA + 0.5)`.
+## Spatial Mechanics
 
-## Developer Workflow
+**Movement** (`systems/movement.py`):
+- Manhattan steps with deterministic tie-breaking:
+  1. Reduce |dx| before |dy|
+  2. Prefer negative direction on ties
+  3. If still tied, choose lowest (x,y)
+- Diagonal deadlock: Only higher ID agent moves
 
--   **Setup**: `pip install -r requirements.txt`
--   **Testing**: Run tests with `pytest -v`. Key tests for core mechanics are in `tests/`. It's important to add tests for any new economic logic.
--   **Running Simulations**:
-    -   CLI: `python main.py scenarios/three_agent_barter.yaml 42`
-    -   GUI: `python launcher.py`
+**Foraging**:
+- Target score: `ΔU_arrival * β^dist` using `min(cell.amount, forage_rate)`
+- Regeneration: Harvest sets `last_harvested_tick`, wait `resource_regen_cooldown`, then grow at `resource_growth_rate` up to `original_amount`
 
-## Key Files & Directories
+## Configuration & Testing
 
--   `src/vmt_engine/simulation.py`: Main simulation loop and tick orchestrator.
--   `src/vmt_engine/core/state.py`: Central simulation state.
--   `src/vmt_engine/systems/`: Directory containing agent behavior logic for each tick phase.
--   `src/vmt_engine/econ/utility.py`: Utility functions and reservation price logic.
--   `scenarios/schema.py`: Defines the structure of scenario files.
--   `docs/archive/Planning-Post-v1.md`: The authoritative spec for simulation behavior.
+**Defaults** (`scenarios/schema.py`):
+- Critical: `spread=0.0`, `epsilon=1e-12`
+- `ΔA_max=5`, `vision_radius=5`, `interaction_radius=1`, `forage_rate=1`
+- `move_budget_per_tick=1`, `beta=0.95`
+- `resource_growth_rate=0`, `resource_max_amount=5`, `resource_regen_cooldown=5`
+- `trade_cooldown_ticks=5`
+
+**Scenarios** (`scenarios/*.yaml`):
+- Parsed by `scenarios/loader.py`
+- Key fields: `initial_inventories`, `utilities.mix[{type,weight,params}]`, `params`, `resource_seed{density,amount}`
+
+**Developer workflow**:
+```bash
+pip install -r requirements.txt
+pytest -v  # Set PYTHONPATH=. if needed
+python launcher.py  # GUI
+python main.py scenarios/three_agent_barter.yaml 42  # CLI
+view_logs.py  # Explore SQLite telemetry
+```
+
+## Telemetry (v1.1+)
+
+SQLite default (`telemetry/{database.py,config.py,db_loggers.py}`):
+- `LogConfig.{summary|standard|debug}()` controls verbosity
+- DB at `./logs/telemetry.db`
+- Legacy CSV still available but deprecated
+
+## Critical DO's and DON'Ts
+
+✅ **DO**:
+- Derive quotes from reservation bounds API
+- Use round-half-up for quantity rounding
+- Preserve ordering/tie-break rules
+- Reference test files for patterns (especially `test_reservation_zero_guard.py`, `test_trade_rounding_and_adjacency.py`)
+
+❌ **DON'T**:
+- Quote raw MRS in systems code
+- Use banker's rounding or platform-dependent rounding
+- Introduce nondeterministic iteration
+- Reorder the 7-phase tick
