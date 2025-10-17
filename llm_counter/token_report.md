@@ -1,22 +1,22 @@
 # vmt-dev - Token Analysis Report
 
-*Generated on 2025-10-17 12:30:41*
+*Generated on 2025-10-17 14:15:16*
 
 ## 📊 Executive Summary
 
 | Metric | Value |
 |--------|--------|
-| **Total Tokens** | 58.4K tokens |
+| **Total Tokens** | 58.7K tokens |
 | **Total Files** | 59 files |
 | **Repository Size** | 0.3 MB |
-| **Average Tokens/File** | 989 tokens |
+| **Average Tokens/File** | 995 tokens |
 
 ## 📄 File Type Breakdown
 
 | File Type | Token Count | Percentage | Files |
 |-----------|-------------|------------|-------|
-| Python | 45.8K | 78.5% | 45 |
-| Markdown | 11.4K | 19.5% | 8 |
+| Python | 45.9K | 78.2% | 45 |
+| Markdown | 11.6K | 19.8% | 8 |
 | YAML | 900 | 1.5% | 3 |
 | Build/Meta | 222 | 0.4% | 1 |
 | Text | 41 | 0.1% | 1 |
@@ -26,18 +26,18 @@
 
 | File | Tokens | Size |
 |------|--------|------|
-| `src/vmt_launcher/scenario_builder.py` | 6.1K | 0.0 MB |
+| `src/vmt_launcher/scenario_builder.py` | 6.2K | 0.0 MB |
 | `src/telemetry/db_loggers.py` | 3.4K | 0.0 MB |
 | `src/vmt_engine/systems/matching.py` | 2.9K | 0.0 MB |
 | `src/vmt_log_viewer/viewer.py` | 2.9K | 0.0 MB |
 | `src/vmt_pygame/renderer.py` | 2.6K | 0.0 MB |
 | `CHANGELOG.md` | 2.4K | 0.0 MB |
 | `src/vmt_log_viewer/csv_export.py` | 1.9K | 0.0 MB |
+| `docs/2_technical_manual.md` | 1.9K | 0.0 MB |
 | `docs/3_strategic_roadmap.md` | 1.9K | 0.0 MB |
 | `src/telemetry/database.py` | 1.9K | 0.0 MB |
-| `docs/1_project_overview.md` | 1.8K | 0.0 MB |
+| `docs/1_project_overview.md` | 1.9K | 0.0 MB |
 | `docs/tmp/code_review.md` | 1.8K | 0.0 MB |
-| `docs/2_technical_manual.md` | 1.7K | 0.0 MB |
 | `example_new_logging.py` | 1.6K | 0.0 MB |
 | `src/vmt_log_viewer/widgets/agent_view.py` | 1.5K | 0.0 MB |
 | `src/vmt_engine/systems/movement.py` | 1.5K | 0.0 MB |
@@ -54,17 +54,18 @@
 
 | Model | Context Window | Repo Coverage |
 |-------|---------------|---------------|
-| GPT-4 | ~128K tokens | 219.3% |
-| Claude 3 | ~200K tokens | 342.6% |
-| Claude 3.5 Sonnet | ~200K tokens | 342.6% |
-| Gemini 1.5 Pro | ~1M tokens | 1713.0% |
+| GPT-4 | ~128K tokens | 218.1% |
+| Claude 3 | ~200K tokens | 340.8% |
+| Claude 3.5 Sonnet | ~200K tokens | 340.8% |
+| Gemini 1.5 Pro | ~1M tokens | 1703.9% |
 
 ### Recommendations
 
-- **Full Repository**: 58.4K tokens requires chunking for any LLM
-- **Focused Analysis**: Select 25-40% of files for single-context analysis
-- **Code Reviews**: Use token counts to prioritize which files to include
-- **Documentation**: 19.5% of tokens are documentation
+- **Full Repository**: 58.7K tokens fits in: GPT-4 (~128.0K), Claude 3/3.5 (~200.0K), Gemini 1.5 Pro (~1.0M)
+- **Single-Context Analysis**: Entire codebase can be analyzed without chunking
+- **Code Reviews**: Use token counts to prioritize which files/modules to include
+- **Documentation**: 19.8% of tokens are documentation (substantial docs available)
+
 
 ## 📈 Analysis Metadata
 

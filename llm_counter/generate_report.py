@@ -126,6 +126,63 @@ def format_percentage(value, total):
         return "0.0%"
     return f"{(value / total * 100):.1f}%"
 
+def generate_recommendations(total_tokens, by_type):
+    """Generate context-aware recommendations based on token count."""
+    
+    # Define context windows for reference
+    context_windows = {
+        'GPT-4': 128_000,
+        'Claude 3/3.5': 200_000,
+        'Gemini 1.5 Pro': 1_000_000
+    }
+    
+    # Calculate documentation percentage
+    doc_tokens = by_type.get('Markdown', {}).get('tokens', 0)
+    doc_percentage = format_percentage(doc_tokens, total_tokens)
+    
+    recommendations = "### Recommendations\n\n"
+    
+    # Determine which models can handle full repo
+    fits_in = []
+    for model, window in context_windows.items():
+        if total_tokens <= window * 0.8:  # Leave 20% margin for prompts/responses
+            fits_in.append(f"{model} (~{format_number(window)})")
+    
+    if not fits_in:
+        # Very large repository - needs chunking for all models
+        recommendations += f"- **Full Repository**: {format_number(total_tokens)} tokens requires chunking for all LLMs\n"
+        recommendations += f"- **Recommended Approach**: Use hierarchical analysis - start with file structure, then dive into specific areas\n"
+        recommendations += f"- **Chunking Strategy**: Process 25-50% of files at a time based on functional areas\n"
+    elif total_tokens < 50_000:
+        # Small repository - fits easily in all modern LLMs
+        recommendations += f"- **Full Repository**: {format_number(total_tokens)} tokens fits comfortably in all modern LLM context windows\n"
+        recommendations += f"- **Single-Context Analysis**: Entire codebase can be analyzed in one prompt\n"
+        recommendations += f"- **Recommended Models**: {', '.join(fits_in)}\n"
+    elif total_tokens < 150_000:
+        # Medium repository - fits in most modern LLMs
+        recommendations += f"- **Full Repository**: {format_number(total_tokens)} tokens fits in: {', '.join(fits_in)}\n"
+        recommendations += f"- **Single-Context Analysis**: Entire codebase can be analyzed without chunking\n"
+        if total_tokens > 100_000:
+            recommendations += f"- **Tip**: For faster processing, consider focused analysis on specific modules\n"
+    else:
+        # Large repository - fits in some LLMs
+        recommendations += f"- **Full Repository**: {format_number(total_tokens)} tokens fits in: {', '.join(fits_in)}\n"
+        recommendations += f"- **Targeted Analysis**: Consider focusing on 40-60% of files for detailed reviews\n"
+        if total_tokens > 500_000:
+            recommendations += f"- **Performance Note**: Even with large context windows, processing this size may be slow\n"
+    
+    # Add code review recommendation
+    recommendations += f"- **Code Reviews**: Use token counts to prioritize which files/modules to include\n"
+    
+    # Add documentation note if significant
+    if doc_tokens > 0:
+        if doc_tokens > total_tokens * 0.15:
+            recommendations += f"- **Documentation**: {doc_percentage} of tokens are documentation (substantial docs available)\n"
+        else:
+            recommendations += f"- **Documentation**: {doc_percentage} of tokens are documentation\n"
+    
+    return recommendations
+
 def generate_markdown_report(analysis_data, repo_name="Repository"):
     """Generate a markdown report from analysis data."""
     
@@ -206,12 +263,7 @@ def generate_markdown_report(analysis_data, repo_name="Repository"):
 | Claude 3.5 Sonnet | ~200K tokens | {format_percentage(200_000, total_tokens)} |
 | Gemini 1.5 Pro | ~1M tokens | {format_percentage(1_000_000, total_tokens)} |
 
-### Recommendations
-
-- **Full Repository**: {format_number(total_tokens)} tokens requires chunking for any LLM
-- **Focused Analysis**: Select 25-40% of files for single-context analysis
-- **Code Reviews**: Use token counts to prioritize which files to include
-- **Documentation**: {format_percentage(by_type.get('Markdown', {}).get('tokens', 0), total_tokens)} of tokens are documentation
+{generate_recommendations(total_tokens, by_type)}
 
 ## 📈 Analysis Metadata
 
