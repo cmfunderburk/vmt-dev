@@ -3,6 +3,12 @@ Main entry point for VMT simulation with Pygame visualization.
 """
 
 import sys
+import os
+
+# Add the 'src' directory to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
+
+import argparse
 import pygame
 from vmt_engine.simulation import Simulation
 from scenarios.loader import load_scenario
@@ -11,19 +17,18 @@ from vmt_pygame.renderer import VMTRenderer
 
 def main():
     """Run VMT simulation with visualization."""
-    # Load scenario
-    if len(sys.argv) > 1:
-        scenario_path = sys.argv[1]
-    else:
-        scenario_path = "scenarios/three_agent_barter.yaml"
+    parser = argparse.ArgumentParser(description="Run VMT simulation with visualization.")
+    parser.add_argument("scenario_file", nargs="?", default="scenarios/three_agent_barter.yaml",
+                        help="Path to the scenario YAML file (e.g., scenarios/three_agent_barter.yaml)")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for simulation")
+
+    main_args = parser.parse_args()
+    scenario_path = main_args.scenario_file
     
     print(f"Loading scenario: {scenario_path}")
     scenario = load_scenario(scenario_path)
     
-    # Parse seed from command line if provided
-    seed = 42
-    if len(sys.argv) > 2:
-        seed = int(sys.argv[2])
+    seed = main_args.seed
     
     print(f"Initializing simulation with seed {seed}...")
     sim = Simulation(scenario, seed=seed)

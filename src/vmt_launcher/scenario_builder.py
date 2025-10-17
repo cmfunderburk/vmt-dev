@@ -14,13 +14,15 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from .validator import ScenarioValidator, ValidationError
 
+# Default directory to save scenarios
+DEFAULT_SCENARIO_DIR = Path("scenarios")
 
 class ScenarioBuilderDialog(QDialog):
     """Dialog for building custom scenarios."""
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.saved_file_path = None
+        self.saved_path = None
         self.init_ui()
     
     def init_ui(self):
@@ -640,7 +642,7 @@ class ScenarioBuilderDialog(QDialog):
             
             # Open save dialog
             default_filename = data['name'].replace(' ', '_').lower() + '.yaml'
-            default_path = Path('scenarios') / default_filename
+            default_path = DEFAULT_SCENARIO_DIR / default_filename
             
             file_path, _ = QFileDialog.getSaveFileName(
                 self,
@@ -658,7 +660,7 @@ class ScenarioBuilderDialog(QDialog):
                 with open(file_path, 'w') as f:
                     f.write(yaml_content)
                 
-                self.saved_file_path = file_path
+                self.saved_path = Path(file_path)
                 
                 QMessageBox.information(
                     self,

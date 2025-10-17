@@ -12,16 +12,14 @@ The VMT engine is designed around a set of core principles that ensure determini
 
 ```
 vmt-dev/
-├── docs/                    # New consolidated documentation
-├── vmt_engine/              # Core simulation engine
-│   ├── core/                # State structures (Agent, Grid, Inventory)
-│   ├── econ/                # Economic utilities (UCES, ULinear)
-│   ├── systems/             # Subsystems for agent behavior
-│   └── simulation.py        # Main simulation loop orchestrator
-├── vmt_launcher/            # GUI Launcher application
-├── vmt_log_viewer/          # GUI Log Viewer application
-├── telemetry/               # SQLite logging system
-├── scenarios/               # YAML configuration files
+├── docs/                    # Consolidated documentation
+├── scenarios/               # User-facing YAML scenario files
+├── src/
+│   ├── vmt_engine/          # Core simulation engine
+│   ├── vmt_launcher/        # GUI Launcher application
+│   ├── vmt_log_viewer/      # GUI Log Viewer application
+│   ├── telemetry/           # SQLite logging system
+│   └── scenarios/           # Scenario-related Python code (schema, loader)
 ├── tests/                   # Test suite (55+ tests)
 ├── launcher.py              # GUI entry point
 └── main.py                  # CLI entry point
@@ -54,14 +52,14 @@ Determinism is the cornerstone of the VMT engine. Given the same scenario file a
 ### Economic Logic
 
 #### Utility and Reservation Prices
--   **Utility Functions**: The engine supports `UCES` (Constant Elasticity of Substitution, including the Cobb-Douglas case) and `ULinear` (perfect substitutes) utility functions, defined in `vmt_engine/econ/utility.py`.
+-   **Utility Functions**: The engine supports `UCES` (Constant Elasticity of Substitution, including the Cobb-Douglas case) and `ULinear` (perfect substitutes) utility functions, defined in `src/vmt_engine/econ/utility.py`.
 -   **Reservation Bounds**: Agents' willingness to trade is determined by their reservation price, which is derived from their marginal rate of substitution (MRS). To avoid hard-coding MRS formulas, the engine uses a generic `reservation_bounds_A_in_B(A, B, eps)` function. This returns the minimum price an agent would accept (`p_min`) and the maximum price they would pay (`p_max`).
 -   **Zero-Inventory Guard**: A critical innovation is the handling of zero-inventory cases for CES utilities. When an agent has zero of a good, its MRS can be undefined or infinite. The engine handles this by adding a tiny `epsilon` value to the inventory levels *only for the ratio calculation* used to determine reservation bounds. The core utility calculation `u(A, B)` always uses the true integer inventories.
 
 #### Quotes and Trading
 -   **Quotes**: An agent's broadcasted `ask` and `bid` prices are calculated from their reservation bounds: `ask = p_min * (1 + spread)` and `bid = p_max * (1 - spread)`.
 -   **Partner Selection**: An agent `i` chooses a partner `j` by evaluating the potential surplus from a trade. The surplus is the overlap between `i`'s bid and `j`'s ask (or vice-versa). The agent targets the partner with the highest positive surplus.
--   **Price Search Algorithm**: Because goods are discrete integers, a price that looks good on paper (based on MRS) might not result in a mutually beneficial trade after rounding. The `find_compensating_block` function in `vmt_engine/systems/matching.py` solves this. It probes multiple prices within the valid `[ask_seller, bid_buyer]` range and, for each price, scans trade quantities from `ΔA=1` up to `ΔA_max`. It accepts the first trade block `(ΔA, ΔB)` that provides a **strict utility improvement (ΔU > 0)** for both agents.
+-   **Price Search Algorithm**: Because goods are discrete integers, a price that looks good on paper (based on MRS) might not result in a mutually beneficial trade after rounding. The `find_compensating_block` function in `src/vmt_engine/systems/matching.py` solves this. It probes multiple prices within the valid `[ask_seller, bid_buyer]` range and, for each price, scans trade quantities from `ΔA=1` up to `ΔA_max`. It accepts the first trade block `(ΔA, ΔB)` that provides a **strict utility improvement (ΔU > 0)** for both agents.
 -   **Rounding**: All quantity calculations use **round-half-up** (`floor(p * ΔA + 0.5)`) for consistency.
 
 ### Behavioral Logic

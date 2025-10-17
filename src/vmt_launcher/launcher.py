@@ -8,13 +8,16 @@ from pathlib import Path
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QListWidget, QLineEdit, QLabel,
-    QMessageBox, QApplication
+    QMessageBox, QApplication, QFrame
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIntValidator
+from .scenario_builder import ScenarioBuilderDialog
 
+# Assumes the script is run from the project root
+SCENARIOS_DIR = "scenarios"
 
-def find_scenario_files(scenarios_dir="scenarios"):
+def find_scenario_files():
     """
     Find all YAML scenario files in the scenarios directory.
     
@@ -24,7 +27,7 @@ def find_scenario_files(scenarios_dir="scenarios"):
     Returns:
         List of (filename, full_path) tuples
     """
-    scenarios_path = Path(scenarios_dir)
+    scenarios_path = Path(SCENARIOS_DIR)
     
     if not scenarios_path.exists():
         return []
@@ -111,7 +114,7 @@ class LauncherWindow(QMainWindow):
         scenarios = find_scenario_files()
         
         if not scenarios:
-            self.status_label.setText("Status: No scenarios found in scenarios/")
+            self.status_label.setText(f"Status: No scenarios found in {SCENARIOS_DIR}/")
             self.status_label.setStyleSheet("color: orange;")
             return
         
@@ -123,6 +126,10 @@ class LauncherWindow(QMainWindow):
         
         self.status_label.setText(f"Status: Found {len(scenarios)} scenario(s)")
         self.status_label.setStyleSheet("color: green;")
+        # Select the first item if the list is not empty
+        if self.scenario_list.count() > 0:
+            self.scenario_list.setCurrentItem(self.scenario_list.item(0))
+            self.on_scenario_selected(self.scenario_list.item(0))
     
     def on_scenario_selected(self, item):
         """Handle scenario selection."""
@@ -132,22 +139,18 @@ class LauncherWindow(QMainWindow):
     
     def open_scenario_builder(self):
         """Open the scenario builder dialog."""
-        from .scenario_builder import ScenarioBuilderDialog
-        
         dialog = ScenarioBuilderDialog(self)
         if dialog.exec_():
             # Scenario was created, refresh the list
             self.refresh_scenarios()
             
             # Auto-select the new scenario if it was saved in scenarios/
-            if dialog.saved_file_path:
-                filename = Path(dialog.saved_file_path).name
-                for i in range(self.scenario_list.count()):
-                    item = self.scenario_list.item(i)
-                    if item.text() == filename:
-                        self.scenario_list.setCurrentItem(item)
-                        self.on_scenario_selected(item)
-                        break
+            new_file_path = dialog.saved_path
+            if new_file_path and new_file_path.parent.name == SCENARIOS_DIR:
+                items = self.scenario_list.findItems(new_file_path.name, Qt.MatchExactly)
+                if items:
+                    self.scenario_list.setCurrentItem(items[0])
+                    self.on_scenario_selected(items[0])
     
     def run_simulation(self):
         """Run the selected simulation."""
@@ -195,6 +198,7 @@ class LauncherWindow(QMainWindow):
                 sys.executable,
                 "main.py",
                 self.selected_scenario,
+                "--seed",
                 str(seed)
             ])
             

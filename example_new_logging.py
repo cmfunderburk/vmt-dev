@@ -3,6 +3,12 @@
 Example demonstrating the new SQLite-based logging system.
 """
 
+import sys
+import os
+
+# Add the 'src' directory to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
+
 from vmt_engine.simulation import Simulation
 from telemetry import LogConfig, LogLevel
 from scenarios.loader import load_scenario
