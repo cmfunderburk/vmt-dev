@@ -8,7 +8,7 @@ from math import floor
 
 if TYPE_CHECKING:
     from ..core import Agent
-    from telemetry.logger import TradeLogger
+    from telemetry import TelemetryManager
 
 
 def compute_surplus(agent_i: 'Agent', agent_j: 'Agent') -> float:
@@ -154,7 +154,7 @@ def generate_price_candidates(ask: float, bid: float, dA: int) -> list[float]:
 def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
                            dA_max: int, epsilon: float, tick: int = 0,
                            direction: str = "", surplus: float = 0.0,
-                           logger: Any = None) -> tuple[int, int, float] | None:
+                           telemetry: 'TelemetryManager' | None = None) -> tuple[int, int, float] | None:
     """
     Find minimal ΔA ∈ [1..dA_max] and a price where both agents improve utility.
     
@@ -171,7 +171,7 @@ def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
         tick: Current simulation tick (for logging)
         direction: Trade direction string (for logging)
         surplus: Computed surplus (for logging)
-        logger: TradeAttemptLogger instance (optional)
+        telemetry: TelemetryManager instance (optional)
         
     Returns:
         (dA, dB, actual_price) tuple or None if no feasible block found
@@ -209,8 +209,8 @@ def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
             
             # Check if dB is valid
             if dB <= 0:
-                if logger:
-                    logger.log_iteration(
+                if telemetry:
+                    telemetry.log_trade_attempt(
                         tick, buyer.id, seller.id, direction, test_price,
                         buyer.quotes.ask_A_in_B, buyer.quotes.bid_A_in_B,
                         seller.quotes.ask_A_in_B, seller.quotes.bid_A_in_B, surplus,
@@ -228,14 +228,14 @@ def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
             seller_feasible = seller_A_init >= dA
             
             if not seller_feasible or not buyer_feasible:
-                if logger:
+                if telemetry:
                     reason = "inventory_infeasible"
                     if not seller_feasible:
                         reason = "seller_insufficient_A"
                     if not buyer_feasible:
                         reason = "buyer_insufficient_B"
                     
-                    logger.log_iteration(
+                    telemetry.log_trade_attempt(
                         tick, buyer.id, seller.id, direction, test_price,
                         buyer.quotes.ask_A_in_B, buyer.quotes.bid_A_in_B,
                         seller.quotes.ask_A_in_B, seller.quotes.bid_A_in_B, surplus,
@@ -254,8 +254,8 @@ def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
             
             if buyer_improves_flag and seller_improves_flag:
                 # Success! Found a mutually beneficial trade
-                if logger:
-                    logger.log_iteration(
+                if telemetry:
+                    telemetry.log_trade_attempt(
                         tick, buyer.id, seller.id, direction, test_price,
                         buyer.quotes.ask_A_in_B, buyer.quotes.bid_A_in_B,
                         seller.quotes.ask_A_in_B, seller.quotes.bid_A_in_B, surplus,
@@ -268,7 +268,7 @@ def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
                     )
                 return (dA, dB, test_price)  # Return the price that worked
             else:
-                if logger:
+                if telemetry:
                     reason = "utility_no_improvement"
                     if not buyer_improves_flag:
                         reason = "buyer_utility_no_improvement"
@@ -277,7 +277,7 @@ def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
                     if not buyer_improves_flag and not seller_improves_flag:
                         reason = "both_utility_no_improvement"
                     
-                    logger.log_iteration(
+                    telemetry.log_trade_attempt(
                         tick, buyer.id, seller.id, direction, test_price,
                         buyer.quotes.ask_A_in_B, buyer.quotes.bid_A_in_B,
                         seller.quotes.ask_A_in_B, seller.quotes.bid_A_in_B, surplus,
@@ -319,8 +319,7 @@ def execute_trade(buyer: 'Agent', seller: 'Agent', dA: int, dB: int):
 
 
 def trade_pair(agent_i: 'Agent', agent_j: 'Agent', params: dict[str, Any],
-               trade_logger: 'TradeLogger', tick: int,
-               trade_attempt_logger: Any = None) -> bool:
+               telemetry: 'TelemetryManager', tick: int) -> bool:
     """
     Attempt ONE trade between a pair of agents this tick.
     
@@ -333,9 +332,8 @@ def trade_pair(agent_i: 'Agent', agent_j: 'Agent', params: dict[str, Any],
         agent_i: First agent
         agent_j: Second agent
         params: Simulation parameters (ΔA_max, epsilon, spread)
-        trade_logger: Trade logger for successful trades
+        telemetry: TelemetryManager for logging
         tick: Current tick
-        trade_attempt_logger: Trade attempt logger for diagnostics (optional)
         
     Returns:
         True if a trade occurred this tick
@@ -364,7 +362,7 @@ def trade_pair(agent_i: 'Agent', agent_j: 'Agent', params: dict[str, Any],
     block = find_compensating_block(
         buyer, seller, price, 
         params['dA_max'], params['epsilon'],
-        tick, direction, surplus, trade_attempt_logger
+        tick, direction, surplus, telemetry
     )
     
     if block is None:
@@ -380,7 +378,7 @@ def trade_pair(agent_i: 'Agent', agent_j: 'Agent', params: dict[str, Any],
     execute_trade(buyer, seller, dA, dB)
     
     # Log trade with actual price used
-    trade_logger.log_trade(
+    telemetry.log_trade(
         tick, buyer.pos[0], buyer.pos[1],
         buyer.id, seller.id,
         dA, dB, actual_price, direction
