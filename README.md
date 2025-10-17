@@ -149,7 +149,7 @@ Start here to work productively with this codebase. For the full rule set, see `
 - Trading: One trade per pair per tick. Use price search within `[ask_seller,bid_buyer]`; round-half-up for `ΔB=floor(p*ΔA+0.5)`; strict `ΔU>0` for both sides; apply mutual cooldown on failure. See `systems/matching.py` and tests `test_trade_rounding_and_adjacency.py`, `test_trade_cooldown.py`.
 - Foraging & regeneration: Movement is deterministic Manhattan with tie rules (`systems/movement.py`). Foraging score uses `ΔU_arrival * β^dist` with `min(cell.amount, forage_rate)`. Regeneration waits `resource_regen_cooldown` then grows at `resource_growth_rate` up to `original_amount` (`tests/test_resource_regeneration.py`).
 - Parameters & scenarios: Defaults in `scenarios/schema.py` (critical: `spread=0.0`). Load YAML via `scenarios/loader.py`.
-- Telemetry (v1.1+): SQLite logging is default via `telemetry/{config.py,db_loggers.py,database.py}` with `LogConfig.{summary|standard|debug}()`; DB at `./logs/telemetry.db`. Legacy CSV remains under `telemetry/*.py`.
+- Telemetry (v1.1+): SQLite logging via `telemetry/{config.py,db_loggers.py,database.py}` with `LogConfig.{summary|standard|debug}()`; DB at `./logs/telemetry.db`. Export to CSV available via log viewer.
 - Key files: `vmt_engine/simulation.py`, `vmt_engine/systems/{perception,movement,quotes,matching}.py`, `vmt_engine/econ/utility.py`, `scenarios/{schema.py,loader.py}`, `telemetry/{db_loggers.py,config.py,database.py}`.
 
 Quick run commands:
@@ -178,7 +178,7 @@ python view_logs.py      # SQLite log viewer
 ### System Documentation
 - [NEW_LOGGING_SYSTEM.md](PLANS/docs/NEW_LOGGING_SYSTEM.md) - SQLite database logging (v1.1)
 - [GUI_LAUNCHER_GUIDE.md](PLANS/docs/GUI_LAUNCHER_GUIDE.md) - GUI launcher complete guide (v1.1)
-- [TELEMETRY_IMPLEMENTATION.md](PLANS/docs/TELEMETRY_IMPLEMENTATION.md) - Original CSV logging (legacy)
+- [TELEMETRY_IMPLEMENTATION.md](PLANS/docs/TELEMETRY_IMPLEMENTATION.md) - Original CSV logging design (deprecated, see NEW_LOGGING_SYSTEM.md)
 - [PRICE_SEARCH_IMPLEMENTATION.md](PLANS/docs/PRICE_SEARCH_IMPLEMENTATION.md) - Price discovery algorithm
 - [TRADE_COOLDOWN_IMPLEMENTATION.md](PLANS/docs/TRADE_COOLDOWN_IMPLEMENTATION.md) - Cooldown mechanics
 - [RESOURCE_REGENERATION_IMPLEMENTATION.md](PLANS/docs/RESOURCE_REGENERATION_IMPLEMENTATION.md) - Regeneration system

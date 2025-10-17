@@ -110,8 +110,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Backward Compatibility
 - **CLI workflow**: Completely unchanged, all existing commands work
-- **Legacy CSV logging**: Still available via `use_legacy_logging=True`
-- **Export to CSV**: Database runs can be exported to CSV format
+- **Export to CSV**: Database runs can be exported to CSV format via log viewer
 - **All tests**: 54+ existing tests still pass
 
 ---

@@ -66,15 +66,28 @@ def run_with_custom_config():
     print("✓ Custom log saved to: ./logs/telemetry.db")
 
 
-def run_with_legacy_csv():
-    """Run simulation with legacy CSV logging."""
-    print("\nRunning with legacy CSV logging...")
+def run_and_export_to_csv():
+    """Run simulation and export database to CSV (for backward compatibility)."""
+    print("\nRunning simulation and exporting to CSV...")
     scenario = load_scenario("scenarios/three_agent_barter.yaml")
     
-    sim = Simulation(scenario, seed=42, use_legacy_logging=True)
+    # Run with standard logging
+    sim = Simulation(scenario, seed=42, log_config=LogConfig.standard())
     sim.run(max_ticks=100)
     sim.close()
-    print("✓ CSV logs saved to: ./logs/*.csv")
+    
+    # Export database to CSV
+    from telemetry.database import TelemetryDatabase
+    from vmt_log_viewer.csv_export import CSVExporter
+    
+    db = TelemetryDatabase("./logs/telemetry.db")
+    runs = db.get_runs()
+    if runs:
+        exporter = CSVExporter(db)
+        output_dir = "./logs/csv_export"
+        exporter.export_run(runs[0]['run_id'], output_dir)
+        db.close()
+        print(f"✓ CSV files exported to: {output_dir}/")
 
 
 def query_database_example():
@@ -142,7 +155,7 @@ def main():
     print("2. STANDARD logging (recommended)")
     print("3. DEBUG logging (verbose)")
     print("4. Custom configuration")
-    print("5. Legacy CSV logging")
+    print("5. Export database to CSV")
     print("6. Query database")
     print("7. All examples")
     
@@ -157,7 +170,7 @@ def main():
     elif choice == "4":
         run_with_custom_config()
     elif choice == "5":
-        run_with_legacy_csv()
+        run_and_export_to_csv()
     elif choice == "6":
         query_database_example()
     elif choice == "7":
@@ -165,7 +178,7 @@ def main():
         run_with_standard_logging()
         run_with_debug_logging()
         run_with_custom_config()
-        run_with_legacy_csv()
+        run_and_export_to_csv()
         query_database_example()
     else:
         print("Invalid choice")

@@ -4,19 +4,18 @@ Main simulation loop and orchestration.
 
 import numpy as np
 from typing import Optional
-from .core import Grid, Agent, Inventory, Position, SpatialIndex
+from .core import Grid, Agent, Inventory, SpatialIndex
 from scenarios.schema import ScenarioConfig
 from .econ.utility import create_utility
-from .systems.perception import perceive, PerceptionSystem
-from .systems.movement import choose_forage_target, next_step_toward, MovementSystem
-from .systems.foraging import forage, regenerate_resources, ForageSystem, ResourceRegenerationSystem
-from .systems.quotes import compute_quotes, refresh_quotes_if_needed
-from .systems.matching import choose_partner, trade_pair
+from .systems.perception import PerceptionSystem
+from .systems.movement import MovementSystem
+from .systems.foraging import ForageSystem, ResourceRegenerationSystem
+from .systems.quotes import compute_quotes
 from .systems.decision import DecisionSystem
 from .systems.trading import TradeSystem
 from .systems.housekeeping import HousekeepingSystem
 
-# New database-backed logging
+# Database-backed telemetry
 from telemetry import TelemetryManager, LogConfig
 
 
@@ -172,142 +171,15 @@ class Simulation:
             self.telemetry.finalize_run(max_ticks)
     
     def step(self):
-        """Execute one simulation tick by running each system in order."""
+        """Execute one simulation tick by running each system in order.
+        
+        7-phase tick order (see PLANS/Planning-Post-v1.md):
+        1. Perception → 2. Decision → 3. Movement → 4. Trade → 
+        5. Forage → 6. Resource Regeneration → 7. Housekeeping
+        """
         for system in self.systems:
             system.execute(self)
         self.tick += 1
-    
-    def perception_phase(self):
-        """Phase 1: Agents perceive their environment."""
-        for agent in self.agents:
-            # Use spatial index to find nearby agents efficiently (O(N) instead of O(N²))
-            nearby_agent_ids = self.spatial_index.query_radius(
-                agent.pos, 
-                agent.vision_radius, 
-                exclude_id=agent.id
-            )
-            
-            perception = perceive(agent, self.grid, nearby_agent_ids, self.agent_by_id)
-            agent.perception_cache = {
-                'neighbors': perception.neighbors,
-                'neighbor_quotes': perception.neighbor_quotes,
-                'resource_cells': perception.resource_cells
-            }
-    
-    def decision_phase(self):
-        """Phase 2: Agents make decisions about targets."""
-        for agent in self.agents:
-            # Try to find a trading partner first
-            neighbors = agent.perception_cache.get('neighbors', [])
-            partner_id, surplus, all_candidates = choose_partner(agent, neighbors, self.agent_by_id, self.tick)
-
-            if partner_id is not None:
-                # Move toward partner
-                partner = self.agent_by_id[partner_id]
-                agent.target_pos = partner.pos
-                agent.target_agent_id = partner_id
-                
-                # Log decision
-                alternatives_str = "; ".join([f"{nid}:{s:.4f}" for nid, s in all_candidates])
-                self.telemetry.log_decision(
-                    self.tick, agent.id, partner_id, surplus,
-                    "trade", partner.pos[0], partner.pos[1],
-                    len(neighbors), alternatives_str
-                )
-            else:
-                # Fall back to foraging
-                resource_cells = agent.perception_cache.get('resource_cells', [])
-                target = choose_forage_target(agent, resource_cells, self.params['beta'],
-                                              self.params['forage_rate'])
-                agent.target_pos = target
-                agent.target_agent_id = None
-                
-                # Log decision
-                target_type = "forage" if target is not None else "idle"
-                target_x = target[0] if target is not None else None
-                target_y = target[1] if target is not None else None
-                alternatives_str = "; ".join([f"{nid}:{s:.4f}" for nid, s in all_candidates])
-                self.telemetry.log_decision(
-                    self.tick, agent.id, None, None,
-                    target_type, target_x, target_y,
-                    len(neighbors), alternatives_str
-                )
-
-    def movement_phase(self):
-        """Phase 3: Agents move toward targets."""
-        for agent in self.agents:
-            if agent.target_pos is not None:
-                # If targeting an agent, check if already in interaction range.
-                if agent.target_agent_id is not None:
-                    target_agent = self.agent_by_id.get(agent.target_agent_id)
-                    if target_agent:
-                        distance = self.grid.manhattan_distance(agent.pos, target_agent.pos)
-                        if distance <= self.params['interaction_radius']:
-                            continue  # Already in range, don't move.
-
-                # Check for diagonal deadlock with another agent
-                if agent.target_agent_id is not None:
-                    target_agent = self.agent_by_id.get(agent.target_agent_id)
-                    if target_agent and target_agent.target_agent_id == agent.id:
-                        # Both agents are targeting each other.
-                        # Check if they are diagonally adjacent
-                        if self.grid.manhattan_distance(agent.pos, target_agent.pos) == 2 and \
-                           abs(agent.pos[0] - target_agent.pos[0]) == 1 and \
-                           abs(agent.pos[1] - target_agent.pos[1]) == 1:
-                            # Diagonal deadlock detected. Only higher ID agent moves.
-                            if agent.id < target_agent.id:
-                                continue  # Lower ID agent waits
-
-                new_pos = next_step_toward(
-                    agent.pos,
-                    agent.target_pos,
-                    self.params['move_budget_per_tick']
-                )
-                agent.pos = new_pos
-                # Update spatial index with new position
-                self.spatial_index.update_position(agent.id, new_pos)
-    
-    def trade_phase(self):
-        """Phase 4: Agents trade with nearby partners."""
-        # Use spatial index to find agent pairs within interaction_radius efficiently
-        # O(N) instead of O(N²) by only checking agents in nearby spatial buckets
-        pairs = self.spatial_index.query_pairs_within_radius(self.params['interaction_radius'])
-        
-        # Sort pairs by (min_id, max_id) for deterministic processing
-        pairs.sort()
-        
-        # Execute trades
-        for id_i, id_j in pairs:
-            agent_i = self.agent_by_id[id_i]
-            agent_j = self.agent_by_id[id_j]
-            
-            trade_pair(agent_i, agent_j, self.params, self.telemetry, self.tick)
-    
-    def forage_phase(self):
-        """Phase 5: Agents harvest resources."""
-        for agent in self.agents:
-            forage(agent, self.grid, self.params['forage_rate'], self.tick)
-    
-    def resource_regeneration_phase(self):
-        """Phase 6: Resources regenerate after cooldown period."""
-        from .systems.foraging import regenerate_resources
-        regenerate_resources(
-            self.grid,
-            self.params['resource_growth_rate'],
-            self.params['resource_max_amount'],
-            self.params['resource_regen_cooldown'],
-            self.tick
-        )
-    
-    def housekeeping_phase(self):
-        """Phase 7: Update quotes, log telemetry, cleanup."""
-        # Refresh quotes for agents whose inventory changed
-        for agent in self.agents:
-            refresh_quotes_if_needed(agent, self.params['spread'], self.params['epsilon'])
-        
-        # Log telemetry
-        self.telemetry.log_agent_snapshots(self.tick, self.agents)
-        self.telemetry.log_resource_snapshots(self.tick, self.grid)
     
     def close(self):
         """Close all loggers and release resources."""
