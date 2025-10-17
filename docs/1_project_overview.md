@@ -155,7 +155,7 @@ The easiest way to create custom scenarios is through the GUI:
    - **Basic Settings**: Name, grid size, agents, initial inventories
    - **Simulation Parameters**: Spread, vision, movement, trade parameters
    - **Resources**: Density, growth rate, regeneration cooldown
-   - **Utility Functions**: Add multiple utility types with custom parameters
+   - **Utility Functions**: Define a population mix. You can add multiple utility function types (e.g., CES, Linear) with different parameters and weights. Each agent created for the simulation will be randomly assigned *one* of these utility functions according to the specified weights.
 4. **Click "Generate Scenario"**
 5. **Save the YAML file** (default: `scenarios/` folder)
 6. **New scenario automatically appears** in the launcher list

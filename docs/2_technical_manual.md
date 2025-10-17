@@ -56,6 +56,13 @@ Determinism is the cornerstone of the VMT engine. Given the same scenario file a
 -   **Reservation Bounds**: Agents' willingness to trade is determined by their reservation price, which is derived from their marginal rate of substitution (MRS). To avoid hard-coding MRS formulas, the engine uses a generic `reservation_bounds_A_in_B(A, B, eps)` function. This returns the minimum price an agent would accept (`p_min`) and the maximum price they would pay (`p_max`).
 -   **Zero-Inventory Guard**: A critical innovation is the handling of zero-inventory cases for CES utilities. When an agent has zero of a good, its MRS can be undefined or infinite. The engine handles this by adding a tiny `epsilon` value to the inventory levels *only for the ratio calculation* used to determine reservation bounds. The core utility calculation `u(A, B)` always uses the true integer inventories.
 
+#### Agent Initialization and Heterogeneity
+Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows for specifying a distribution of preferences across the agent population.
+
+-   **Utility Mix**: The `utilities.mix` section of a scenario file defines a list of one or more utility function configurations, each with a `type`, `params`, and a `weight`. The weights must sum to 1.0.
+-   **Probabilistic Assignment**: During simulation setup, each agent's utility function is independently chosen from this list via weighted random sampling (`numpy.random.Generator.choice`). This means that a scenario can define, for example, a population composed of 80% CES agents and 20% Linear agents, each with their own specific parameters. An agent is assigned exactly one utility function.
+-   **Initial Inventories**: Initial inventories can also be heterogeneous, specified either as a single value (all agents start the same) or as an explicit list of values, one for each agent.
+    
 #### Quotes and Trading
 -   **Quotes**: An agent's broadcasted `ask` and `bid` prices are calculated from their reservation bounds: `ask = p_min * (1 + spread)` and `bid = p_max * (1 - spread)`.
 -   **Partner Selection**: An agent `i` chooses a partner `j` by evaluating the potential surplus from a trade. The surplus is the overlap between `i`'s bid and `j`'s ask (or vice-versa). The agent targets the partner with the highest positive surplus.

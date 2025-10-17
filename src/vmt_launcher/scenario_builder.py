@@ -443,22 +443,18 @@ class ScenarioBuilderDialog(QDialog):
                 • <strong>B three times as valuable:</strong> vA = 1, vB = 3 (trade 1:3 ratio)
             </div>
             
-            <h2>Mixing Utilities</h2>
+            <h2>Defining a Population Mix</h2>
             
             <div class="behavior">
-                <strong>Multiple Utilities:</strong> You can define multiple utility functions with weights. 
-                The agent's total utility is the weighted sum of individual utilities. This allows modeling 
-                complex preferences, such as an agent who partially values both complementary and substitutable 
-                aspects of goods.
+                <strong>Heterogeneous Populations:</strong> You can define multiple utility function templates, each with a `weight`. When the simulation starts, each agent is randomly assigned <strong>one</strong> of these utility functions according to the specified weights. This allows you to create a diverse population of agents with different preferences.
             </div>
             
             <div class="param">
-                <span class="param-name">Weight</span> - Importance of this utility function (must sum to 1.0 across all utilities)
+                <span class="param-name">Weight</span> - The probability of an agent being assigned this utility function. All weights must sum to 1.0.
                 <ul>
-                    <li><strong>Single utility:</strong> Weight = 1.0 (default)</li>
-                    <li><strong>Two utilities:</strong> E.g., 0.7 for CES + 0.3 for Linear gives mostly CES behavior 
-                    with some linear tendency</li>
-                    <li><strong>Auto-normalize:</strong> Check the box to automatically normalize weights to sum to 1.0</li>
+                    <li><strong>Single Type:</strong> To give all agents the same utility function, create one entry with `Weight = 1.0`.</li>
+                    <li><strong>Mixed Population:</strong> For a mix of 70% CES and 30% Linear agents, create two entries with weights `0.7` and `0.3` respectively.</li>
+                    <li><strong>Auto-normalize:</strong> Check the box to automatically scale the weights you enter so they sum to 1.0. For example, if you enter weights of 3 and 1, they will be normalized to 0.75 and 0.25.</li>
                 </ul>
             </div>
             
