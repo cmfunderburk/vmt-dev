@@ -5,6 +5,7 @@ Matching and trading system.
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from math import floor
+from ._trade_attempt_logger import log_trade_attempt
 
 if TYPE_CHECKING:
     from ..core import Agent
@@ -190,42 +191,18 @@ def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
             # Round-half-up: floor(x + 0.5)
             dB = int(floor(test_price * dA + 0.5))
             
-            # Get current states for logging
-            buyer_A_init = buyer.inventory.A
-            buyer_B_init = buyer.inventory.B
-            seller_A_init = seller.inventory.A
-            seller_B_init = seller.inventory.B
-            
-            buyer_U_init = buyer.utility.u(buyer_A_init, buyer_B_init) if buyer.utility else 0.0
-            seller_U_init = seller.utility.u(seller_A_init, seller_B_init) if seller.utility else 0.0
-            
-            buyer_A_final = buyer_A_init + dA
-            buyer_B_final = buyer_B_init - dB
-            seller_A_final = seller_A_init - dA
-            seller_B_final = seller_B_init + dB
-            
-            buyer_U_final = buyer.utility.u(buyer_A_final, buyer_B_final) if buyer.utility else 0.0
-            seller_U_final = seller.utility.u(seller_A_final, seller_B_final) if seller.utility else 0.0
-            
             # Check if dB is valid
             if dB <= 0:
                 if telemetry:
-                    telemetry.log_trade_attempt(
-                        tick, buyer.id, seller.id, direction, test_price,
-                        buyer.quotes.ask_A_in_B, buyer.quotes.bid_A_in_B,
-                        seller.quotes.ask_A_in_B, seller.quotes.bid_A_in_B, surplus,
-                        dA, dB,
-                        buyer_A_init, buyer_B_init, buyer_U_init,
-                        buyer_A_final, buyer_B_final, buyer_U_final, False,
-                        seller_A_init, seller_B_init, seller_U_init,
-                        seller_A_final, seller_B_final, seller_U_final, False,
-                        True, True, "fail", "dB_nonpositive"
+                    log_trade_attempt(
+                        telemetry, tick, buyer, seller, direction, test_price, surplus,
+                        dA, dB, False, False, True, True, "fail", "dB_nonpositive"
                     )
                 continue
             
             # Check feasibility (inventory constraints)
-            buyer_feasible = buyer_B_init >= dB
-            seller_feasible = seller_A_init >= dA
+            buyer_feasible = buyer.inventory.B >= dB
+            seller_feasible = seller.inventory.A >= dA
             
             if not seller_feasible or not buyer_feasible:
                 if telemetry:
@@ -235,16 +212,9 @@ def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
                     if not buyer_feasible:
                         reason = "buyer_insufficient_B"
                     
-                    telemetry.log_trade_attempt(
-                        tick, buyer.id, seller.id, direction, test_price,
-                        buyer.quotes.ask_A_in_B, buyer.quotes.bid_A_in_B,
-                        seller.quotes.ask_A_in_B, seller.quotes.bid_A_in_B, surplus,
-                        dA, dB,
-                        buyer_A_init, buyer_B_init, buyer_U_init,
-                        buyer_A_final, buyer_B_final, buyer_U_final, False,
-                        seller_A_init, seller_B_init, seller_U_init,
-                        seller_A_final, seller_B_final, seller_U_final, False,
-                        buyer_feasible, seller_feasible, "fail", reason
+                    log_trade_attempt(
+                        telemetry, tick, buyer, seller, direction, test_price, surplus,
+                        dA, dB, False, False, buyer_feasible, seller_feasible, "fail", reason
                     )
                 continue
             
@@ -255,38 +225,25 @@ def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
             if buyer_improves_flag and seller_improves_flag:
                 # Success! Found a mutually beneficial trade
                 if telemetry:
-                    telemetry.log_trade_attempt(
-                        tick, buyer.id, seller.id, direction, test_price,
-                        buyer.quotes.ask_A_in_B, buyer.quotes.bid_A_in_B,
-                        seller.quotes.ask_A_in_B, seller.quotes.bid_A_in_B, surplus,
-                        dA, dB,
-                        buyer_A_init, buyer_B_init, buyer_U_init,
-                        buyer_A_final, buyer_B_final, buyer_U_final, buyer_improves_flag,
-                        seller_A_init, seller_B_init, seller_U_init,
-                        seller_A_final, seller_B_final, seller_U_final, seller_improves_flag,
-                        buyer_feasible, seller_feasible, "success", "utility_improves_both"
+                    log_trade_attempt(
+                        telemetry, tick, buyer, seller, direction, test_price, surplus,
+                        dA, dB, True, True, True, True, "success", "utility_improves_both"
                     )
                 return (dA, dB, test_price)  # Return the price that worked
             else:
                 if telemetry:
                     reason = "utility_no_improvement"
-                    if not buyer_improves_flag:
-                        reason = "buyer_utility_no_improvement"
-                    if not seller_improves_flag:
-                        reason = "seller_utility_no_improvement"
                     if not buyer_improves_flag and not seller_improves_flag:
                         reason = "both_utility_no_improvement"
-                    
-                    telemetry.log_trade_attempt(
-                        tick, buyer.id, seller.id, direction, test_price,
-                        buyer.quotes.ask_A_in_B, buyer.quotes.bid_A_in_B,
-                        seller.quotes.ask_A_in_B, seller.quotes.bid_A_in_B, surplus,
-                        dA, dB,
-                        buyer_A_init, buyer_B_init, buyer_U_init,
-                        buyer_A_final, buyer_B_final, buyer_U_final, buyer_improves_flag,
-                        seller_A_init, seller_B_init, seller_U_init,
-                        seller_A_final, seller_B_final, seller_U_final, seller_improves_flag,
-                        buyer_feasible, seller_feasible, "fail", reason
+                    elif not buyer_improves_flag:
+                        reason = "buyer_utility_no_improvement"
+                    elif not seller_improves_flag:
+                        reason = "seller_utility_no_improvement"
+
+                    log_trade_attempt(
+                        telemetry, tick, buyer, seller, direction, test_price, surplus,
+                        dA, dB, buyer_improves_flag, seller_improves_flag,
+                        True, True, "fail", reason
                     )
                 # Continue trying other prices for this dA
     

@@ -128,11 +128,9 @@ node_modules/
 *.obj
 
 # ---- LLM Counter ----
-llm_counter/
 
 # ---- Project-specific ----
 # Archive folder for old planning documents
-PLANS/archive/
 
 # Add any generated telemetry or snapshot directories here if created later
 # telemetry/
