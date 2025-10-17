@@ -126,11 +126,23 @@ class Simulation:
             util_config = self.config.utilities.mix[util_choice]
             utility_configs.append(util_config)
         
-        # Create agents with random positions
+        # Determine agent positions
+        n_cells = self.config.N * self.config.N
+        if n_agents <= n_cells:
+            # Assign unique positions if possible
+            all_positions = [(x, y) for x in range(self.config.N) for y in range(self.config.N)]
+            self.rng.shuffle(all_positions)
+            positions = all_positions[:n_agents]
+        else:
+            # Fallback to random placement if more agents than cells
+            positions = [
+                (self.rng.integers(0, self.config.N), self.rng.integers(0, self.config.N))
+                for _ in range(n_agents)
+            ]
+
+        # Create agents
         for i in range(n_agents):
-            x = self.rng.integers(0, self.config.N)
-            y = self.rng.integers(0, self.config.N)
-            pos = (x, y)
+            pos = positions[i]
             
             inventory = Inventory(A=inv_A[i], B=inv_B[i])
             
