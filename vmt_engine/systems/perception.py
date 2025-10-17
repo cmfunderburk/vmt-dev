@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..core import Agent, Grid, Cell, Quote, Position
+    from ..simulation import Simulation
 
 
 @dataclass
@@ -15,6 +16,25 @@ class PerceptionView:
     neighbors: list[tuple[int, 'Position']]  # (agent_id, pos)
     neighbor_quotes: dict[int, 'Quote']      # agent_id -> quotes
     resource_cells: list['Cell']              # visible resource cells
+
+
+class PerceptionSystem:
+    """Phase 1: Agents perceive their environment."""
+    def execute(self, sim: "Simulation") -> None:
+        for agent in sim.agents:
+            # Use spatial index to find nearby agents efficiently (O(N) instead of O(N²))
+            nearby_agent_ids = sim.spatial_index.query_radius(
+                agent.pos,
+                agent.vision_radius,
+                exclude_id=agent.id,
+            )
+
+            perception = perceive(agent, sim.grid, nearby_agent_ids, sim.agent_by_id)
+            agent.perception_cache = {
+                "neighbors": perception.neighbors,
+                "neighbor_quotes": perception.neighbor_quotes,
+                "resource_cells": perception.resource_cells,
+            }
 
 
 def perceive(agent: 'Agent', grid: 'Grid', nearby_agent_ids: list[int], 

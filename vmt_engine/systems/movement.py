@@ -8,6 +8,46 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ..core import Agent, Position, Cell
     from .perception import PerceptionView
+    from ..simulation import Simulation
+
+
+class MovementSystem:
+    """Phase 3: Agents move toward targets."""
+
+    def execute(self, sim: "Simulation") -> None:
+        for agent in sim.agents:
+            if agent.target_pos is not None:
+                # If targeting an agent, check if already in interaction range.
+                if agent.target_agent_id is not None:
+                    target_agent = sim.agent_by_id.get(agent.target_agent_id)
+                    if target_agent:
+                        distance = sim.grid.manhattan_distance(
+                            agent.pos, target_agent.pos
+                        )
+                        if distance <= sim.params["interaction_radius"]:
+                            continue  # Already in range, don't move.
+
+                # Check for diagonal deadlock with another agent
+                if agent.target_agent_id is not None:
+                    target_agent = sim.agent_by_id.get(agent.target_agent_id)
+                    if target_agent and target_agent.target_agent_id == agent.id:
+                        # Both agents are targeting each other.
+                        # Check if they are diagonally adjacent
+                        if (
+                            sim.grid.manhattan_distance(agent.pos, target_agent.pos) == 2
+                            and abs(agent.pos[0] - target_agent.pos[0]) == 1
+                            and abs(agent.pos[1] - target_agent.pos[1]) == 1
+                        ):
+                            # Diagonal deadlock detected. Only higher ID agent moves.
+                            if agent.id < target_agent.id:
+                                continue  # Lower ID agent waits
+
+                new_pos = next_step_toward(
+                    agent.pos, agent.target_pos, sim.params["move_budget_per_tick"]
+                )
+                agent.pos = new_pos
+                # Update spatial index with new position
+                sim.spatial_index.update_position(agent.id, new_pos)
 
 
 def next_step_toward(current: 'Position', target: 'Position', budget: int) -> 'Position':

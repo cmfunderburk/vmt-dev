@@ -6,6 +6,30 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..core import Agent, Grid
+    from ..simulation import Simulation
+
+
+class ForageSystem:
+    """Phase 5: Agents harvest resources."""
+
+    def execute(self, sim: "Simulation") -> None:
+        for agent in sim.agents:
+            forage(agent, sim.grid, sim.params["forage_rate"], sim.tick)
+
+
+class ResourceRegenerationSystem:
+    """Phase 6: Resources regenerate after cooldown period."""
+
+    def execute(self, sim: "Simulation") -> None:
+        from .foraging import regenerate_resources
+
+        regenerate_resources(
+            sim.grid,
+            sim.params["resource_growth_rate"],
+            sim.params["resource_max_amount"],
+            sim.params["resource_regen_cooldown"],
+            sim.tick,
+        )
 
 
 def forage(agent: 'Agent', grid: 'Grid', forage_rate: int, current_tick: int = 0) -> bool:

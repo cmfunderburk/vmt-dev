@@ -7,11 +7,14 @@ from typing import Optional
 from .core import Grid, Agent, Inventory, Position, SpatialIndex
 from scenarios.schema import ScenarioConfig
 from .econ.utility import create_utility
-from .systems.perception import perceive
-from .systems.movement import choose_forage_target, next_step_toward
-from .systems.foraging import forage
+from .systems.perception import perceive, PerceptionSystem
+from .systems.movement import choose_forage_target, next_step_toward, MovementSystem
+from .systems.foraging import forage, regenerate_resources, ForageSystem, ResourceRegenerationSystem
 from .systems.quotes import compute_quotes, refresh_quotes_if_needed
 from .systems.matching import choose_partner, trade_pair
+from .systems.decision import DecisionSystem
+from .systems.trading import TradeSystem
+from .systems.housekeeping import HousekeepingSystem
 
 # New database-backed logging
 from telemetry import TelemetryManager, LogConfig
@@ -50,6 +53,17 @@ class Simulation:
             'resource_regen_cooldown': scenario_config.params.resource_regen_cooldown,
             'trade_cooldown_ticks': scenario_config.params.trade_cooldown_ticks,
         }
+        
+        # Initialize systems in the correct tick order
+        self.systems = [
+            PerceptionSystem(),
+            DecisionSystem(),
+            MovementSystem(),
+            TradeSystem(),
+            ForageSystem(),
+            ResourceRegenerationSystem(),
+            HousekeepingSystem(),
+        ]
         
         # Initialize grid
         self.grid = Grid(scenario_config.N)
@@ -158,14 +172,9 @@ class Simulation:
             self.telemetry.finalize_run(max_ticks)
     
     def step(self):
-        """Execute one simulation tick."""
-        self.perception_phase()
-        self.decision_phase()
-        self.movement_phase()
-        self.trade_phase()
-        self.forage_phase()
-        self.resource_regeneration_phase()
-        self.housekeeping_phase()
+        """Execute one simulation tick by running each system in order."""
+        for system in self.systems:
+            system.execute(self)
         self.tick += 1
     
     def perception_phase(self):
