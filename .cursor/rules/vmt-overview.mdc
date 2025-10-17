@@ -1,8 +1,6 @@
 ---
 alwaysApply: true
 ---
-# VMT Copilot Instructions
-
 The authoritative spec is `PLANS/Planning-Post-v1.md`; behaviors are enforced by `tests/`. Always ignore the `llm_counter` directory.
 
 ## Architecture & Determinism
