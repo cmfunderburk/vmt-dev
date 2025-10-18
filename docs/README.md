@@ -15,3 +15,7 @@ To get started, please see the following documents:
 -   **[3. Strategic Roadmap](./3_strategic_roadmap.md)**
     -   **Audience**: Developer, Contributors
     -   **Content**: The single source of truth for the project's vision and future development. Outlines the long-term feature roadmap and the immediate, actionable steps and checklists for upcoming versions.
+
+-   **[4. Type System & Data Contracts](./4_typing_overview.md)**
+    -   **Audience**: Developers, Contributors, Port Maintainers
+    -   **Content**: The authoritative, language-agnostic specification for all data structures, invariants, and serialization contracts. Essential for understanding the formal data model.

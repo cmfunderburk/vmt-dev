@@ -83,8 +83,8 @@ Agent := {
   inventory: { A: Quantity, B: Quantity },
   utility: Utility,
   quotes: Quote,
-  vision_radius: int ≥ 0,
-  move_budget_per_tick: int ≥ 0
+  vision_radius: int ≥ 0,          // (planned: enforce int in schema)
+  move_budget_per_tick: int ≥ 0    // (planned: enforce int in schema)
 }
 
 Cell := {
@@ -114,13 +114,17 @@ utilities:
   mix: [ {type: "ces"|"linear"|"cobb_douglas", weight: float, params: {...}} ]
 params:
   spread: float ≥ 0
-  vision_radius: int ≥ 0
+  vision_radius: int ≥ 0           // (planned: enforce int in schema)
   interaction_radius: int in {0,1}
-  move_budget_per_tick: int ≥ 0
+  move_budget_per_tick: int ≥ 0    // (planned: enforce int in schema)
   ΔA_max: int ≥ 1
   forage_rate: int ≥ 0
   epsilon: float > 0
   beta: float in (0,1)  # for foraging
+  resource_growth_rate: float ≥ 0    # units per tick (implemented)
+  resource_max_amount: int ≥ 0       # cap on regeneration (implemented)
+  resource_regen_cooldown: int ≥ 0   # ticks before regrowth starts (implemented)
+  trade_cooldown_ticks: int ≥ 0      # cooldown after failed trade (implemented)
 resource_seed:
   density: float in [0,1]
   amount: distribution | int
@@ -214,6 +218,18 @@ ResourceSnapshot := { tick:Tick, cell_id:int, x:int, y:int, resource:int }
 
 ---
 
+### 7.2 SQLite Telemetry (v1.1+)
+
+```text
+- Default storage: ./logs/telemetry.db
+- Log levels: LogConfig.{summary|standard|debug}()
+- Replaces CSV as primary format (CSV still available)
+```
+
+**Frequency.** Trades: every event. Snapshots: every `K` ticks (configurable, default 10).
+
+---
+
 ## 8. Determinism & Reproducibility
 
 * Random seeds recorded in run header. RNG sources centralized.
@@ -244,7 +260,12 @@ compat:
 
 ---
 
-## 11. Cross-Language Mappings
+## 11. Cross-Language Mappings (Reference Design)
+
+> **Note**: The current implementation is Python-only. These mappings serve as:
+> 1. A design contract for potential future ports
+> 2. Type-system documentation for Python developers familiar with strongly-typed languages
+> 3. A validation that the design is language-agnostic
 
 ### 11.1 Rust (serde + strong enums)
 
@@ -306,3 +327,15 @@ type Utility struct {
 * **MRS (marginal rate of substitution):** rate of tradeoff B-for-A that keeps utility constant.
 * **Reservation price bounds:** [p_min, p_max] s.t. selling 1 A at `p≥p_min` or buying 1 A at `p≤p_max` is non-worsening.
 * **Compensating multi-lot rounding:** Integer block trade with ΔU>0 for both sides at rounded price.
+
+---
+
+## 15. Changelog
+
+* **v1' (Initial Draft):**
+  - First version of the type contract document.
+  - Covers core primitives, economic types, agent/environment state, scenario schema, simulation contracts, APIs, telemetry, determinism, validation, versioning, cross-language mappings, testable invariants, future hooks, and a glossary.
+
+---
+
+*Last updated: 2025-10-18 | Corresponds to VMT v1.1*
