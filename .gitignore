@@ -105,6 +105,10 @@ tmp/
 local/
 .dump/
 
+# Exception: Track docs/tmp/ for versioned temporary documentation
+!docs/tmp/
+!docs/tmp/**
+
 # ---- Docs builds ----
 docs/_build/
 site/

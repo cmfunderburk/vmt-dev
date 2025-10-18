@@ -19,12 +19,16 @@ The hub contains:
 ## 🚀 Quick Start
 
 ```bash
-# 1. Install Dependencies
+# 1. Create and Activate a Virtual Environment
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows, use: .venv\Scripts\activate
+
+# 2. Install Dependencies
 pip install -r requirements.txt
 
-# 2. Run the GUI Launcher (Recommended)
+# 3. Run the GUI Launcher (Recommended)
 python launcher.py
 
-# 3. Or Run from the Command Line
+# 4. Or Run from the Command Line
 python main.py scenarios/three_agent_barter.yaml 42
 ```

@@ -125,20 +125,23 @@ Utility :=
 *   **Note:** Cobb-Douglas is implemented as a special case of CES where `rho` approaches 0.
 
 #### 3.2 Trade & Surplus
-The core logic for initiating and executing a trade.
+The logic for initiating and executing a trade is a multi-step process designed to find a mutually beneficial integer exchange.
 
 ```text
-// Surplus is the potential gain from trade between two agents
+// 1. A potential for trade is identified if there is a positive surplus.
 surplus(i, j) := max(i.bid - j.ask, j.bid - i.ask)
 
-// The transaction price is the midpoint of the overlapping quotes
-price(seller, buyer) := 0.5 * (seller.ask + buyer.bid)
+// 2. A search is conducted for a viable trade. This involves:
+//    a. Iterating through trade sizes ΔA from 1 to dA_max.
+//    b. For each ΔA, testing multiple candidate prices within the
+//       [seller.ask, buyer.bid] range.
 
-// Trade execution involves a search for a mutually beneficial integer trade
-// using round-half-up for quantities.
+// 3. The first (ΔA, price) pair that yields a rounded ΔB where
+//    both agents' utility strictly increases is executed.
 ΔB = floor(price * ΔA + 0.5)
 ```
-*   **Invariants:** A trade only executes if it results in a strict utility increase (`ΔU > 0`) for *both* parties. The search for a valid trade block (`ΔA`, `ΔB`) starts at `ΔA=1` and proceeds up to `dA_max`.
+*   **Source of Truth:** `src/vmt_engine/systems/matching.py:find_compensating_block`
+*   **Invariants:** A trade only executes if it results in a strict utility increase (`ΔU > 0`) for *both* parties. The final transaction price is the one discovered during the search, not necessarily the midpoint of the initial quotes.
 
 ### 4. Simulation Loop (Tick Cycle)
 
