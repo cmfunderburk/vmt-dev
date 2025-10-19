@@ -51,6 +51,15 @@ class Simulation:
             'resource_max_amount': scenario_config.params.resource_max_amount,
             'resource_regen_cooldown': scenario_config.params.resource_regen_cooldown,
             'trade_cooldown_ticks': scenario_config.params.trade_cooldown_ticks,
+            # Money system parameters (Phase 1)
+            'exchange_regime': scenario_config.params.exchange_regime,
+            'money_mode': scenario_config.params.money_mode,
+            'money_scale': scenario_config.params.money_scale,
+            'lambda_money': scenario_config.params.lambda_money,
+            'lambda_update_rate': scenario_config.params.lambda_update_rate,
+            'lambda_bounds': scenario_config.params.lambda_bounds,
+            'liquidity_gate': scenario_config.params.liquidity_gate,
+            'earn_money_enabled': scenario_config.params.earn_money_enabled,
         }
         
         # Mode tracking - initialize based on schedule if present
@@ -214,6 +223,16 @@ class Simulation:
             if self._should_execute_system(system, self.current_mode):
                 system.execute(self)
         
+        # Log tick state for observability (Phase 1)
+        if self.telemetry:
+            active_pairs = self._get_active_exchange_pairs()
+            self.telemetry.log_tick_state(
+                self.tick,
+                self.current_mode,
+                self.params.get('exchange_regime', 'barter_only'),
+                active_pairs
+            )
+        
         self.tick += 1
     
     def _should_execute_system(self, system, mode: str) -> bool:
@@ -249,6 +268,35 @@ class Simulation:
         
         # Placeholder for future mode-specific state cleanup
         pass
+    
+    def _get_active_exchange_pairs(self) -> list[str]:
+        """
+        Determine which exchange pairs are currently active based on mode and regime.
+        
+        This implements Option A-plus observability from the money SSOT:
+        - Temporal control (mode_schedule): WHEN activities occur
+        - Type control (exchange_regime): WHAT bilateral exchanges are permitted
+        
+        Returns:
+            List of active exchange pair types (e.g., ["A<->B"] or ["A<->M", "B<->M"])
+        """
+        # If in forage mode, no trading occurs
+        if self.current_mode == "forage":
+            return []
+        
+        # In trade or both mode, determine allowed pairs by exchange_regime
+        regime = self.params.get('exchange_regime', 'barter_only')
+        
+        if regime == "barter_only":
+            return ["A<->B"]
+        elif regime == "money_only":
+            return ["A<->M", "B<->M"]
+        elif regime in ["mixed", "mixed_liquidity_gated"]:
+            # Phase 1: report all possible pairs
+            # Phase 4/5 will refine for liquidity gating
+            return ["A<->M", "B<->M", "A<->B"]
+        else:
+            return []
     
     def close(self):
         """Close all loggers and release resources."""
