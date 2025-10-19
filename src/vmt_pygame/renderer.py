@@ -76,7 +76,9 @@ class VMTRenderer:
         
         # Create window
         self.screen = pygame.display.set_mode((self.width, self.window_height))
-        pygame.display.set_caption("VMT v1 - Virtual Market Testbed")
+        scenario_name = simulation.config.name
+        seed = simulation.seed
+        pygame.display.set_caption(f"VMT v1 - {scenario_name} (seed: {seed})")
         
         # Scale fonts proportionally (minimum 8px, maximum 14px for base, 6-10px for small)
         base_font_size = max(8, min(14, self.cell_size // 4))
