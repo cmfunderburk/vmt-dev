@@ -164,7 +164,7 @@ class TelemetryManager:
     def log_decision(self, tick: int, agent_id: int, chosen_partner_id: Optional[int],
                      surplus_with_partner: Optional[float], target_type: str,
                      target_x: Optional[int], target_y: Optional[int],
-                     num_neighbors: int, alternatives: str = ""):
+                     num_neighbors: int, alternatives: str = "", mode: str = "both"):
         """
         Log an agent's decision.
         
@@ -188,7 +188,7 @@ class TelemetryManager:
             target_type, 
             target_x if target_x is None else int(target_x),  # Convert numpy int to Python int
             target_y if target_y is None else int(target_y),  # Convert numpy int to Python int
-            num_neighbors, alternatives
+            num_neighbors, alternatives, mode
         ))
         
         # Flush buffer if needed
@@ -301,6 +301,17 @@ class TelemetryManager:
             buyer_feasible, seller_feasible, result, result_reason
         )
     
+    def log_mode_change(self, tick: int, old_mode: str, new_mode: str):
+        """Log a mode transition."""
+        if not self.config.use_database or self.db is None or self.run_id is None:
+            return
+        
+        self.db.execute("""
+            INSERT INTO mode_changes (run_id, tick, old_mode, new_mode)
+            VALUES (?, ?, ?, ?)
+        """, (self.run_id, tick, old_mode, new_mode))
+        self.db.commit()
+    
     def _flush_agent_snapshots(self):
         """Flush agent snapshot buffer to database."""
         if not self._agent_snapshot_buffer or self.db is None:
@@ -337,8 +348,8 @@ class TelemetryManager:
         self.db.executemany("""
             INSERT INTO decisions
             (run_id, tick, agent_id, chosen_partner_id, surplus_with_partner,
-             target_type, target_x, target_y, num_neighbors, alternatives)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             target_type, target_x, target_y, num_neighbors, alternatives, mode)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, self._decision_buffer)
         self.db.commit()
         self._decision_buffer.clear()

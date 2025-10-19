@@ -53,6 +53,14 @@ class Simulation:
             'trade_cooldown_ticks': scenario_config.params.trade_cooldown_ticks,
         }
         
+        # Mode tracking - initialize based on schedule if present
+        if scenario_config.mode_schedule:
+            self.current_mode: str = scenario_config.mode_schedule.get_mode_at_tick(0)
+        else:
+            self.current_mode: str = "both"
+        self._previous_mode: Optional[str] = None
+        self._mode_change_tick: Optional[int] = None
+        
         # Initialize systems in the correct tick order
         self.systems = [
             PerceptionSystem(),
@@ -183,15 +191,64 @@ class Simulation:
             self.telemetry.finalize_run(max_ticks)
     
     def step(self):
-        """Execute one simulation tick by running each system in order.
+        """Execute one simulation tick with mode-aware phase execution.
         
         7-phase tick order (see PLANS/Planning-Post-v1.md):
         1. Perception → 2. Decision → 3. Movement → 4. Trade → 
         5. Forage → 6. Resource Regeneration → 7. Housekeeping
         """
+        # Determine current mode
+        if self.config.mode_schedule:
+            new_mode = self.config.mode_schedule.get_mode_at_tick(self.tick)
+            
+            # Detect and log mode changes
+            if new_mode != self.current_mode:
+                self._handle_mode_transition(self.current_mode, new_mode)
+                self.current_mode = new_mode
+                self._mode_change_tick = self.tick
+        else:
+            self.current_mode = "both"
+        
+        # Execute systems conditionally based on mode
         for system in self.systems:
-            system.execute(self)
+            if self._should_execute_system(system, self.current_mode):
+                system.execute(self)
+        
         self.tick += 1
+    
+    def _should_execute_system(self, system, mode: str) -> bool:
+        """Determine if a system should execute in the current mode."""
+        from .systems.perception import PerceptionSystem
+        from .systems.decision import DecisionSystem
+        from .systems.movement import MovementSystem
+        from .systems.foraging import ForageSystem, ResourceRegenerationSystem
+        from .systems.trading import TradeSystem
+        from .systems.housekeeping import HousekeepingSystem
+        
+        # Always execute core systems
+        always_execute = (PerceptionSystem, DecisionSystem, MovementSystem, 
+                         ResourceRegenerationSystem, HousekeepingSystem)
+        
+        if isinstance(system, always_execute):
+            return True
+        
+        # Mode-specific systems
+        if isinstance(system, TradeSystem):
+            return mode in ["trade", "both"]
+        
+        if isinstance(system, ForageSystem):
+            return mode in ["forage", "both"]
+        
+        return True
+    
+    def _handle_mode_transition(self, old_mode: str, new_mode: str):
+        """Handle bookkeeping when modes change."""
+        # Log the transition
+        if self.telemetry:
+            self.telemetry.log_mode_change(self.tick, old_mode, new_mode)
+        
+        # Placeholder for future mode-specific state cleanup
+        pass
     
     def close(self):
         """Close all loggers and release resources."""

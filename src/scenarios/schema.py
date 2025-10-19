@@ -3,7 +3,8 @@ Scenario schema definitions and validation.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any, Literal, Optional
+from enum import Enum
 
 
 @dataclass
@@ -25,6 +26,43 @@ class ResourceSeed:
     """Resource seeding configuration."""
     density: float
     amount: int | dict[str, Any]  # Can be int or distribution spec
+
+
+class ModeType(str, Enum):
+    """Types of mode scheduling patterns."""
+    GLOBAL_CYCLE = "global_cycle"
+    AGENT_SPECIFIC = "agent_specific"  # Future
+    SPATIAL_ZONES = "spatial_zones"    # Future
+
+
+@dataclass
+class ModeSchedule:
+    """Configuration for alternating phase modes."""
+    type: Literal["global_cycle", "agent_specific", "spatial_zones"]
+    forage_ticks: int
+    trade_ticks: int
+    start_mode: Literal["forage", "trade"] = "forage"
+    
+    def validate(self) -> None:
+        """Validate mode schedule parameters."""
+        if self.forage_ticks <= 0:
+            raise ValueError(f"forage_ticks must be positive, got {self.forage_ticks}")
+        if self.trade_ticks <= 0:
+            raise ValueError(f"trade_ticks must be positive, got {self.trade_ticks}")
+        if self.type != "global_cycle":
+            raise NotImplementedError(f"Mode type {self.type} not yet implemented")
+    
+    def get_mode_at_tick(self, tick: int) -> Literal["forage", "trade", "both"]:
+        """Determine the mode for a given tick."""
+        if self.type == "global_cycle":
+            cycle_length = self.forage_ticks + self.trade_ticks
+            position_in_cycle = tick % cycle_length
+            
+            if self.start_mode == "forage":
+                return "forage" if position_in_cycle < self.forage_ticks else "trade"
+            else:
+                return "trade" if position_in_cycle < self.trade_ticks else "forage"
+        return "both"
 
 
 @dataclass
@@ -55,6 +93,7 @@ class ScenarioConfig:
     utilities: UtilitiesMix
     params: ScenarioParams
     resource_seed: ResourceSeed
+    mode_schedule: Optional[ModeSchedule] = None
     
     def validate(self) -> None:
         """Validate scenario parameters."""
@@ -135,4 +174,8 @@ class ScenarioConfig:
                     raise ValueError("Linear utility requires 'vA' and 'vB' parameters")
                 if util.params["vA"] <= 0 or util.params["vB"] <= 0:
                     raise ValueError("Linear utility values must be positive")
+        
+        # Validate mode schedule if present
+        if self.mode_schedule:
+            self.mode_schedule.validate()
 

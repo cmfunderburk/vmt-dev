@@ -122,6 +122,7 @@ class TelemetryDatabase:
                 target_y INTEGER,
                 num_neighbors INTEGER NOT NULL,
                 alternatives TEXT,
+                mode TEXT,
                 FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id)
             )
         """)
@@ -204,6 +205,23 @@ class TelemetryDatabase:
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_trade_attempts_run_tick 
             ON trade_attempts(run_id, tick)
+        """)
+        
+        # Mode transition tracking
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS mode_changes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id INTEGER NOT NULL,
+                tick INTEGER NOT NULL,
+                old_mode TEXT NOT NULL,
+                new_mode TEXT NOT NULL,
+                FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id)
+            )
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_mode_changes_run_tick 
+            ON mode_changes(run_id, tick)
         """)
         
         self.conn.commit()

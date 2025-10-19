@@ -1,0 +1,40 @@
+schema_version: 1
+name: "Mode Toggle Demo"
+N: 20
+agents: 10
+
+# Mode schedule configuration
+mode_schedule:
+  type: global_cycle
+  forage_ticks: 15  # 15 ticks of foraging
+  trade_ticks: 10   # 10 ticks of trading
+  start_mode: forage
+
+initial_inventories:
+  A: 5
+  B: 5
+
+utilities:
+  mix:
+    - type: ces
+      weight: 1.0
+      params:
+        rho: 0.5
+        wA: 0.5
+        wB: 0.5
+
+params:
+  vision_radius: 5
+  interaction_radius: 1
+  move_budget_per_tick: 1
+  dA_max: 5
+  forage_rate: 1
+  resource_growth_rate: 1
+  resource_max_amount: 5
+  resource_regen_cooldown: 3
+  trade_cooldown_ticks: 5
+
+resource_seed:
+  density: 0.2
+  amount: 3
+

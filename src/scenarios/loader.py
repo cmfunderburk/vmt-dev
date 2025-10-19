@@ -6,7 +6,7 @@ import yaml
 from pathlib import Path
 from .schema import (
     ScenarioConfig, ScenarioParams, UtilitiesMix, 
-    UtilityConfig, ResourceSeed
+    UtilityConfig, ResourceSeed, ModeSchedule
 )
 
 
@@ -71,6 +71,17 @@ def load_scenario(path: str) -> ScenarioConfig:
             amount=resource_data['amount']
         )
         
+        # Parse mode schedule (optional)
+        mode_schedule = None
+        if 'mode_schedule' in data:
+            mode_data = data['mode_schedule']
+            mode_schedule = ModeSchedule(
+                type=mode_data['type'],
+                forage_ticks=mode_data['forage_ticks'],
+                trade_ticks=mode_data['trade_ticks'],
+                start_mode=mode_data.get('start_mode', 'forage')
+            )
+        
         # Create scenario config
         scenario = ScenarioConfig(
             schema_version=data['schema_version'],
@@ -80,7 +91,8 @@ def load_scenario(path: str) -> ScenarioConfig:
             initial_inventories=data['initial_inventories'],
             utilities=utilities,
             params=params,
-            resource_seed=resource_seed
+            resource_seed=resource_seed,
+            mode_schedule=mode_schedule
         )
         
         # Validate

@@ -79,4 +79,17 @@ class LogConfig:
     def debug(cls) -> 'LogConfig':
         """Create a debug-level config."""
         return cls(level=LogLevel.DEBUG)
+    
+    @classmethod
+    def minimal(cls) -> 'LogConfig':
+        """Create a minimal config for testing (no snapshots, only trades)."""
+        return cls(
+            level=LogLevel.SUMMARY,
+            agent_snapshot_frequency=0,
+            resource_snapshot_frequency=0,
+            log_decisions=False,
+            log_trade_attempts=False,
+            log_agent_snapshots=False,
+            log_resource_snapshots=False
+        )
 
