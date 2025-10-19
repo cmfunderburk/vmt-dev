@@ -104,11 +104,13 @@ tmp/
 .temp/
 local/
 .dump/
-docs/tmp/.DS_Store
 
 # Exception: Track docs/tmp/ for versioned temporary documentation
 !docs/tmp/
 !docs/tmp/**
+
+
+docs/tmp/.DS_Store
 
 # ---- Docs builds ----
 docs/_build/
