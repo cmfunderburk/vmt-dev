@@ -312,6 +312,29 @@ class TelemetryManager:
         """, (self.run_id, tick, old_mode, new_mode))
         self.db.commit()
     
+    def log_tick_state(self, tick: int, current_mode: str, 
+                       exchange_regime: str, active_pairs: list[str]):
+        """
+        Log tick-level mode and exchange regime state.
+        
+        Args:
+            tick: Current simulation tick
+            current_mode: Current mode from mode_schedule ("forage" | "trade" | "both")
+            exchange_regime: Exchange regime from params ("barter_only" | "money_only" | "mixed" | "mixed_liquidity_gated")
+            active_pairs: List of active exchange pair types (e.g., ["A<->M", "B<->M"])
+        """
+        if not self.config.use_database or self.db is None or self.run_id is None:
+            return
+        
+        # Convert active_pairs list to JSON string for storage
+        active_pairs_json = json.dumps(active_pairs)
+        
+        self.db.execute("""
+            INSERT INTO tick_states (run_id, tick, current_mode, exchange_regime, active_pairs)
+            VALUES (?, ?, ?, ?, ?)
+        """, (self.run_id, tick, current_mode, exchange_regime, active_pairs_json))
+        self.db.commit()
+    
     def _flush_agent_snapshots(self):
         """Flush agent snapshot buffer to database."""
         if not self._agent_snapshot_buffer or self.db is None:

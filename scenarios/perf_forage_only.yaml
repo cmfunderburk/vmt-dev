@@ -1,0 +1,92 @@
+# Performance Benchmark: Forage-Only Mode
+# 400 agents, 50x50 grid, high resource density, slow respawn
+# 75 CES agents + 25 Linear agents with randomized utility parameters
+# Seed 42 for deterministic reproducibility
+
+schema_version: 1
+name: perf_forage_only
+N: 50
+agents: 400
+initial_inventories:
+  A: 10
+  B: 10
+
+# 75% CES, 25% Linear with diverse parameters
+# CES: rho ∈ (-1.5, 0.8), wA=wB=1.0 for simplicity
+# Linear: vA, vB varied to create heterogeneous preferences
+utilities:
+  mix:
+    # CES utilities (75% weight total)
+    - type: ces
+      weight: 0.15
+      params:
+        rho: -0.45
+        wA: 1.0
+        wB: 1.0
+    - type: ces
+      weight: 0.15
+      params:
+        rho: 0.23
+        wA: 1.0
+        wB: 1.0
+    - type: ces
+      weight: 0.15
+      params:
+        rho: -0.89
+        wA: 1.0
+        wB: 1.0
+    - type: ces
+      weight: 0.15
+      params:
+        rho: 0.57
+        wA: 1.0
+        wB: 1.0
+    - type: ces
+      weight: 0.15
+      params:
+        rho: -0.23
+        wA: 1.0
+        wB: 1.0
+    # Linear utilities (25% weight total)
+    - type: linear
+      weight: 0.125
+      params:
+        vA: 1.0
+        vB: 1.3
+    - type: linear
+      weight: 0.125
+      params:
+        vA: 1.2
+        vB: 1.0
+
+params:
+  # Economic
+  spread: 0.05
+  dA_max: 5
+  epsilon: 0.001
+  
+  # Spatial
+  vision_radius: 10
+  interaction_radius: 1
+  move_budget_per_tick: 1
+  
+  # Resources - HIGH DENSITY, SLOW RESPAWN
+  forage_rate: 1
+  resource_growth_rate: 1
+  resource_regen_cooldown: 20  # Slow respawn
+  
+  # Trading
+  trade_cooldown_ticks: 10
+  beta: 0.95
+
+resource_seed:
+  density: 0.40  # High density (40% of cells have resources)
+  amount: 8      # High amount per cell
+
+# Forage-only mode (use long forage cycles with minimal trade time)
+mode_schedule:
+  type: global_cycle
+  forage_ticks: 1000
+  trade_ticks: 1
+  start_mode: forage
+
