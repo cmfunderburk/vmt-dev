@@ -9,15 +9,13 @@ from typing import Optional
 
 class LogLevel(IntEnum):
     """Logging verbosity levels."""
-    SUMMARY = 1    # Only successful trades, final snapshots
-    STANDARD = 2   # Decisions + trades + periodic snapshots
-    DEBUG = 3      # Everything including failed trade attempts
+    STANDARD = 1   # Decisions + trades + periodic snapshots (default)
+    DEBUG = 2      # Everything including failed trade attempts
     
     @classmethod
     def from_string(cls, level: str) -> 'LogLevel':
         """Convert string to LogLevel."""
         level_map = {
-            'summary': cls.SUMMARY,
             'standard': cls.STANDARD,
             'debug': cls.DEBUG,
         }
@@ -55,20 +53,10 @@ class LogConfig:
     
     def __post_init__(self):
         """Adjust settings based on log level."""
-        if self.level == LogLevel.SUMMARY:
-            self.agent_snapshot_frequency = 0  # Disable periodic snapshots
-            self.resource_snapshot_frequency = 0
-            self.log_decisions = False
-            self.log_trade_attempts = False
-        elif self.level == LogLevel.STANDARD:
-            self.log_trade_attempts = False
-        elif self.level == LogLevel.DEBUG:
+        if self.level == LogLevel.DEBUG:
             self.log_trade_attempts = True
-    
-    @classmethod
-    def summary(cls) -> 'LogConfig':
-        """Create a summary-level config."""
-        return cls(level=LogLevel.SUMMARY)
+        else:
+            self.log_trade_attempts = False
     
     @classmethod
     def standard(cls) -> 'LogConfig':
@@ -84,7 +72,7 @@ class LogConfig:
     def minimal(cls) -> 'LogConfig':
         """Create a minimal config for testing (no snapshots, only trades)."""
         return cls(
-            level=LogLevel.SUMMARY,
+            level=LogLevel.STANDARD,
             agent_snapshot_frequency=0,
             resource_snapshot_frequency=0,
             log_decisions=False,

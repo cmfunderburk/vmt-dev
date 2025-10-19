@@ -40,7 +40,7 @@ SCENARIOS = {
 }
 
 
-def run_benchmark(scenario_name: str, ticks: int, seed: int = 42, log_level: str = "summary"):
+def run_benchmark(scenario_name: str, ticks: int, seed: int = 42, log_level: str = "standard"):
     """
     Run a single benchmark scenario and return timing metrics.
     
@@ -48,7 +48,7 @@ def run_benchmark(scenario_name: str, ticks: int, seed: int = 42, log_level: str
         scenario_name: Key from SCENARIOS dict
         ticks: Number of simulation ticks to run
         seed: Random seed for reproducibility
-        log_level: Logging level ("summary", "standard", "debug", or "off")
+        log_level: Logging level ("standard", "debug", or "off")
     
     Returns:
         dict with timing metrics
@@ -64,9 +64,7 @@ def run_benchmark(scenario_name: str, ticks: int, seed: int = 42, log_level: str
     print('='*70)
     
     # Configure logging
-    if log_level == "summary":
-        log_cfg = LogConfig.summary()
-    elif log_level == "standard":
+    if log_level == "standard":
         log_cfg = LogConfig.standard()
     elif log_level == "debug":
         log_cfg = LogConfig.debug()
@@ -203,9 +201,9 @@ Examples:
     )
     parser.add_argument(
         "--log-level",
-        choices=["summary", "standard", "debug", "off"],
-        default="summary",
-        help="Telemetry logging level (default: summary)"
+        choices=["standard", "debug", "off"],
+        default="standard",
+        help="Telemetry logging level (default: standard)"
     )
     
     args = parser.parse_args()

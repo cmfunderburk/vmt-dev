@@ -237,3 +237,15 @@ As money system phases progress, add:
 - Agent count (400) chosen to significantly stress spatial indexing and trade matching
 - Vision radius (10) and move budget (1) selected to increase computational load
 
+## Related Documents
+
+**Companion baselines with logging enabled:**
+- [Performance Baseline with Standard Logging](performance_baseline_phase1_with_logging.md) - Full analysis of logging overhead
+- [Performance Comparison: Logging Impact](performance_comparison_logging.md) - Quick reference comparing all logging levels
+
+**Key findings:**
+- Standard logging adds 13-39% overhead depending on scenario type
+- Forage scenarios most impacted (38.9% overhead)
+- Exchange scenarios least impacted (12.8% overhead)
+- Summary logging provides minimal benefit in exchange-heavy scenarios
+

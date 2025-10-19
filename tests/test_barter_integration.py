@@ -19,13 +19,13 @@ def test_foundational_barter_demo_determinism_and_trades():
     scenario_path = "scenarios/foundational_barter_demo.yaml"
 
     # Run 1
-    sim1 = Simulation(load_scenario(scenario_path), seed=42, log_config=LogConfig.summary())
+    sim1 = Simulation(load_scenario(scenario_path), seed=42, log_config=LogConfig.standard())
     sim1.run(max_ticks=40)
     final_inventories_1 = [(a.inventory.A, a.inventory.B) for a in sim1.agents]
     trade_count_1 = _count_trades(sim1)
 
     # Run 2 (same seed)
-    sim2 = Simulation(load_scenario(scenario_path), seed=42, log_config=LogConfig.summary())
+    sim2 = Simulation(load_scenario(scenario_path), seed=42, log_config=LogConfig.standard())
     sim2.run(max_ticks=40)
     final_inventories_2 = [(a.inventory.A, a.inventory.B) for a in sim2.agents]
     trade_count_2 = _count_trades(sim2)

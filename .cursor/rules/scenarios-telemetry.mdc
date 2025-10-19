@@ -101,21 +101,22 @@ Telemetry logs all simulation data to `./logs/telemetry.db` using SQLite.
 
 - **Database**: [src/telemetry/database.py](mdc:src/telemetry/database.py) - Schema definitions, table creation
 - **Loggers**: [src/telemetry/db_loggers.py](mdc:src/telemetry/db_loggers.py) - Batched logging logic
-- **Config**: [src/telemetry/config.py](mdc:src/telemetry/config.py) - `LogConfig` levels (SUMMARY, STANDARD, DEBUG)
+- **Config**: [src/telemetry/config.py](mdc:src/telemetry/config.py) - `LogConfig` levels (STANDARD, DEBUG)
 
 #### Log Levels
 
 ```python
 from telemetry.config import LogConfig
 
-# SUMMARY: Only high-level run info
-sim = Simulation(scenario, seed=42, log_config=LogConfig.summary())
-
-# STANDARD: Trades and major events
+# STANDARD: Comprehensive production logging (default)
+# Includes: trades, decisions, agent snapshots, resource snapshots
 sim = Simulation(scenario, seed=42, log_config=LogConfig.standard())
 
-# DEBUG: Full detail (large DB!)
+# DEBUG: Adds failed trade attempt logging (creates large databases)
 sim = Simulation(scenario, seed=42, log_config=LogConfig.debug())
+
+# OFF: No database logging (for performance benchmarks)
+sim = Simulation(scenario, seed=42, log_config=LogConfig(use_database=False))
 ```
 
 #### Database Schema
@@ -203,14 +204,15 @@ trades = cursor.fetchall()
 #### Performance Considerations
 
 - Batching reduces DB overhead (buffers flush at end of tick)
-- DEBUG level creates very large databases (use for short runs)
-- SUMMARY level minimal overhead (production use)
+- STANDARD level is optimized for production use (~13-39% overhead depending on scenario)
+- DEBUG level creates very large databases (use for short runs only)
+- Use `use_database=False` for performance benchmarks (0% overhead)
 - Consider periodic cleanup of old logs
 
 #### Common Telemetry Mistakes
 
 - ❌ Forgetting to flush new buffer in `_flush_all_buffers()`
 - ❌ Not deleting `logs/telemetry.db` after schema changes
-- ❌ Logging at wrong level (DEBUG for everything = huge DB)
+- ❌ Using DEBUG level for long runs (creates very large databases)
 - ❌ Not handling NULL values in optional fields
 - ❌ Breaking foreign key relationships

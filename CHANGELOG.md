@@ -9,11 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Nothing yet
+### Removed - BREAKING CHANGE
+- **Summary Logging Level Removed** (2025-10-19): Removed `LogLevel.SUMMARY` and `LogConfig.summary()` from telemetry system based on performance benchmark evidence showing minimal benefit (<3% in exchange scenarios) while removing valuable decision data.
+  - **Breaking**: Code using `LogConfig.summary()` will raise `AttributeError`
+  - **Breaking**: Code using `LogLevel.SUMMARY` will raise `AttributeError`
+  - **Breaking**: CLI argument `--log-level summary` will raise `argparse` error
+  - **Migration**: Replace all `LogConfig.summary()` with `LogConfig.standard()`
+  - **Rationale**: Performance benchmarks showed summary logging (4.0 TPS) was actually slower than standard logging (4.1 TPS) in exchange scenarios. Trade logging dominates overhead regardless of level. Comprehensive logging is vital for pedagogical and research use.
+  - **Remaining levels**: STANDARD (default, comprehensive production logging) and DEBUG (adds failed trade attempt logging)
+  - **See**: `docs/PLAN_remove_summary_logging.md` for full implementation details
 
 ### Changed
-- Nothing yet
+- **Telemetry Configuration Simplified** (2025-10-19): `LogLevel` enum renumbered (STANDARD=1, DEBUG=2) and `__post_init__` logic simplified to only handle DEBUG level configuration
 
 ### Fixed
 - Nothing yet
