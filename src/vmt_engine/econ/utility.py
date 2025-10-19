@@ -1,5 +1,11 @@
 """
 Utility functions for agent preferences.
+
+Contracts and zero-handling:
+- Inventories A, B are integers; utility returns floats; prices/MRS are floats.
+- CES MRS uses a zero-safe epsilon only for the A/B ratio when either A or B
+  is zero; the utility function itself is not epsilon-shifted.
+- Linear utility has constant MRS vA/vB and reservation bounds equal to MRS.
 """
 
 from __future__ import annotations
@@ -89,7 +95,9 @@ class UCES(Utility):
         self.wB = wB
     
     def u(self, A: int, B: int) -> float:
-        """Compute CES utility."""
+        """Compute CES utility.
+        For negative rho, zero in either good collapses utility toward 0.
+        """
         if A == 0 and B == 0:
             return 0.0
         
@@ -111,8 +119,7 @@ class UCES(Utility):
     def mrs_A_in_B(self, A: int, B: int, eps: float = 1e-12) -> float:
         """
         Compute MRS for CES: (wA/wB) * (A/B)^(ρ-1)
-        
-        Uses zero-safe shift for ratio calculation only when needed.
+        Apply zero-safe shift to the ratio only when A==0 or B==0.
         """
         # Only apply epsilon shift if either A or B is zero
         if A == 0 or B == 0:
@@ -128,9 +135,7 @@ class UCES(Utility):
         return mrs
     
     def reservation_bounds_A_in_B(self, A: int, B: int, eps: float = 1e-12) -> tuple[float, float]:
-        """
-        For CES utility with analytic MRS, reservation bounds are (mrs, mrs).
-        """
+        """For CES utility with analytic MRS, reservation bounds are (mrs, mrs)."""
         mrs = self.mrs_A_in_B(A, B, eps)
         return (mrs, mrs)
 

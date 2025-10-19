@@ -1,5 +1,12 @@
 """
-Matching and trading system.
+Matching and trading helpers.
+
+Determinism and discrete search principles:
+- Partner choice uses surplus with tie-breaker by lowest id; pair attempts
+  are executed once per tick in a globally sorted (min_id, max_id) order.
+- Round-half-up maps price to integer ΔB via floor(price*ΔA + 0.5).
+- Quotes are stable within a tick; they refresh only in Housekeeping for
+  agents whose inventories changed during the tick.
 """
 
 from __future__ import annotations
@@ -118,8 +125,9 @@ def generate_price_candidates(ask: float, bid: float, dA: int) -> list[float]:
     """
     Generate candidate prices to try within [ask, bid] range.
     
-    Strategy: Try prices that would give integer dB values, plus some
-    evenly-spaced samples across the range.
+    Strategy: Prefer prices that yield integer ΔB at this ΔA, plus a small
+    evenly-spaced cover across [ask, bid] to avoid missing feasible blocks
+    when midpoint rounding fails.
     
     Args:
         ask: Seller's minimum acceptable price
@@ -134,7 +142,7 @@ def generate_price_candidates(ask: float, bid: float, dA: int) -> list[float]:
     
     candidates = set()
     
-    # Add prices that give specific integer dB values
+    # Add prices that give specific integer ΔB values
     # This is key for finding mutually beneficial discrete trades
     max_dB = int(bid * dA + 1)
     for target_dB in range(1, min(max_dB + 1, 20)):  # Cap at 20 to avoid excessive candidates
