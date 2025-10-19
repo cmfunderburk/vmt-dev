@@ -190,22 +190,10 @@ Before requesting review:
 ## Notes on Implementation Status
 
 **As of 2025-10-19:**
-- **Phase 1**: ✅ COMPLETE - Infrastructure ready with 78 tests passing, no behavioral changes
-- **Telemetry**: ✅ UPDATED - Summary logging removed (simplified to 2 levels: STANDARD, DEBUG)
-- **Phase 2**: 🔄 REPLANNED - Initial attempt abandoned, now using atomic sub-phases (2a, 2b, 2c)
-- **Phases 3-6**: 📋 PLANNED - Awaiting Phase 2 completion
-
-**Current Testing**: 95 tests passing (up from 63 baseline)
-- Phase 1 tests: 6 (4 unit, 2 integration)
-- Telemetry config tests: 17 (added 2025-10-19)
-- Performance tests: 7
-- Fixed spatial matching tests: 3
-- Legacy tests: 62
-
-**Performance Baseline Established**:
-- Exchange-only scenario: 4.7 TPS (critical threshold >5 TPS)
-- Both modes: 8.7 TPS
-- Forage-only: 22.9 TPS
+- **Phase 1**: ✅ COMPLETE - Infrastructure ready, no behavioral changes.
+- **Phase 2**: 🔄 REPLANNED - Now using atomic sub-phases (2a, 2b, 2c).
+- **Phases 3-6**: 📋 PLANNED - Awaiting Phase 2 completion.
+- **Testing**: All tests must pass
 
 See `docs/BIG/phase2_postmortem.md` for Phase 2 replanning rationale.
 Total estimated effort: 50-65 hours across all phases.

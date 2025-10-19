@@ -141,25 +141,6 @@ def calculate(a, b, mode="default"):  # mode is optional
 2. Deprecate old function
 3. Follow deprecation workflow above
 
-### Removing Configuration Fields
-
-Example: The unused `export_csv` and `csv_dir` fields in `src/telemetry/config.py`
-
-**Option 1: Leave as harmless (preferred if low complexity)**
-- Add comment: `# Deprecated: No longer used as of 2025-10-19`
-- Update docstring to note deprecation
-- Don't validate or process the field
-
-**Option 2: Full removal (if field causes confusion)**
-1. Add deprecation warning in `__init__`:
-   ```python
-   if export_csv is not None:
-       warnings.warn("export_csv is deprecated and ignored", DeprecationWarning)
-   ```
-2. Wait grace period
-3. Remove parameter from `__init__` signature
-4. Remove from dataclass fields
-
 ### Moving Code Between Modules
 
 When moving functions/classes to new locations:

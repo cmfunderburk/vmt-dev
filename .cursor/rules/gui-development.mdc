@@ -5,318 +5,47 @@ description: Guidelines for GUI applications (PyQt5, Pygame) and entry points
 ## GUI Development Guidelines
 
 ### Entry Points
+- CLI with Pygame viz: `python main.py scenarios/three_agent_barter.yaml --seed 42`
+- GUI launcher: `python launcher.py`
+- Log viewer: `python view_logs.py`
 
-Three main entry points in project root:
+### Modules
+- Launcher (PyQt5): `src/vmt_launcher/`
+- Log Viewer (PyQt5): `src/vmt_log_viewer/`
+- Pygame Renderer: `src/vmt_pygame/renderer.py`
 
-#### 1. CLI with Pygame Visualization - [main.py](mdc:main.py)
-
-```bash
-python main.py scenarios/three_agent_barter.yaml --seed 42
-```
-
-**Controls**:
-- SPACE: Pause/Resume
-- R: Reset simulation
-- S: Step one tick (paused)
-- UP/DOWN: Speed control
-- Q: Quit
-- Arrow keys: Camera scroll (large grids)
-
-**Requirements**: Pygame, X11/display
-
-#### 2. GUI Launcher - [launcher.py](mdc:launcher.py)
-
-```bash
-python launcher.py
-```
-
-Features:
-- Browse and select scenarios
-- Configure seed
+### Launcher Features
+- Scenario browsing/selection
+- Seed configuration
 - Launch simulations
 - Scenario builder dialog
 
-**Implementation**: [src/vmt_launcher/](mdc:src/vmt_launcher/)
-
-#### 3. Log Viewer - [view_logs.py](mdc:view_logs.py)
-
-```bash
-python view_logs.py
-```
-
-Features:
+### Log Viewer Features
 - Timeline scrubber
-- Agent state inspection
+- Agent inspection
 - Trade history
 - CSV export
 
-**Implementation**: [src/vmt_log_viewer/](mdc:src/vmt_log_viewer/)
-
-### PyQt5 Applications
-
-Dependencies in [requirements.txt](mdc:requirements.txt):
-```
-PyQt5>=5.15.0
-```
-
-#### Launcher Application Structure
-
-Main files in [src/vmt_launcher/](mdc:src/vmt_launcher/):
-- `launcher.py` - Main window, scenario selection
-- `scenario_builder.py` - Dialog for creating scenarios
-- `widgets/` - Reusable UI components
-
-**Common pattern**:
-```python
-from PyQt5.QtWidgets import QApplication, QMainWindow
-import sys
-
-class MyWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setup_ui()
-    
-    def setup_ui(self):
-        # Build UI
-        pass
-
-def main():
-    app = QApplication(sys.argv)
-    window = MyWindow()
-    window.show()
-    sys.exit(app.exec_())
-```
-
-#### Log Viewer Application Structure
-
-Main files in [src/vmt_log_viewer/](mdc:src/vmt_log_viewer/):
-- `__init__.py` - Exports `LogViewerWindow`
-- `main_window.py` - Main window implementation
-- `widgets/` - Agent view, trade view, etc.
-
-**Database access**:
-```python
-from telemetry.database import TelemetryDatabase
-
-db = TelemetryDatabase("logs/telemetry.db")
-db.connect()
-runs = db.get_all_runs()  # Get available simulation runs
-# ... query data for visualization
-db.close()
-```
-
 ### Pygame Visualization
+- Shows grid cells, agents, trades
+- Camera scrolling for large grids
+- Real-time info (tick count, stats)
 
-Renderer in [src/vmt_pygame/renderer.py](mdc:src/vmt_pygame/renderer.py)
+### Patterns & Tips (PyQt5)
+- Keep simulation logic separate from UI
+- Use threads (`QThread`) for long sims; keep UI responsive
+- Provide tooltips/help; handle empty data gracefully
+- Validate inputs before creating scenarios
 
-#### Renderer Usage
-
-```python
-from vmt_pygame.renderer import VMTRenderer
-from vmt_engine.simulation import Simulation
-
-sim = Simulation(scenario, seed=42)
-renderer = VMTRenderer(sim)  # Auto-detect cell size
-
-# Render loop
-clock = pygame.time.Clock()
-while running:
-    # Handle events
-    for event in pygame.event.get():
-        if event.type == pygame.KEYDOWN:
-            # Handle keys
-            pass
-    
-    # Update simulation
-    sim.step()
-    
-    # Render
-    renderer.render()
-    
-    # Frame rate
-    clock.tick(tick_rate)
-
-pygame.quit()
-```
-
-#### Visualization Features
-
-- **Grid cells**: Resource patches, agents
-- **Agent visualization**: Colored circles with IDs
-- **Trade animations**: Lines between trading agents
-- **Camera scrolling**: For large grids
-- **Real-time info**: Tick count, agent stats
-
-#### Camera Control (Large Grids)
-
-```python
-# In renderer
-keys = pygame.key.get_pressed()
-renderer.handle_camera_input(keys)
-
-# Arrow keys scroll camera
-# Camera offset affects rendering coordinates
-```
-
-### GUI Development Patterns
-
-#### Loading Scenarios in GUI
-
-```python
-from scenarios.loader import load_scenario
-from PyQt5.QtWidgets import QFileDialog
-
-# File dialog
-scenario_path, _ = QFileDialog.getOpenFileName(
-    self,
-    "Select Scenario",
-    "scenarios/",
-    "YAML Files (*.yaml)"
-)
-
-if scenario_path:
-    try:
-        scenario = load_scenario(scenario_path)
-        # ... use scenario
-    except Exception as e:
-        # Show error dialog
-        QMessageBox.critical(self, "Error", str(e))
-```
-
-#### Running Simulation from GUI
-
-```python
-from vmt_engine.simulation import Simulation
-from telemetry.config import LogConfig
-
-# Create simulation
-sim = Simulation(scenario, seed=seed_value, log_config=LogConfig.standard())
-
-# Option 1: Run to completion
-sim.run(max_ticks=100)
-
-# Option 2: Step-by-step control
-while sim.tick < max_ticks:
-    sim.step()
-    # Update UI
-    QApplication.processEvents()  # Keep UI responsive
-```
-
-#### Threading for Long Simulations
-
-```python
-from PyQt5.QtCore import QThread, pyqtSignal
-
-class SimulationThread(QThread):
-    progress = pyqtSignal(int)  # Emit current tick
-    finished = pyqtSignal()
-    
-    def __init__(self, scenario, seed, max_ticks):
-        super().__init__()
-        self.scenario = scenario
-        self.seed = seed
-        self.max_ticks = max_ticks
-    
-    def run(self):
-        sim = Simulation(self.scenario, seed=self.seed)
-        for tick in range(self.max_ticks):
-            sim.step()
-            self.progress.emit(tick)
-        self.finished.emit()
-
-# Usage
-thread = SimulationThread(scenario, 42, 100)
-thread.progress.connect(self.update_progress)
-thread.finished.connect(self.simulation_complete)
-thread.start()
-```
-
-### Testing GUI Applications
-
-GUI testing is **manual** (no automated tests currently).
-
-**Test checklist**:
-1. Launch without errors: `python launcher.py`
-2. Load scenario successfully
-3. Run simulation without crashes
-4. Verify visualization updates
-5. Test all controls (pause, step, reset, etc.)
-6. Check log viewer displays data correctly
-7. Verify CSV export works
-
-### Headless Mode (No GUI)
-
-For servers/CI without display:
-
-```bash
-# Set PYTHONPATH for imports
-export PYTHONPATH=.:src
-
-# Run programmatically
-python your_script.py
-```
-
-```python
-# your_script.py
-from vmt_engine.simulation import Simulation
-from scenarios.loader import load_scenario
-from telemetry.config import LogConfig
-
-scenario = load_scenario("scenarios/three_agent_barter.yaml")
-sim = Simulation(scenario, seed=42, log_config=LogConfig.standard())
-sim.run(max_ticks=100)
-
-print(f"Completed {sim.tick} ticks")
-print(f"Total agents: {len(sim.agents)}")
-# Access results from sim.agents, or query telemetry DB
-```
-
-### Common GUI Issues
-
-#### PyQt5 Import Errors
-```bash
-# Verify installed
-pip list | grep PyQt5
-
-# Reinstall if needed
-pip install --force-reinstall PyQt5
-```
-
-#### Pygame Display Issues (WSL/Remote)
-```bash
-# Error: "No available video device"
-# Solution: Ensure X server running (VcXsrv, Xming)
-
-export DISPLAY=:0
-python main.py scenarios/three_agent_barter.yaml
-```
-
-#### ALSA Warnings (Audio)
-```
-# Warnings like "ALSA lib confmisc.c:855: cannot find card"
-# Safe to ignore (no audio needed for VMT)
-```
-
-#### GUI Freezes During Long Simulation
-```python
-# Solution: Use QThread for simulation
-# OR call QApplication.processEvents() in loop
-QApplication.processEvents()
-```
-
-### GUI Development Best Practices
-
-1. **Separation of concerns**: Keep simulation logic separate from UI
-2. **Error handling**: Catch and display exceptions to user
-3. **Progress feedback**: Show progress for long operations
-4. **Responsive UI**: Use threads for heavy computation
-5. **Input validation**: Validate user input before creating scenarios
-6. **Consistent styling**: Follow existing PyQt5 patterns in codebase
+### Troubleshooting
+- Display (WSL/remote): ensure X server; `export DISPLAY=:0`
+- PyQt5 import: verify installation; reinstall if needed
+- Audio warnings (ALSA): safe to ignore
+- UI freezes: use `QThread` or periodically call `QApplication.processEvents()`
 
 ### References
-
-- **PyQt5 docs**: https://doc.qt.io/qtforpython/
-- **Pygame docs**: https://www.pygame.org/docs/
-- **Launcher code**: [src/vmt_launcher/](mdc:src/vmt_launcher/)
-- **Log viewer code**: [src/vmt_log_viewer/](mdc:src/vmt_log_viewer/)
-- **Renderer code**: [src/vmt_pygame/renderer.py](mdc:src/vmt_pygame/renderer.py)
+- PyQt5 docs: https://doc.qt.io/qtforpython/
+- Pygame docs: https://www.pygame.org/docs/
+- Launcher: [src/vmt_launcher/](mdc:src/vmt_launcher/)
+- Log viewer: [src/vmt_log_viewer/](mdc:src/vmt_log_viewer/)
+- Renderer: [src/vmt_pygame/renderer.py](mdc:src/vmt_pygame/renderer.py)

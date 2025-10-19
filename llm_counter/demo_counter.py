@@ -26,7 +26,7 @@ class SimpleTokenCounter:
         
         # File patterns to include/exclude
         self.include_extensions = {
-            '.py', '.md', '.txt', '.json', '.toml', '.yml', '.yaml',
+            '.py', '.md', '.mdc', '.txt', '.json', '.toml', '.yml', '.yaml',
             '.js', '.ts', '.html', '.css', '.sh', '.cfg', '.ini'
         }
         
@@ -63,7 +63,7 @@ class SimpleTokenCounter:
         name = file_path.name.lower()
         
         type_map = {
-            '.py': 'Python', '.md': 'Markdown', '.txt': 'Text',
+            '.py': 'Python', '.md': 'Markdown', '.mdc': 'Markdown', '.txt': 'Text',
             '.json': 'JSON', '.toml': 'TOML', '.yml': 'YAML', '.yaml': 'YAML',
             '.js': 'JavaScript', '.ts': 'TypeScript', '.html': 'HTML',
             '.css': 'CSS', '.sh': 'Shell', '.cfg': 'Config', '.ini': 'Config'

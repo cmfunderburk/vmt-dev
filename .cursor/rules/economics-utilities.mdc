@@ -5,240 +5,39 @@ description: Guidelines for economic logic, utility functions, and trading algor
 ## Economics & Utility Function Guidelines
 
 ### Utility Functions
-
-Implemented in [src/vmt_engine/econ/utility.py](mdc:src/vmt_engine/econ/utility.py)
-
-#### Supported Types
-
-**1. CES (Constant Elasticity of Substitution)**
-```python
-class UCES:
-    """U(A, B) = (α·A^ρ + (1-α)·B^ρ)^(1/ρ)"""
-    
-# Special case: ρ → 0 gives Cobb-Douglas
-# U(A, B) ≈ A^α · B^(1-α)
-```
-
-Parameters:
-- `alpha` (α): Share parameter, 0 < α < 1
-- `rho` (ρ): Substitution parameter
-  - ρ → 0: Cobb-Douglas (complementary)
-  - ρ = 1: Perfect substitutes (linear)
-  - ρ < 0: Strong complementarity
-
-**2. Linear (Perfect Substitutes)**
-```python
-class ULinear:
-    """U(A, B) = α·A + (1-α)·B"""
-```
-
-Parameters:
-- `alpha` (α): Weight on good A, 0 ≤ α ≤ 1
-
-#### Factory Pattern
-
-```python
-from vmt_engine.econ.utility import create_utility
-
-# CES
-utility = create_utility("ces", alpha=0.5, rho=0.5)
-
-# Linear
-utility = create_utility("linear", alpha=0.6)
-
-# Usage
-u_value = utility.u(A=10, B=15)  # Returns float
-```
+- Implementations: [src/vmt_engine/econ/utility.py](mdc:src/vmt_engine/econ/utility.py)
+- Supported types: CES (`UCES`) and Linear (`ULinear`)
+- Factory usage: `create_utility("ces", alpha, rho)`; `create_utility("linear", alpha)`
 
 ### Zero-Inventory Guard
-
-**Problem**: CES utility with A=0 or B=0 causes undefined MRS (division by zero).
-
-**Solution**: Epsilon adjustment **only for ratio calculation in reservation bounds**, not for utility itself.
-
-```python
-# ✅ CORRECT - In reservation_bounds_A_in_B
-A_safe = A if A > 0 else epsilon  # e.g., 0.001
-B_safe = B if B > 0 else epsilon
-# Use A_safe, B_safe for MRS ratio
-
-# ✅ CORRECT - Utility always uses true values
-u_value = utility.u(A, B)  # A and B are true integers, no epsilon
-
-# ❌ WRONG - Don't add epsilon to utility calculation
-u_value = utility.u(A + epsilon, B + epsilon)  # NO!
-```
-
-See [src/vmt_engine/econ/utility.py](mdc:src/vmt_engine/econ/utility.py) for implementation details.
+- Use epsilon only in reservation‑bounds ratio; never in utility itself
+- Utility must consume true integer inventories
+- See implementation and tests for examples
 
 ### Reservation Prices & Quotes
+- Bounds: `p_min, p_max = utility.reservation_bounds_A_in_B(A, B, epsilon)`
+- Quotes add spread: `ask = p_min*(1+spread)`, `bid = p_max*(1−spread)`
+- Quotes refresh only in Housekeeping when `agent.inventory_changed=True`
 
-Computed in [src/vmt_engine/systems/quotes.py](mdc:src/vmt_engine/systems/quotes.py)
+### Trading Algorithm (essentials)
+- Partner selection: maximize positive surplus
+- Price search: probe candidate prices p ∈ [ask_seller, bid_buyer] and ΔA ∈ [1..dA_max]
+- Rounding: map quantities with round‑half‑up `floor(p*ΔA + 0.5)`
+- Accept first trade with strict ΔU>0 for both agents; set cooldowns on failure
+- Execute inventory updates with integers; set `inventory_changed=True`; log trade
 
-#### Reservation Bounds
+### Economic Correctness
+- Required: strict utility improvement; inventory feasibility; conservation of goods; determinism; integer quantities; consistent round‑half‑up
+- Common mistakes: ΔU≥0 acceptance; epsilon in utility; inconsistent rounding; mutating quotes mid‑tick; float inventories
 
-```python
-# Generic interface (works for CES and Linear)
-p_min, p_max = utility.reservation_bounds_A_in_B(A, B, epsilon)
+### Testing Pointers
+- See: [tests/test_utility_ces.py](mdc:tests/test_utility_ces.py), [tests/test_utility_linear.py](mdc:tests/test_utility_linear.py)
 
-# p_min: Minimum price to SELL A (ask price basis)
-# p_max: Maximum price to BUY A (bid price basis)
-```
-
-**Economic Interpretation**:
-- `p_min`: MRS at selling point (give up A, get B)
-- `p_max`: MRS at buying point (give up B, get A)
-- These are the agent's "true" reservation prices
-
-#### Quotes (Broadcasted Prices)
-
-```python
-# Add spread for strategic pricing
-ask_A_in_B = p_min * (1 + spread)  # Selling price
-bid_A_in_B = p_max * (1 - spread)  # Buying price
-
-# Quotes stored in agent.quote
-agent.quote.ask_A_in_B  # Float
-agent.quote.bid_A_in_B  # Float
-```
-
-**Important**: Quotes only refresh in Housekeeping phase when `agent.inventory_changed = True`
-
-### Trading Algorithm
-
-#### Partner Selection ([decision.py](mdc:src/vmt_engine/systems/decision.py))
-
-Agents choose partners by evaluating potential surplus:
-
-```python
-# If agent i wants to BUY A from agent j
-surplus = i.bid_A_in_B - j.ask_A_in_B
-
-# If agent i wants to SELL A to agent j  
-surplus = j.bid_A_in_B - i.ask_A_in_B
-
-# Choose partner with maximum positive surplus
-```
-
-#### Price Search ([matching.py](mdc:src/vmt_engine/systems/matching.py))
-
-**Function**: `find_compensating_block(buyer, seller, resource_A, dA_max, ...)`
-
-**Challenge**: Integer discreteness means a theoretically good price might not yield mutually beneficial integer quantities.
-
-**Solution**: Probe multiple prices and quantities:
-
-1. Generate candidate prices in `[ask_seller, bid_buyer]` range
-2. For each price `p`:
-   ```python
-   for delta_A in range(1, dA_max + 1):
-       # Round-half-up (MANDATORY)
-       delta_B = int(np.floor(p * delta_A + 0.5))
-       
-       # Check inventory feasibility
-       if seller has delta_A of A and buyer has delta_B of B:
-           # Check utility improvement
-           dU_buyer = U_buyer_after - U_buyer_before
-           dU_seller = U_seller_after - U_seller_before
-           
-           # Accept FIRST trade with STRICT improvement
-           if dU_buyer > 0 and dU_seller > 0:
-               return (delta_A, delta_B, p)
-   ```
-3. Return `None` if no mutually beneficial integer block found
-
-**Critical**: Must use `floor(p * ΔA + 0.5)` for round-half-up consistency.
-
-#### Trade Execution ([trading.py](mdc:src/vmt_engine/systems/trading.py))
-
-```python
-# Update inventories (integers!)
-buyer.inventory.A += delta_A
-buyer.inventory.B -= delta_B
-seller.inventory.A -= delta_A
-seller.inventory.B += delta_B
-
-# Set flags for quote refresh
-buyer.inventory_changed = True
-seller.inventory_changed = True
-
-# Log trade
-telemetry.log_trade(...)
-```
-
-#### Trade Cooldown
-
-```python
-# If trade fails (no compensating block found)
-buyer.trade_cooldowns[seller.id] = trade_cooldown_ticks
-seller.trade_cooldowns[buyer.id] = trade_cooldown_ticks
-
-# Prevents futile repeated negotiations
-```
-
-### Economic Correctness Checks
-
-When modifying economic logic:
-
-#### ✅ Required Properties
-
-1. **Utility improvement**: ΔU > 0 for BOTH agents (strict inequality)
-2. **Inventory feasibility**: No negative inventories after trade
-3. **Conservation**: Total A and B in system unchanged (closed economy)
-4. **Determinism**: Same utilities + inventories → same outcome
-5. **Integer quantities**: All inventory changes are integers
-6. **Round-half-up**: Consistent rounding in price-to-quantity conversion
-
-#### Common Economic Mistakes
-
-- ❌ Accepting ΔU ≥ 0 (should be strict >)
-- ❌ Using epsilon in utility calculation (only use in MRS ratio)
-- ❌ Not checking inventory feasibility before trade
-- ❌ Breaking conservation (goods created/destroyed)
-- ❌ Float inventories (MUST be integers)
-- ❌ Inconsistent rounding (mixing floor, ceil, round)
-- ❌ Mutating quotes during trade phase
-
-### Testing Economic Logic
-
-```python
-# Example test pattern
-def test_ces_utility_at_zero():
-    """Verify zero-inventory guard works."""
-    utility = create_utility("ces", alpha=0.5, rho=0.5)
-    
-    # Should not crash with A=0
-    u_value = utility.u(0, 10)
-    assert u_value >= 0
-    
-    # Reservation bounds should handle zero
-    p_min, p_max = utility.reservation_bounds_A_in_B(0, 10, epsilon=0.001)
-    assert p_min > 0 and p_max > 0
-
-def test_trade_improves_utility():
-    """Verify trades strictly improve utility for both agents."""
-    # ... setup scenario, run trade
-    
-    assert utility_buyer_after > utility_buyer_before  # Strict >
-    assert utility_seller_after > utility_seller_before
-```
-
-See [tests/test_utility_ces.py](mdc:tests/test_utility_ces.py) and [tests/test_utility_linear.py](mdc:tests/test_utility_linear.py) for examples.
-
-### Economic Parameters
-
-Tuning guide:
-
-- **spread**: 0.05-0.10 typical (5-10% markup)
-- **dA_max**: 3-10 (max trade quantity; higher = more flexibility but slower search)
-- **epsilon**: 0.001-0.01 (zero-inventory guard; smaller is safer)
-- **alpha**: 0.3-0.7 (balanced preferences); 0.1 or 0.9 (strong preference)
-- **rho**: -1 to 1 (substitution elasticity)
-- **beta**: 0.9-0.99 (foraging discount factor; higher = patient)
-- **trade_cooldown_ticks**: 5-20 (prevent futile loops)
+### Tuning Parameters (typical ranges)
+- spread: 0.05–0.10; dA_max: 3–10; epsilon: 0.001–0.01
+- alpha: 0.3–0.7; rho: −1 to 1; beta: 0.9–0.99; trade_cooldown_ticks: 5–20
 
 ### References
-
-- **Economic theory**: [docs/2_technical_manual.md](mdc:docs/2_technical_manual.md)
-- **Type contracts**: [docs/4_typing_overview.md](mdc:docs/4_typing_overview.md)
-- **Utility implementation**: [src/vmt_engine/econ/utility.py](mdc:src/vmt_engine/econ/utility.py)
+- Economic theory: [docs/2_technical_manual.md](mdc:docs/2_technical_manual.md)
+- Type contracts: [docs/4_typing_overview.md](mdc:docs/4_typing_overview.md)
+- Implementation: [src/vmt_engine/econ/utility.py](mdc:src/vmt_engine/econ/utility.py)

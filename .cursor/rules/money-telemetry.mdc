@@ -4,221 +4,45 @@ globs:
   - docs/BIG/money_telemetry_schema.md
 description: Telemetry and database schema guidelines for money system
 ---
-
 # Money System Telemetry Guidelines
 
-## Database Schema Extensions
-
-### Backward Compatibility Requirement
-All schema changes must be **backward compatible**:
-- New columns use `DEFAULT` values (0 for integers, NULL for text/real)
-- Legacy runs without money will have NULL/0 in new columns
-- Existing queries must continue working unchanged
-
-### Required Schema Changes
-
-#### `simulation_runs` Table
-```sql
-exchange_regime TEXT DEFAULT 'barter_only'
-money_mode TEXT DEFAULT NULL  
-money_scale INTEGER DEFAULT 1
-```
-
-#### `agent_snapshots` Table
-```sql
-inventory_M INTEGER DEFAULT 0
-lambda_money REAL DEFAULT NULL
-ask_A_in_M REAL DEFAULT NULL
-bid_A_in_M REAL DEFAULT NULL  
-ask_B_in_M REAL DEFAULT NULL
-bid_B_in_M REAL DEFAULT NULL
-perceived_price_A REAL DEFAULT NULL
-perceived_price_B REAL DEFAULT NULL
-lambda_changed INTEGER DEFAULT 0
-```
-
-#### `trades` Table
-```sql
-dM INTEGER DEFAULT 0
-exchange_pair_type TEXT DEFAULT 'A<->B'
-buyer_lambda REAL DEFAULT NULL
-seller_lambda REAL DEFAULT NULL
-buyer_surplus REAL DEFAULT NULL
-seller_surplus REAL DEFAULT NULL
-```
-
-#### New `tick_states` Table ✅ (Added in Phase 1)
-Track combined mode + regime state per tick:
-```sql
-CREATE TABLE IF NOT EXISTS tick_states (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    run_id INTEGER NOT NULL,
-    tick INTEGER NOT NULL,
-    current_mode TEXT NOT NULL,      -- "forage" | "trade" | "both"
-    exchange_regime TEXT NOT NULL,   -- "barter_only" | "money_only" | "mixed" | "mixed_liquidity_gated"
-    active_pairs TEXT NOT NULL,      -- JSON array like ["A<->M", "B<->M"]
-    FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id),
-    UNIQUE(run_id, tick)
-)
-```
-
-#### New `lambda_updates` Table ✅ (Schema added in Phase 1, awaits Phase 3 for usage)
-Track λ estimation diagnostics:
-```sql
-CREATE TABLE IF NOT EXISTS lambda_updates (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    run_id INTEGER NOT NULL,
-    tick INTEGER NOT NULL,
-    agent_id INTEGER NOT NULL,
-    lambda_old REAL NOT NULL,
-    lambda_new REAL NOT NULL,
-    lambda_hat_A REAL NOT NULL,
-    lambda_hat_B REAL NOT NULL,
-    lambda_hat REAL NOT NULL,
-    clamped INTEGER NOT NULL,
-    clamp_type TEXT,  -- "lower" | "upper" | NULL
-    FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id)
-)
-```
+## Database Schema Extensions (Additive Only)
+- `simulation_runs`: `exchange_regime TEXT DEFAULT 'barter_only'`, `money_mode TEXT DEFAULT NULL`, `money_scale INTEGER DEFAULT 1`
+- `agent_snapshots`: `inventory_M INTEGER DEFAULT 0`, `lambda_money REAL DEFAULT NULL`, money quote columns (`ask/bid_*_in_M`), `perceived_price_*`, `lambda_changed INTEGER DEFAULT 0`
+- `trades`: `dM INTEGER DEFAULT 0`, `exchange_pair_type TEXT`, `buyer/seller_lambda REAL`, `buyer/seller_surplus REAL`
+- New tables:
+  - `tick_states(run_id, tick, current_mode, exchange_regime, active_pairs)`
+  - `lambda_updates(run_id, tick, agent_id, lambda_old, lambda_new, lambda_hat_*, clamped, clamp_type)`
+- See details: [docs/BIG/money_telemetry_schema.md](mdc:docs/BIG/money_telemetry_schema.md)
 
 ## Logging Requirements
+- Always: `tick_states` each tick; `agent_snapshots` each tick (money columns only if regime ≠ barter_only); `trades` with `dM`, `exchange_pair_type`, surplus
+- Conditional: `lambda_updates` when significant change; liquidity depth in `mixed_liquidity_gated`; perceived prices in KKT mode
 
-### When to Log
-
-#### Always Log
-- `tick_states`: Every tick (mode × regime combination)
-- `agent_snapshots`: Every tick with money columns if regime ≠ "barter_only"
-- `trades`: Include dM, exchange_pair_type, surplus for all trades
-
-#### Conditional Logging
-- `lambda_updates`: Only when `|lambda_new - lambda_old| > epsilon` (avoid spam)
-- Liquidity depth: Only in `mixed_liquidity_gated` regime
-- Perceived prices: Only in KKT mode
-
-### What to Log
-
-#### Trade Events
-For each trade, capture:
-- `exchange_pair_type`: One of "A<->B", "A<->M", "B<->M", etc.
-- `dM`: Money transfer (positive = buyer paid seller)
-- `buyer_lambda`, `seller_lambda`: λ values at trade time (NULL for barter)
-- `buyer_surplus`, `seller_surplus`: ΔU for each party (always positive)
-
-#### Agent State
-For each agent per tick:
-- `inventory_M`: Current money holdings
-- `lambda_money`: Current λ value
-- Money quotes if exchange_regime permits money
-- `lambda_changed`: Flag for updates
-- Perceived prices (KKT mode only)
-
-#### System State
-Per tick:
-- `current_mode`: From mode_schedule
-- `exchange_regime`: From params
-- `active_pairs`: Derived from mode × regime
-
-## Query Patterns
-
-### Essential Queries
-
-#### Money Trade Analysis
+## Query Patterns (Essentials)
+- Monetary trades by tick:
 ```sql
--- Find all monetary trades
-SELECT * FROM trades 
-WHERE run_id = ? AND dM > 0 
-ORDER BY tick;
-
--- Surplus distribution by trade type
-SELECT exchange_pair_type, 
-       COUNT(*) as count,
-       AVG(buyer_surplus + seller_surplus) as avg_total_surplus
-FROM trades 
-WHERE run_id = ?
-GROUP BY exchange_pair_type;
+SELECT * FROM trades WHERE run_id = ? AND dM > 0 ORDER BY tick;
+```
+- Surplus by trade type:
+```sql
+SELECT exchange_pair_type, COUNT(*) count,
+       AVG(buyer_surplus + seller_surplus) avg_total_surplus
+FROM trades WHERE run_id = ? GROUP BY exchange_pair_type;
+```
+- λ trajectory for an agent:
+```sql
+SELECT tick, lambda_money, inventory_M FROM agent_snapshots
+WHERE run_id = ? AND agent_id = ? ORDER BY tick;
 ```
 
-#### λ Convergence (KKT mode)
-```sql
--- Agent λ trajectory
-SELECT tick, lambda_money, inventory_M 
-FROM agent_snapshots 
-WHERE run_id = ? AND agent_id = ? 
-ORDER BY tick;
-
--- λ update events
-SELECT tick, lambda_old, lambda_new, clamped 
-FROM lambda_updates 
-WHERE run_id = ? AND agent_id = ?
-ORDER BY tick;
-```
-
-#### Mode × Regime Analysis
-```sql
--- Active exchange regimes by tick
-SELECT tick, current_mode, exchange_regime, active_pairs 
-FROM tick_states 
-WHERE run_id = ?
-ORDER BY tick;
-
--- Trades during specific mode/regime
-SELECT t.* 
-FROM trades t 
-JOIN tick_states ts ON t.run_id = ts.run_id AND t.tick = ts.tick 
-WHERE t.run_id = ? 
-  AND ts.current_mode = 'trade' 
-  AND ts.exchange_regime = 'mixed';
-```
-
-## Performance Considerations
-
-### Batching Requirements
-- Batch inserts every N ticks (configurable batch_size)
-- Use prepared statements for repeated inserts
-- Defer index creation until after bulk inserts (if loading large dataset)
-
-### Index Strategy
-Required indices:
-```sql
-CREATE INDEX idx_agent_snapshots_money ON agent_snapshots(run_id, tick, inventory_M, lambda_money);
-CREATE INDEX idx_trades_money ON trades(run_id, tick, exchange_pair_type, dM);
-CREATE INDEX idx_trades_surplus ON trades(run_id, buyer_surplus, seller_surplus);
-CREATE INDEX idx_tick_states_run_tick ON tick_states(run_id, tick);
-CREATE INDEX idx_tick_states_mode ON tick_states(run_id, current_mode, exchange_regime);
-CREATE INDEX idx_lambda_updates_run_agent ON lambda_updates(run_id, agent_id, tick);
-```
+## Performance & Indexing
+- Batch inserts; use prepared statements
+- Recommended indices: run/tick on `tick_states`, `agent_snapshots`; `exchange_pair_type` and `dM` on `trades`; λ columns for analysis
 
 ## Migration Strategy
-
-### Phase 1a: Add columns with defaults
-All `ALTER TABLE` statements must use `DEFAULT` to ensure existing runs are unaffected
-
-### Phase 1b: Create new tables
-New tables only receive data from money-enabled runs
-
-### Phase 1c: Update insert statements
-Check if money is enabled (`exchange_regime != "barter_only"`) before populating money columns
+- Add columns with `DEFAULT`; create new tables; write conditionally when money disabled
+- Validate on legacy/mixed/full-money databases
 
 ## Validation Checks
-
-### Data Integrity
-- Money conservation: Sum of `inventory_M` across agents constant
-- Surplus always positive in completed trades
-- λ within bounds in KKT mode
-- Exchange pair types match regime constraints
-
-### Query Validation
-Test queries against:
-- Legacy database (no money columns)
-- Mixed database (some runs with money, some without)
-- Full money database (all features used)
-
-## CSV Export Requirements
-
-When exporting to CSV, include:
-- All money columns from agent_snapshots
-- Trade details with exchange_pair_type and dM
-- λ trajectories for KKT analysis
-- Mode/regime timeline from tick_states
-
-Optional: Exclude NULL/0 money columns for legacy runs to reduce file size
+- Money conservation; positive surplus; λ bounds respected; regime ↔ pairs consistent

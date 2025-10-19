@@ -1,52 +1,52 @@
 # vmt-dev - Token Analysis Report
 
-*Generated on 2025-10-19 14:12:50*
+*Generated on 2025-10-19 14:59:57*
 
 ## 📊 Executive Summary
 
 | Metric | Value |
 |--------|--------|
-| **Total Tokens** | 131.5K tokens |
-| **Total Files** | 89 files |
-| **Repository Size** | 0.7 MB |
-| **Average Tokens/File** | 1478 tokens |
+| **Total Tokens** | 185.0K tokens |
+| **Total Files** | 116 files |
+| **Repository Size** | 0.9 MB |
+| **Average Tokens/File** | 1595 tokens |
 
 ## 📄 File Type Breakdown
 
 | File Type | Token Count | Percentage | Files |
 |-----------|-------------|------------|-------|
-| Markdown | 70.2K | 53.4% | 28 |
-| Python | 51.9K | 39.5% | 47 |
-| YAML | 8.4K | 6.4% | 8 |
-| Text | 764 | 0.6% | 2 |
-| Build/Meta | 222 | 0.2% | 1 |
+| Markdown | 121.5K | 65.7% | 52 |
+| Python | 52.0K | 28.1% | 48 |
+| YAML | 8.4K | 4.6% | 8 |
+| Text | 2.2K | 1.2% | 3 |
+| Other | 544 | 0.3% | 3 |
+| Build/Meta | 222 | 0.1% | 1 |
 | Config | 9 | 0.0% | 1 |
-| Other | 0 | 0.0% | 2 |
 
 ## 🔥 Top 20 Largest Files
 
 | File | Tokens | Size |
 |------|--------|------|
 | `src/vmt_launcher/scenario_builder.py` | 6.2K | 0.0 MB |
+| `docs/.archive/money_phase1_checklist.md` | 5.8K | 0.0 MB |
 | `docs/BIG/money_SSOT_implementation_plan.md` | 5.7K | 0.0 MB |
 | `docs/BIG/money_phase3_checklist.md` | 5.5K | 0.0 MB |
 | `docs/BIG/money_phase6_checklist.md` | 5.2K | 0.0 MB |
 | `docs/BIG/money_phase4_checklist.md` | 4.7K | 0.0 MB |
 | `docs/BIG/money_phase5_checklist.md` | 4.3K | 0.0 MB |
+| `docs/.archive/money_valuation_design.md` | 4.3K | 0.0 MB |
 | `docs/4_typing_overview.md` | 4.0K | 0.0 MB |
+| `.cursor/rules/feature-development-checklist.mdc` | 4.0K | 0.0 MB |
+| `docs/.archive/mode_toggles_implementation_spec.md` | 3.8K | 0.0 MB |
 | `src/telemetry/db_loggers.py` | 3.8K | 0.0 MB |
+| `docs/.archive/PLAN_remove_summary_logging.md` | 3.6K | 0.0 MB |
 | `docs/performance_baseline_phase1_with_logging.md` | 3.6K | 0.0 MB |
+| `docs/.archive/PHASE3_VALIDATION_REPORT.md` | 3.4K | 0.0 MB |
 | `scenarios/perf_exchange_only.yaml` | 3.1K | 0.0 MB |
 | `scenarios/perf_both_modes.yaml` | 3.1K | 0.0 MB |
 | `src/vmt_engine/systems/matching.py` | 3.0K | 0.0 MB |
 | `docs/BIG/implement/phase2_atomic_implementation_plan.md` | 3.0K | 0.0 MB |
 | `src/vmt_log_viewer/viewer.py` | 2.9K | 0.0 MB |
-| `.rulesthoughts/review2.md` | 2.9K | 0.0 MB |
-| `.rulesthoughts/review1.md` | 2.8K | 0.0 MB |
-| `docs/BIG/money_telemetry_schema.md` | 2.7K | 0.0 MB |
-| `src/vmt_pygame/renderer.py` | 2.6K | 0.0 MB |
-| `10-18_ORIENTATION.md` | 2.6K | 0.0 MB |
-| `src/scenarios/schema.py` | 2.6K | 0.0 MB |
 
 
 ## 🤖 LLM Context Analysis
@@ -55,25 +55,24 @@
 
 | Model | Context Window | Repo Coverage |
 |-------|---------------|---------------|
-| GPT-4 | ~128K tokens | 97.3% |
-| Claude 3 | ~200K tokens | 152.1% |
-| Claude 3.5 Sonnet | ~200K tokens | 152.1% |
-| Gemini 1.5 Pro | ~1M tokens | 760.4% |
+| GPT-4 | ~128K tokens | 69.2% |
+| Claude 3 | ~200K tokens | 108.1% |
+| Claude 3.5 Sonnet | ~200K tokens | 108.1% |
+| Gemini 1.5 Pro | ~1M tokens | 540.5% |
 
 ### Recommendations
 
-- **Full Repository**: 131.5K tokens fits in: Claude 3/3.5 (~200.0K), Gemini 1.5 Pro (~1.0M)
-- **Single-Context Analysis**: Entire codebase can be analyzed without chunking
-- **Tip**: For faster processing, consider focused analysis on specific modules
+- **Full Repository**: 185.0K tokens fits in: Gemini 1.5 Pro (~1.0M)
+- **Targeted Analysis**: Consider focusing on 40-60% of files for detailed reviews
 - **Code Reviews**: Use token counts to prioritize which files/modules to include
-- **Documentation**: 53.4% of tokens are documentation (substantial docs available)
+- **Documentation**: 65.7% of tokens are documentation (substantial docs available)
 
 
 ## 📈 Analysis Metadata
 
 - **Analysis Tool**: Repository Token Counter (full version with repotokens)
 - **Tokenization**: Accurate repotokens library
-- **Files Processed**: 89 code files
+- **Files Processed**: 116 code files
 - **Excluded**: Binary files, caches, logs, virtual environments
 - **Repository**: vmt-dev
 

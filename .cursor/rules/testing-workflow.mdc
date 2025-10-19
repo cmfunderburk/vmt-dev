@@ -8,9 +8,9 @@ description: Testing workflow, validation, and debugging guidelines
 Before committing ANY changes, run through this checklist:
 
 1. **Activate venv**: `source venv/bin/activate`
-2. **Delete stale DB if schema changed**: `rm logs/telemetry.db`
+2. **Delete stale DB if schema changed**: see `.cursor/rules/core-invariants.mdc` (Critical Database Gotcha)
 3. **Run tests**: `pytest -q`
-4. **Verify results**: Must show "95 passed" (as of 2025-10-19)
+4. **Verify results**: All tests must pass
 5. **Check dependencies** (if requirements changed): `pip list | grep -E "(pygame|numpy|pyyaml|pytest|PyQt5)"`
 
 ### Test Commands
@@ -36,20 +36,7 @@ pytest -q --tb=no
 
 ### Critical Database Issue
 
-**Problem**: Tests fail with `sqlite3.OperationalError: table decisions has no column named mode`
-
-**Cause**: Old telemetry.db with incompatible schema
-
-**Solution**: 
-```bash
-rm logs/telemetry.db
-pytest -q
-```
-
-**When to delete**: After any changes to:
-- [src/telemetry/database.py](mdc:src/telemetry/database.py) (table schemas)
-- [src/telemetry/db_loggers.py](mdc:src/telemetry/db_loggers.py) (logging fields)
-- Any code that writes to telemetry database
+See `.cursor/rules/core-invariants.mdc` → Critical Database Gotcha.
 
 ### Running Simulations for Testing
 

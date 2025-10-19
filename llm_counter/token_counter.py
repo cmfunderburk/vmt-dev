@@ -76,7 +76,7 @@ class VMTTokenCounter:
         
         # File patterns to include/exclude
         self.include_patterns = [
-            "*.py", "*.md", "*.txt", "*.json", "*.toml", "*.yml", "*.yaml",
+            "*.py", "*.md", "*.mdc", "*.txt", "*.json", "*.toml", "*.yml", "*.yaml",
             "*.js", "*.ts", "*.html", "*.css", "*.sh", "*.bat", "*.Makefile",
             "Makefile", "*.cfg", "*.ini"
         ]
@@ -85,14 +85,14 @@ class VMTTokenCounter:
             "__pycache__", ".git", ".pytest_cache", "node_modules", "venv",
             "*.pyc", "*.pyo", "launcher_logs", "gui_logs", "logs", "archive",
             ".mypy_cache", "economic_analysis_logs", "*.jsonl", "*.jsonl.gz",
-            "*.log", "tests", "llm_counter", ".cursor"
+            "*.log", "tests", "llm_counter"
         ]
     
     def should_include_file(self, file_path: Path) -> bool:
         """Check if file should be included in analysis."""
-        # Skip if in excluded directories
+        # Skip if in excluded directories (exact match only, not substring)
         for part in file_path.parts:
-            if any(pattern.strip('*') in part for pattern in self.exclude_patterns 
+            if any(pattern.strip('*') == part for pattern in self.exclude_patterns 
                    if not pattern.startswith('*.')):
                 return False
         
@@ -127,6 +127,7 @@ class VMTTokenCounter:
         type_mapping = {
             '.py': 'Python',
             '.md': 'Markdown',
+            '.mdc': 'Markdown',
             '.txt': 'Text',
             '.json': 'JSON',
             '.toml': 'TOML',
@@ -189,9 +190,9 @@ class VMTTokenCounter:
         # Find all files to analyze
         all_files = []
         for root, dirs, files in os.walk(self.repo_root):
-            # Skip excluded directories
+            # Skip excluded directories (exact match only, not substring)
             dirs[:] = [d for d in dirs if not any(
-                pattern.strip('*') in d for pattern in self.exclude_patterns 
+                pattern.strip('*') == d for pattern in self.exclude_patterns 
                 if not pattern.startswith('*.')
             )]
             

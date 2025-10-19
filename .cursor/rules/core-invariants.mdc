@@ -78,7 +78,7 @@ When multiple agents want the same cell:
 
 ## Testing Requirements
 
-- **Run full suite before commits**: `pytest -q` (95+ tests must pass)
+- **Run full suite before commits**: `pytest -q` (all tests must pass)
 - **Performance benchmarks**: Use `scripts/benchmark_performance.py` to detect regressions
 - **Determinism check**: Same seed → identical output (verify with `compare_telemetry_snapshots.py`)
 

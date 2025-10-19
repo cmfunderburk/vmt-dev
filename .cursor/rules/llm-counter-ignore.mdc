@@ -1,5 +1,0 @@
----
-globs: llm_counter/*
-alwaysApply: false
----
-The llm_counter/ directory is not a part of the codebase. Never include any content in this directory in context window or responses.
