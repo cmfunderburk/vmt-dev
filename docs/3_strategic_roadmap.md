@@ -18,11 +18,11 @@ The platform is designed to support two primary modes of use:
 
 The long-term vision is to expand VMT step-by-step into a comprehensive microeconomic simulation platform that mirrors the progression of a standard graduate curriculum.
 
-1.  **Foraging & Barter Economy (v1.1 - Complete)**: The current state. A robust simulation of a two-good exchange economy with resource foraging and bilateral barter. This covers foundational concepts like utility maximization and gains from trade.
+1.  **Phase A — Foraging & Barter Economy (Complete)**: The current state. A robust simulation of a two-good exchange economy with resource foraging and bilateral barter. This covers foundational concepts like utility maximization and gains from trade.
 
-2.  **Introduction of Money (v1.3)**: Transform the barter system by introducing a medium of exchange ("money") and explicit budget constraints. This enables the study of consumer choice and price systems.
+2.  **Phase B — Introduction of Money**: Transform the barter system by introducing a medium of exchange ("money") and explicit budget constraints. This enables the study of consumer choice and price systems.
 
-3.  **Local Market Mechanisms (v1.4)**: Graduate from bilateral negotiation to many-to-many trade. Implement posted-price markets or simple auctions where a market-clearing price can emerge from the collective behavior of a group of agents. This introduces supply and demand dynamics.
+3.  **Phase C — Local Market Mechanisms**: Graduate from bilateral negotiation to many-to-many trade. Implement posted-price markets or simple auctions where a market-clearing price can emerge from the collective behavior of a group of agents. This introduces supply and demand dynamics.
 
 4.  **Production Economy**: Introduce "Firm" agents that use inputs (like labor, supplied by consumer agents) to produce goods according to production functions. This enables the study of producer theory, supply curves, and factor markets.
 
@@ -33,15 +33,15 @@ The long-term vision is to expand VMT step-by-step into a comprehensive microeco
     -   **Asymmetric Information**: Simulate markets with adverse selection ("lemons market") or moral hazard.
     -   **Mechanism Design**: Explore auctions, voting systems, and other designed mechanisms.
 
-## Part C: Immediate Roadmap & Checklist (v1.1 Polish → v1.4 Market Prototype)
+## Part C: Immediate Roadmap & Checklist (Phase A Polish → Phase C Market Prototype)
 
 This section provides a concrete, step-by-step implementation plan for the next development cycle.
 
 ---
 
-### **Milestone 1: v1.1 Polish (The Foundation)**
+### **Milestone 1: Phase A Polish (The Foundation)**
 
-**Goal**: Solidify the current v1.1 barter engine. Ensure it is stable, well-documented, and provides a trusted foundation for all future features.
+**Goal**: Solidify the current Phase A barter engine. Ensure it is stable, well-documented, and provides a trusted foundation for all future features.
 
 **Checklist:**
 - [ ] **Core Engine Documentation:**
@@ -59,7 +59,7 @@ This section provides a concrete, step-by-step implementation plan for the next 
 
 ---
 
-### **Milestone 2: v1.2 Mode Toggles (The Easy Win)**
+### **Milestone 2: Phase A→B Mode Toggles (The Easy Win)**
 
 **Goal**: Create alternating "forage-only" and "trade-only" windows to create emergent budget constraints.
 
@@ -76,7 +76,7 @@ This section provides a concrete, step-by-step implementation plan for the next 
 
 ---
 
-### **Milestone 3: v1.3 Introduce Money (The Core Refactor)**
+### **Milestone 3: Phase B — Introduce Money (The Core Refactor)**
 
 **Goal**: Introduce money (M) as a tradable asset using the quasilinear utility model: `U_total = U_goods(A, B) + λ * M`. This requires refactoring the trade system to support generic good-to-good trades.
 
@@ -96,11 +96,11 @@ This section provides a concrete, step-by-step implementation plan for the next 
     - **Action:** Parameterize `find_compensating_block` and `execute_trade` to handle generic trades (e.g., `(good_to_buy, good_to_pay)`).
 - [ ] **Update Tests:**
     - **Action:** Create `tests/test_money_quasilinear.py`.
-    - **Action:** Update existing trade tests to use the new refactoreed, generic matching functions.
+    - **Action:** Update existing trade tests to use the new refactored, generic matching functions.
 
 ---
 
-### **Milestone 4: v1.4 Prototype Posted-Price Market (The Payoff)**
+### **Milestone 4: Phase C — Prototype Posted-Price Market (The Payoff)**
 
 **Goal**: Implement a "Local Posted-Price Auction" mechanism as the first true market in VMT.
 

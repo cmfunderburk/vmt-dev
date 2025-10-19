@@ -1,51 +1,52 @@
 # vmt-dev - Token Analysis Report
 
-*Generated on 2025-10-17 14:15:16*
+*Generated on 2025-10-18 19:53:16*
 
 ## 📊 Executive Summary
 
 | Metric | Value |
 |--------|--------|
-| **Total Tokens** | 58.7K tokens |
-| **Total Files** | 59 files |
-| **Repository Size** | 0.3 MB |
-| **Average Tokens/File** | 995 tokens |
+| **Total Tokens** | 85.7K tokens |
+| **Total Files** | 68 files |
+| **Repository Size** | 0.4 MB |
+| **Average Tokens/File** | 1261 tokens |
 
 ## 📄 File Type Breakdown
 
 | File Type | Token Count | Percentage | Files |
 |-----------|-------------|------------|-------|
-| Python | 45.9K | 78.2% | 45 |
-| Markdown | 11.6K | 19.8% | 8 |
-| YAML | 900 | 1.5% | 3 |
-| Build/Meta | 222 | 0.4% | 1 |
-| Text | 41 | 0.1% | 1 |
+| Python | 44.3K | 51.6% | 44 |
+| Markdown | 40.3K | 47.0% | 16 |
+| YAML | 900 | 1.0% | 3 |
+| Build/Meta | 222 | 0.3% | 1 |
+| Text | 41 | 0.0% | 1 |
 | Config | 9 | 0.0% | 1 |
+| Other | 0 | 0.0% | 2 |
 
 ## 🔥 Top 20 Largest Files
 
 | File | Tokens | Size |
 |------|--------|------|
+| `docs/tmp/son45_energy_budget_review.md` | 7.6K | 0.0 MB |
 | `src/vmt_launcher/scenario_builder.py` | 6.2K | 0.0 MB |
+| `docs/BIG/next-steps-opus.md` | 5.8K | 0.0 MB |
+| `docs/4_typing_overview.md` | 4.0K | 0.0 MB |
 | `src/telemetry/db_loggers.py` | 3.4K | 0.0 MB |
+| `docs/tmp/gpt5h_energy_budget_review.md` | 3.1K | 0.0 MB |
 | `src/vmt_engine/systems/matching.py` | 2.9K | 0.0 MB |
 | `src/vmt_log_viewer/viewer.py` | 2.9K | 0.0 MB |
 | `src/vmt_pygame/renderer.py` | 2.6K | 0.0 MB |
-| `CHANGELOG.md` | 2.4K | 0.0 MB |
+| `docs/BIG/review-full-opus.md` | 2.6K | 0.0 MB |
+| `10-18_ORIENTATION.md` | 2.6K | 0.0 MB |
+| `docs/tmp/lintcetera.md` | 2.1K | 0.0 MB |
 | `src/vmt_log_viewer/csv_export.py` | 1.9K | 0.0 MB |
 | `docs/2_technical_manual.md` | 1.9K | 0.0 MB |
 | `docs/3_strategic_roadmap.md` | 1.9K | 0.0 MB |
 | `src/telemetry/database.py` | 1.9K | 0.0 MB |
-| `docs/1_project_overview.md` | 1.9K | 0.0 MB |
+| `docs/tmp/gem_energy_budget_review.md` | 1.9K | 0.0 MB |
+| `docs/1_project_overview.md` | 1.8K | 0.0 MB |
 | `docs/tmp/code_review.md` | 1.8K | 0.0 MB |
-| `example_new_logging.py` | 1.6K | 0.0 MB |
-| `src/vmt_log_viewer/widgets/agent_view.py` | 1.5K | 0.0 MB |
-| `src/vmt_engine/systems/movement.py` | 1.5K | 0.0 MB |
-| `src/vmt_engine/simulation.py` | 1.5K | 0.0 MB |
-| `src/vmt_log_viewer/queries.py` | 1.5K | 0.0 MB |
-| `src/vmt_launcher/launcher.py` | 1.4K | 0.0 MB |
-| `src/vmt_engine/econ/utility.py` | 1.4K | 0.0 MB |
-| `src/scenarios/schema.py` | 1.2K | 0.0 MB |
+| `docs/BIG/review-full.md` | 1.6K | 0.0 MB |
 
 
 ## 🤖 LLM Context Analysis
@@ -54,24 +55,24 @@
 
 | Model | Context Window | Repo Coverage |
 |-------|---------------|---------------|
-| GPT-4 | ~128K tokens | 218.1% |
-| Claude 3 | ~200K tokens | 340.8% |
-| Claude 3.5 Sonnet | ~200K tokens | 340.8% |
-| Gemini 1.5 Pro | ~1M tokens | 1703.9% |
+| GPT-4 | ~128K tokens | 149.3% |
+| Claude 3 | ~200K tokens | 233.3% |
+| Claude 3.5 Sonnet | ~200K tokens | 233.3% |
+| Gemini 1.5 Pro | ~1M tokens | 1166.3% |
 
 ### Recommendations
 
-- **Full Repository**: 58.7K tokens fits in: GPT-4 (~128.0K), Claude 3/3.5 (~200.0K), Gemini 1.5 Pro (~1.0M)
+- **Full Repository**: 85.7K tokens fits in: GPT-4 (~128.0K), Claude 3/3.5 (~200.0K), Gemini 1.5 Pro (~1.0M)
 - **Single-Context Analysis**: Entire codebase can be analyzed without chunking
 - **Code Reviews**: Use token counts to prioritize which files/modules to include
-- **Documentation**: 19.8% of tokens are documentation (substantial docs available)
+- **Documentation**: 47.0% of tokens are documentation (substantial docs available)
 
 
 ## 📈 Analysis Metadata
 
 - **Analysis Tool**: Repository Token Counter (full version with repotokens)
 - **Tokenization**: Accurate repotokens library
-- **Files Processed**: 59 code files
+- **Files Processed**: 68 code files
 - **Excluded**: Binary files, caches, logs, virtual environments
 - **Repository**: vmt-dev
 

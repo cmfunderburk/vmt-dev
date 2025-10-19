@@ -104,6 +104,7 @@ tmp/
 .temp/
 local/
 .dump/
+docs/tmp/.DS_Store
 
 # Exception: Track docs/tmp/ for versioned temporary documentation
 !docs/tmp/
