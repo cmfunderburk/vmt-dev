@@ -27,7 +27,11 @@ class Agent:
     perception_cache: dict = field(default_factory=dict, repr=False)
     inventory_changed: bool = field(default=True, repr=False)
     trade_cooldowns: dict[int, int] = field(default_factory=dict, repr=False)  # partner_id -> cooldown_until_tick
-    
+
+    # Money system state (Phase 1)
+    lambda_money: float = 1.0  # Marginal utility of money
+    lambda_changed: bool = False  # Flag for Housekeeping
+
     def __post_init__(self):
         if self.id < 0:
             raise ValueError(f"Agent id must be non-negative, got {self.id}")
