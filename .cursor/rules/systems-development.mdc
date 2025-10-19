@@ -1,0 +1,138 @@
+---
+globs: src/vmt_engine/systems/*.py
+description: Guidelines for modifying simulation systems (the 7 phases)
+---
+## Systems Development Guidelines
+
+### The 7-Phase Architecture
+
+Files in [src/vmt_engine/systems/](mdc:src/vmt_engine/systems/) implement the phases of each tick. **Phase order is sacred and cannot change.**
+
+#### Phase Order & Files
+
+1. **Perception** - [perception.py](mdc:src/vmt_engine/systems/perception.py) - Agents observe environment (frozen snapshot)
+2. **Decision** - [decision.py](mdc:src/vmt_engine/systems/decision.py) - Choose trading partner or foraging target
+3. **Movement** - [movement.py](mdc:src/vmt_engine/systems/movement.py) - Move toward targets
+4. **Trade** - [matching.py](mdc:src/vmt_engine/systems/matching.py), [trading.py](mdc:src/vmt_engine/systems/trading.py) - Execute bilateral trades
+5. **Forage** - [foraging.py](mdc:src/vmt_engine/systems/foraging.py) - Harvest resources
+6. **Resource Regeneration** - [foraging.py](mdc:src/vmt_engine/systems/foraging.py) - Resources regrow
+7. **Housekeeping** - [housekeeping.py](mdc:src/vmt_engine/systems/housekeeping.py) - Refresh quotes, flush telemetry
+
+**System registration**: [src/vmt_engine/simulation.py](mdc:src/vmt_engine/simulation.py) instantiates systems in `__init__` and calls them in `step()`
+
+### Critical Determinism Rules
+
+When modifying any system:
+
+#### Agent Loop Sorting (MANDATORY)
+```python
+# ✅ CORRECT
+for agent in sorted(self.sim.agents, key=lambda a: a.id):
+    # ... process agent
+
+# ❌ WRONG
+for agent in self.sim.agents:  # Nondeterministic order!
+    # ... process agent
+```
+
+#### Pair Loop Sorting (MANDATORY)
+```python
+# ✅ CORRECT
+for (id1, id2) in sorted(pairs, key=lambda p: (min(p), max(p))):
+    # ... process pair
+
+# ❌ WRONG
+for pair in pairs:  # Nondeterministic order!
+    # ... process pair
+```
+
+#### No Mid-Tick Quote Mutations
+```python
+# ✅ CORRECT - Set flag for Housekeeping
+agent.inventory.A += delta_A
+agent.inventory.B -= delta_B
+agent.inventory_changed = True  # Quotes refresh in Housekeeping
+
+# ❌ WRONG - Don't recompute quotes mid-tick
+agent.inventory.A += delta_A
+compute_quotes(sim, agent)  # Breaks determinism!
+```
+
+### Integer Math Requirements
+
+**Inventories and quantities MUST be integers:**
+
+```python
+# ✅ CORRECT - Round-half-up
+delta_B = int(np.floor(price * delta_A + 0.5))
+
+# ❌ WRONG - Introduces floats
+delta_B = price * delta_A  # Float!
+
+# ✅ CORRECT - Integer checks
+assert isinstance(agent.inventory.A, (int, np.integer))
+assert isinstance(agent.inventory.B, (int, np.integer))
+```
+
+**Spatial params are also integers:**
+- `vision_radius`
+- `interaction_radius`
+- `move_budget_per_tick`
+
+### Modifying Existing Systems
+
+#### Perception System
+- Uses [SpatialIndex.query_radius](mdc:src/vmt_engine/core/spatial_index.py)
+- Returns frozen snapshot (no mutations during perception)
+- Agents see: other agents, their quotes, resource locations
+
+#### Decision System
+- Evaluates trading surplus OR foraging utility gain
+- Distance-discounted foraging: `score = ΔU * β^dist`
+- Must handle mode toggles (forage-only, trade-only)
+
+#### Movement System
+- Manhattan distance with deterministic tie-breaking:
+  - Reduce |dx| before |dy|
+  - Prefer negative direction on equal absolute values
+  - Diagonal deadlock: higher `agent.id` moves
+
+#### Trade System
+- **[matching.py](mdc:src/vmt_engine/systems/matching.py)**: `find_compensating_block` - price search algorithm
+- **[trading.py](mdc:src/vmt_engine/systems/trading.py)**: Execute trades, set cooldowns
+- One trade attempt per pair per tick
+- Must have strict ΔU > 0 for both agents
+- Failed attempts set mutual cooldown (`trade_cooldown_ticks`)
+
+#### Foraging System
+- Harvest rate limited by `forage_rate` parameter
+- Set resource cooldown after harvesting
+- Set `inventory_changed = True`
+
+#### Resource Regeneration
+- Cells regenerate at `resource_growth_rate` per tick
+- Only after `resource_regen_cooldown` expires
+
+#### Housekeeping System
+- Refresh quotes for agents with `inventory_changed = True`
+- Flush telemetry buffers to database
+- Reset per-tick flags
+
+### Adding New System Features
+
+1. **Identify the correct phase** - Don't add trade logic to perception, etc.
+2. **Preserve determinism** - Sort all loops
+3. **Maintain integer types** - No float inventories
+4. **Update telemetry** - Log new state to [src/telemetry/db_loggers.py](mdc:src/telemetry/db_loggers.py)
+5. **Test extensively** - Add tests to [tests/](mdc:tests/)
+6. **Delete old DB** - `rm logs/telemetry.db` if schema changes
+
+### Common Pitfalls
+
+- ❌ Using `for agent in sim.agents` without sorting
+- ❌ Mutating quotes outside Housekeeping
+- ❌ Forgetting to set `inventory_changed = True`
+- ❌ Using float inventories or quantities
+- ❌ Hand-rolling O(N²) proximity scans instead of using SpatialIndex
+- ❌ Breaking round-half-up convention
+- ❌ Adding logic in wrong phase

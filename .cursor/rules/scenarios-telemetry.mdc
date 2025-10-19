@@ -1,0 +1,216 @@
+---
+globs: src/scenarios/*.py,scenarios/*.yaml,src/telemetry/*.py
+description: Guidelines for scenarios (YAML configs) and telemetry (SQLite logging)
+---
+## Scenarios & Telemetry Guidelines
+
+### Scenario Files (YAML)
+
+Scenarios are in [scenarios/](mdc:scenarios/) directory and define simulation parameters.
+
+#### Schema Reference
+
+**Dataclass schema**: [src/scenarios/schema.py](mdc:src/scenarios/schema.py)  
+**Loader**: [src/scenarios/loader.py](mdc:src/scenarios/loader.py)
+
+#### Key Sections
+
+```yaml
+grid:
+  size: 20                    # NxN grid (integer)
+  
+agents:
+  count: 3                    # Number of agents
+  initial_position: "random"  # or "center" or explicit list
+  initial_inventory:
+    A: 10                     # Integer inventory
+    B: 10                     # Integer inventory
+
+utilities:
+  mix:
+    - type: "ces"             # or "linear"
+      weight: 0.8             # Probability weight (must sum to 1.0)
+      params:
+        alpha: 0.5            # CES: share parameter
+        rho: 0.5              # CES: substitution parameter
+    - type: "linear"
+      weight: 0.2
+      params:
+        alpha: 0.6
+
+params:
+  # Economic
+  spread: 0.05                # Quote spread (float)
+  dA_max: 5                   # Max trade quantity (integer)
+  epsilon: 0.001              # Zero-inventory guard (float)
+  
+  # Spatial (MUST BE INTEGERS)
+  vision_radius: 5            # Integer!
+  interaction_radius: 1       # Integer!
+  move_budget_per_tick: 2     # Integer!
+  
+  # Resources
+  forage_rate: 1              # Integer harvest per tick
+  resource_growth_rate: 1     # Integer regeneration per tick
+  resource_regen_cooldown: 5  # Integer ticks
+  
+  # Trading
+  trade_cooldown_ticks: 10    # Integer ticks
+  beta: 0.95                  # Foraging discount factor (float)
+
+resources:
+  A:
+    density: 0.1              # Probability of cell having resource
+    amount: 5                 # Integer per cell
+  B:
+    density: 0.1
+    amount: 5
+
+# Optional: mode scheduling
+mode_schedule:
+  type: "global_cycle"
+  forage_ticks: 10            # Integer
+  trade_ticks: 10             # Integer
+  start_mode: "forage"        # or "trade"
+```
+
+#### Creating New Scenarios
+
+1. Copy existing scenario from [scenarios/](mdc:scenarios/) as template
+2. Modify parameters
+3. **Ensure spatial params are integers** (`vision_radius`, `interaction_radius`, `move_budget_per_tick`)
+4. **Ensure utility weights sum to 1.0**
+5. Test loading:
+   ```python
+   from scenarios.loader import load_scenario
+   scenario = load_scenario("scenarios/your_scenario.yaml")
+   ```
+
+#### Common Mistakes
+
+- ❌ Using float for `vision_radius` or other spatial params (MUST be int)
+- ❌ Utility weights not summing to 1.0
+- ❌ Using `ΔA_max` instead of `dA_max` (legacy name)
+- ❌ Float inventories or resource amounts (MUST be int)
+
+### Telemetry System (SQLite Logging)
+
+Telemetry logs all simulation data to `./logs/telemetry.db` using SQLite.
+
+#### Core Files
+
+- **Database**: [src/telemetry/database.py](mdc:src/telemetry/database.py) - Schema definitions, table creation
+- **Loggers**: [src/telemetry/db_loggers.py](mdc:src/telemetry/db_loggers.py) - Batched logging logic
+- **Config**: [src/telemetry/config.py](mdc:src/telemetry/config.py) - `LogConfig` levels (SUMMARY, STANDARD, DEBUG)
+
+#### Log Levels
+
+```python
+from telemetry.config import LogConfig
+
+# SUMMARY: Only high-level run info
+sim = Simulation(scenario, seed=42, log_config=LogConfig.summary())
+
+# STANDARD: Trades and major events
+sim = Simulation(scenario, seed=42, log_config=LogConfig.standard())
+
+# DEBUG: Full detail (large DB!)
+sim = Simulation(scenario, seed=42, log_config=LogConfig.debug())
+```
+
+#### Database Schema
+
+**Tables** (see [src/telemetry/database.py](mdc:src/telemetry/database.py)):
+- `runs` - Simulation metadata
+- `agents` - Agent snapshots per tick
+- `trades` - All trade events
+- `decisions` - Agent decisions per tick
+- `resources` - Resource cell states
+
+#### Critical Database Gotcha
+
+**After modifying schema, MUST delete old database:**
+
+```bash
+rm logs/telemetry.db
+pytest -q
+```
+
+**When to delete:**
+- After changing table definitions in `database.py`
+- After adding/removing columns in logging code
+- After changing field types
+
+#### Adding New Telemetry
+
+1. **Update schema** in [src/telemetry/database.py](mdc:src/telemetry/database.py):
+   ```python
+   CREATE TABLE IF NOT EXISTS your_table (
+       run_id INTEGER NOT NULL,
+       tick INTEGER NOT NULL,
+       your_field TEXT,
+       ...
+       FOREIGN KEY (run_id) REFERENCES runs(run_id)
+   )
+   ```
+
+2. **Add buffer** in [src/telemetry/db_loggers.py](mdc:src/telemetry/db_loggers.py):
+   ```python
+   self.your_table_buffer = []
+   ```
+
+3. **Add logging method**:
+   ```python
+   def log_your_event(self, ...):
+       if self.config.level >= LogLevel.STANDARD:
+           self.your_table_buffer.append((
+               self.run_id, self.tick, field1, field2, ...
+           ))
+   ```
+
+4. **Add flush method**:
+   ```python
+   def _flush_your_table(self):
+       if self.your_table_buffer:
+           self.db.executemany("""
+               INSERT INTO your_table
+               (run_id, tick, field1, field2, ...)
+               VALUES (?, ?, ?, ?, ...)
+           """, self.your_table_buffer)
+           self.your_table_buffer.clear()
+   ```
+
+5. **Call flush** in `_flush_all_buffers()` and `finalize_run()`
+
+6. **Delete old DB**: `rm logs/telemetry.db`
+
+7. **Test**: Run simulation and verify data in DB
+
+#### Viewing Telemetry
+
+```bash
+# GUI log viewer
+python view_logs.py
+
+# Programmatic access
+import sqlite3
+conn = sqlite3.connect("logs/telemetry.db")
+cursor = conn.cursor()
+cursor.execute("SELECT * FROM trades WHERE run_id = ?", (42,))
+trades = cursor.fetchall()
+```
+
+#### Performance Considerations
+
+- Batching reduces DB overhead (buffers flush at end of tick)
+- DEBUG level creates very large databases (use for short runs)
+- SUMMARY level minimal overhead (production use)
+- Consider periodic cleanup of old logs
+
+#### Common Telemetry Mistakes
+
+- ❌ Forgetting to flush new buffer in `_flush_all_buffers()`
+- ❌ Not deleting `logs/telemetry.db` after schema changes
+- ❌ Logging at wrong level (DEBUG for everything = huge DB)
+- ❌ Not handling NULL values in optional fields
+- ❌ Breaking foreign key relationships

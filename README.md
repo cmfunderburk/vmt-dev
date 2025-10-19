@@ -25,8 +25,8 @@ The hub contains:
 
 ```bash
 # 1. Create and Activate a Virtual Environment
-python3 -m venv .venv
-source .venv/bin/activate  # On Windows, use: .venv\Scripts\activate
+python3 -m venv venv
+source venv/bin/activate  # On Windows, use: venv\Scripts\activate
 
 # 2. Install Dependencies
 pip install -r requirements.txt
