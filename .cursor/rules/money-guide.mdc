@@ -48,8 +48,8 @@ The VMT money system is being implemented in 6 carefully planned phases to intro
 
 ### Phase Checklists
 Located in [docs/BIG/](mdc:docs/BIG/):
-- `money_phase1_checklist.md` - Infrastructure (no behavioral changes)
-- `money_phase2_checklist.md` - Monetary exchange basics
+- `money_phase1_checklist.md` - Infrastructure (no behavioral changes) ✅ COMPLETE
+- `money_phase2_checklist.md` - Monetary exchange basics (atomic approach: 2a, 2b, 2c)
 - `money_phase3_checklist.md` - KKT λ estimation
 - `money_phase4_checklist.md` - Mixed regimes
 - `money_phase5_checklist.md` - Liquidity gating
@@ -188,4 +188,21 @@ Before requesting review:
 
 ## Notes on Implementation Status
 
-As of 2025-10-19, the money system planning is complete but implementation has not yet begun. The 6-phase approach ensures safe, incremental development with extensive testing at each stage. Total estimated effort: 50-65 hours across all phases.
+**As of 2025-10-19:**
+- **Phase 1**: ✅ COMPLETE - Infrastructure ready with 78 tests passing, no behavioral changes
+- **Phase 2**: 🔄 REPLANNED - Initial attempt abandoned, now using atomic sub-phases (2a, 2b, 2c)
+- **Phases 3-6**: 📋 PLANNED - Awaiting Phase 2 completion
+
+**Current Testing**: 78 tests passing (up from 63 baseline)
+- Phase 1 tests: 6 (4 unit, 2 integration)
+- Performance tests: 7
+- Fixed spatial matching tests: 3
+- Legacy tests: 62
+
+**Performance Baseline Established**:
+- Exchange-only scenario: 4.7 TPS (critical threshold >5 TPS)
+- Both modes: 8.7 TPS
+- Forage-only: 22.9 TPS
+
+See `docs/BIG/phase2_postmortem.md` for Phase 2 replanning rationale.
+Total estimated effort: 50-65 hours across all phases.

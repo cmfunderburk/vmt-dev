@@ -21,7 +21,9 @@ description: Pedagogical goals and demo scenario requirements for money system
 
 ## Required Demo Scenarios
 
-### Demo 1: Simple Monetary Exchange
+**Note**: Demo scenarios will be created during Phase 2 implementation. The following are planned specifications:
+
+### Demo 1: Simple Monetary Exchange (Planned)
 **File**: `scenarios/demos/demo_01_simple_money.yaml`
 
 **Purpose**: "Why money?"

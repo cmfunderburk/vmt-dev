@@ -44,7 +44,7 @@ buyer_surplus REAL DEFAULT NULL
 seller_surplus REAL DEFAULT NULL
 ```
 
-#### New `tick_states` Table
+#### New `tick_states` Table ✅ (Added in Phase 1)
 Track combined mode + regime state per tick:
 ```sql
 CREATE TABLE IF NOT EXISTS tick_states (
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS tick_states (
 )
 ```
 
-#### New `lambda_updates` Table (KKT mode only)
+#### New `lambda_updates` Table ✅ (Schema added in Phase 1, awaits Phase 3 for usage)
 Track λ estimation diagnostics:
 ```sql
 CREATE TABLE IF NOT EXISTS lambda_updates (

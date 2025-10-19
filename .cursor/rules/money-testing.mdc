@@ -24,7 +24,9 @@ Each implementation phase has **must-pass gates** before proceeding:
 
 ## Phase-Specific Test Requirements
 
-### Phase 1: Infrastructure Tests
+### Phase 1: Infrastructure Tests ✅ COMPLETE
+**Status**: 6 Phase 1 tests passing (4 unit, 2 integration)
+
 ```python
 # Test backward compatibility
 def test_legacy_scenario_unchanged():
@@ -50,7 +52,14 @@ def test_inventory_with_money():
         Inventory(A=5, B=10, M=-1)  # Negative M invalid
 ```
 
-### Phase 2: Money Trade Tests
+**Results**: 
+- All legacy scenarios run identically
+- Money fields default correctly
+- Telemetry extensions work without breaking existing queries
+
+### Phase 2: Money Trade Tests (Replanned - Atomic Approach)
+**Status**: Not yet started. Will be implemented in three sub-phases (2a, 2b, 2c)
+
 ```python
 # Test surplus calculation
 def test_money_trade_surplus():
@@ -170,6 +179,14 @@ For each scenario:
 - Deterministic across runs
 
 ## Performance Testing
+
+### Current Performance Baseline (Phase 1 Complete)
+**Established benchmarks** (500 ticks, 400 agents, 50×50 grid):
+- Exchange-only: 4.7 TPS (critical - only 6% above 5 TPS threshold)
+- Both modes: 8.7 TPS
+- Forage-only: 22.9 TPS
+
+**Phase 2 Requirement**: Must maintain ≥5 TPS on exchange-only scenario
 
 ### Benchmarks Required
 ```python

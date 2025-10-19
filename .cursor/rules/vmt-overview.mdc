@@ -14,7 +14,7 @@ source venv/bin/activate  # Must always activate before operations
 
 **Dependencies**: pygame, numpy, PyQt5, pyyaml, pytest (see [requirements.txt](mdc:requirements.txt))
 
-**Testing**: ALWAYS run `pytest -q` before committing. Expected: 63 passed, 1 skipped.
+**Testing**: ALWAYS run `pytest -q` before committing. Expected: 78 passed.
 
 **Critical Database Gotcha**: If tests fail with schema errors (`table decisions has no column named mode`), delete the stale database:
 ```bash
@@ -38,7 +38,7 @@ See [src/vmt_engine/simulation.py](mdc:src/vmt_engine/simulation.py) and [src/vm
 
 ### Type Invariants
 
-- **Integers**: Inventories (A, B), resources, positions, `vision_radius`, `interaction_radius`, `move_budget_per_tick`
+- **Integers**: Inventories (A, B, M), resources, positions, `vision_radius`, `interaction_radius`, `move_budget_per_tick`
 - **Floats**: Utility values, prices, `ask_A_in_B`, `bid_A_in_B`
 - See [src/vmt_engine/core/state.py](mdc:src/vmt_engine/core/state.py) and [docs/4_typing_overview.md](mdc:docs/4_typing_overview.md)
 

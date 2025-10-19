@@ -42,19 +42,35 @@ When total surplus ties, apply money-first lexicographic ordering:
 
 ## Implementation Phases
 
-### Phase 1: Infrastructure (No Behavioral Changes)
-- Add money fields with backward-compatible defaults
-- Extend `Inventory` with `M: int = 0`
-- Add `lambda_money`, `lambda_changed` to Agent state
-- Extend telemetry schema (new columns, `tick_states` and `lambda_updates` tables)
-- **Success**: All legacy scenarios run identically
+### Phase 1: Infrastructure (No Behavioral Changes) ✅ COMPLETE
+- Add money fields with backward-compatible defaults ✅
+- Extend `Inventory` with `M: int = 0` ✅
+- Add `lambda_money`, `lambda_changed` to Agent state ✅
+- Extend telemetry schema (new columns, `tick_states` and `lambda_updates` tables) ✅
+- **Success**: All legacy scenarios run identically ✅
+- **Status**: Complete with 78 tests passing (up from 63 baseline)
 
-### Phase 2: Monetary Exchange Basics
-- Implement quasi-linear utility: `u_total = u_goods(A,B) + λ·M`
-- Compute money reservation prices: `p*_{G in M} = MU_G / λ`
-- Enable `exchange_regime = "money_only"` mode
-- Generalize `find_compensating_block()` for money trades
-- **Success**: Money trades execute with correct surplus calculation
+### Phase 2: Monetary Exchange Basics (Atomic Sub-phases) 🔄 REPLANNED
+Phase 2 has been restructured into three atomic sub-phases after initial attempt:
+
+#### Phase 2a: Data Structures (No Behavior Change)
+- Add `u_goods`, `mu_A`, `mu_B` methods; `u_total` function
+- Change `Agent.quotes` to `dict[str, float]`
+- Implement `compute_quotes` returning all barter + money pairs
+- Add `filter_quotes_by_regime` helper
+- **Gate**: All 78 legacy tests still pass
+
+#### Phase 2b: Generic Matching (Isolated)
+- Implement `find_compensating_block_generic`
+- Create `find_best_trade` for surplus maximization
+- Add `execute_trade` with inventory updates
+- **Gate**: Unit tests with mock agents pass
+
+#### Phase 2c: Integration
+- Integrate generic matching into `TradeSystem`
+- Decouple `DecisionSystem` (targeting only)
+- Create `scenarios/money_test_basic.yaml`
+- **Gate**: E2E tests verify monetary trades, conservation
 
 ### Phase 3: KKT λ Estimation
 - Implement neighbor price collection and median-lower aggregation
