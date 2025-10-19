@@ -104,6 +104,8 @@ tmp/
 .temp/
 local/
 .dump/
+docs/.archive/
+
 
 # Exception: Track docs/tmp/ for versioned temporary documentation
 !docs/tmp/
