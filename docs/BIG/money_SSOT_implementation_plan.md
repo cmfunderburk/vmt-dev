@@ -19,6 +19,9 @@ This SSOT specifies the authoritative implementation plan for introducing money 
 - Exchange regime defaults to `barter_only` for backward compatibility with legacy scenarios.
 - Tie-break policy in mixed regimes: Money-first (`A↔M ≺ B↔M ≺ A↔B`) when total surplus ties, to model monetary exchange as preferred institutional form.
 
+- Deprecation policy: Money-aware APIs are canonical; legacy helpers emit `DeprecationWarning` once covered by money-aware equivalents; removal deferred until after Phase 2 with an announced deprecation window.
+- Performance posture: Defer optimization until the money system is functionally complete; intervene early only if ticks-per-second < 5 on the standard headless money integration scenario (e.g., `scenarios/money_test_basic.yaml`, seed 42).
+
 ---
 
 ### 1) Schema and scenario updates
@@ -170,10 +173,11 @@ Files: `src/vmt_engine/core/state.py`
 - `Agent`:
   - Add `lambda_money: float` state (used differently per mode: constant in quasi-linear; dynamic in KKT).
   - Add flags `lambda_changed` and continue to use `inventory_changed` when A, B, or M mutate.
-- `Quote` and quote container:
-  - Generalize to support ordered pairs `(sell, buy)` ∈ {(A,M), (M,A), (B,M), (M,B), (A,B), (B,A)}.
-  - Provide deterministic iteration order for stored pairs.
-  - Filter computed quotes by `exchange_regime` before storage (don't store quotes for disallowed pairs).
+- Quotes container:
+  - `Agent.quotes` is `dict[str, float]` with canonical keys: `ask_A_in_B`, `bid_A_in_B`, `ask_B_in_A`, `bid_B_in_A`, `ask_A_in_M`, `bid_A_in_M`, `ask_B_in_M`, `bid_B_in_M`.
+  - Use deterministic iteration order when needed; the dictionary is the canonical container.
+  - Compute the full set of quotes, then filter by `exchange_regime` before assignment/storage (disallowed pairs omitted).
+  - Legacy `Quote` dataclass is replaced by a thin shim that emits `DeprecationWarning` and forwards to dict-based access.
 
 ---
 
@@ -197,8 +201,9 @@ Files: `src/vmt_engine/systems/quotes.py`
   - Goods-for-money: `p*_{G in M} = MU_G / λ`
   - Goods-for-goods: `p*_{A in B} = MU_A / MU_B`, `p*_{B in A} = MU_B / MU_A`
 - Apply spreads and clamps to produce asks/bids with invariants `ask ≥ p_min`, `bid ≤ p_max`.
-- Store quotes per ordered pair `(sell, buy)` using a stable key order.
-- **Filter by exchange_regime**: Only compute and store quotes for pairs permitted by current `exchange_regime`.
+- Represent quotes as a dictionary using the canonical keys listed in §3; maintain a stable iteration order when required.
+- Compute the full set of quotes, then filter by `exchange_regime` before assignment and telemetry (omit disallowed pairs).
+- Consumers should access via `dict.get(key)` to remain robust to regime filtering and future extensions.
 - Recompute only in Housekeeping when `inventory_changed` or `lambda_changed`.
 
 ---
@@ -353,6 +358,7 @@ Log per-trade:
   - Exchange regimes: `money_only`, `mixed`, `mixed_liquidity_gated` behave as specified
   - Determinism snapshot with fixed seed across runs
 - Performance: perception-based price aggregation does not introduce O(N²) paths.
+- Performance posture: temporary regressions acceptable; treat as blocker only if sustained TPS < 5 on the headless money integration scenario (`scenarios/money_test_basic.yaml`, seed 42).
 
 ---
 
@@ -367,12 +373,21 @@ Log per-trade:
 3. Extend telemetry schema for money and active_exchange_pairs
 4. Verify: all existing scenarios run identically
 
-**Phase 2: Monetary exchange basics**
-5. Implement quasi-linear utility with `money_mode="quasilinear"`
-6. Implement money quotes and reservation prices
-7. Enable `exchange_regime="money_only"` mode
-8. Create test scenario with money endowments
-9. Verify: money trades execute, barter blocked, strict surplus enforcement
+**Phase 2: Monetary exchange basics (atomic sub-phases)**
+5. Phase 2a — Data structures (no behavior change)
+   - Add `u_goods`, `mu_A`, `mu_B` and top-level `u_total`; preserve legacy signatures; add unit tests `tests/test_utility_money.py`.
+   - Change `Agent.quotes` to `dict[str, float]`; update `compute_quotes` to produce canonical keys; add `filter_quotes_by_regime`.
+   - Update `HousekeepingSystem` to compute+filter quotes; update telemetry consumers to use `dict.get(...)`; add `tests/test_quotes_money.py`.
+   - Introduce `DeprecationWarning` for legacy utility helpers and `Quote`-based access paths.
+   - Gate: full legacy suite green and outputs unchanged.
+6. Phase 2b — Generic matching (isolated)
+   - Implement `find_compensating_block_generic`, `find_best_trade`, `execute_trade` in `matching.py`.
+   - Create `tests/test_matching_money.py` using mock Agents and pre-filled quotes; cover `money_only` and `mixed`, determinism, and no-trade cases.
+   - Gate: matching tests green; legacy suite unchanged.
+7. Phase 2c — Integration
+   - Integrate generic matching into `trading.py`; decouple `decision.py` to partner targeting only.
+   - Create `scenarios/money_test_basic.yaml`; add `tests/test_money_phase2_integration.py` verifying monetary trades occur, barter is blocked, money conservation, determinism (seed 42).
+   - Gate: full suite green.
 
 **Phase 3: KKT λ estimation**
 10. Implement neighbor price aggregation (median-lower)
