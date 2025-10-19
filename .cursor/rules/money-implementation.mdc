@@ -1,0 +1,163 @@
+---
+description: Money system implementation guidelines and architectural decisions
+---
+
+# Money System Implementation Guide
+
+## Core Architecture Decisions (Frozen)
+
+### Money Representation
+- `M` is an **integer** inventory tracked in minor units (like cents)
+- Expose `money_scale ≥ 1` in schema for conversion
+- Money originates from initial endowments only (no foraging)
+- Money conservation: Total `M` across all agents is constant
+
+### Price Aggregation
+- **KKT mode**: Use deterministic median-lower of neighbor asks in money per good
+- Sort by `(price, seller_id)` for determinism
+- Include self-ask in aggregation
+
+### Trading Rules
+- Execute trades **only if both agents' ΔU are strictly positive**
+- Round-half-up for quantity mapping: `ΔY = floor(price * ΔX + 0.5)`
+- One trade attempt per agent pair per tick
+- Apply cooldown on failed trades
+
+### Mode System Architecture (Option A-plus)
+Two orthogonal control layers:
+1. **Temporal Control** (`mode_schedule`): WHEN activities occur (forage/trade/both)
+2. **Type Control** (`exchange_regime`): WHAT bilateral exchanges are permitted
+
+Default: `exchange_regime = "barter_only"` for backward compatibility
+
+### Exchange Regimes
+- `barter_only`: Only goods-for-goods (A↔B)
+- `money_only`: Only goods-for-money (A↔M, B↔M)  
+- `mixed`: All six exchange pairs allowed
+- `mixed_liquidity_gated`: Money always allowed; barter conditional on market depth
+
+### Tie-Breaking Policy
+When total surplus ties, apply money-first lexicographic ordering:
+`(A,M) ≺ (B,M) ≺ (M,A) ≺ (M,B) ≺ (A,B) ≺ (B,A)`
+
+## Implementation Phases
+
+### Phase 1: Infrastructure (No Behavioral Changes)
+- Add money fields with backward-compatible defaults
+- Extend `Inventory` with `M: int = 0`
+- Add `lambda_money`, `lambda_changed` to Agent state
+- Extend telemetry schema (new columns, `tick_states` and `lambda_updates` tables)
+- **Success**: All legacy scenarios run identically
+
+### Phase 2: Monetary Exchange Basics
+- Implement quasi-linear utility: `u_total = u_goods(A,B) + λ·M`
+- Compute money reservation prices: `p*_{G in M} = MU_G / λ`
+- Enable `exchange_regime = "money_only"` mode
+- Generalize `find_compensating_block()` for money trades
+- **Success**: Money trades execute with correct surplus calculation
+
+### Phase 3: KKT λ Estimation
+- Implement neighbor price collection and median-lower aggregation
+- Compute `λ_hat = min(MU_A/p̂_A, MU_B/p̂_B)`
+- Smooth: `λ_{t+1} = (1−α)·λ_t + α·λ̂` with bounds clamping
+- Add cross-quote inference fallback
+- **Success**: λ converges deterministically, no O(N²) paths
+
+### Phase 4: Mixed Regimes
+- Enable all six exchange pairs in `mixed` regime
+- Implement money-first tie-breaking
+- Verify mode × regime interaction (temporal × type control)
+- **Success**: Both money and barter trades occur with correct priorities
+
+### Phase 5: Liquidity Gating
+- Compute depth = count of distinct neighbor money quotes
+- Enable barter when depth < `min_quotes` threshold
+- Implement per-agent pair filtering based on local liquidity
+- **Success**: Agents fall back to barter in thin markets
+
+### Phase 6: Polish and Documentation
+- Enhance renderer: money visualization, mode overlays, λ heatmap
+- Extend log viewer: money filters, λ plots, mode timeline
+- Create 5 demo scenarios showcasing different regimes
+- Complete user guide and technical documentation
+- **Success**: Production-ready with full observability
+
+## Critical Invariants
+
+### Determinism Requirements
+- **Always** process agents sorted by `agent.id`
+- **Always** process trade pairs sorted by `(min_id, max_id)`
+- **Always** use stable sort keys `(price, seller_id)` for aggregation
+- **Never** mutate quotes mid-tick (only in Housekeeping)
+- **Never** use nondeterministic dict iteration for side effects
+
+### Type Safety
+- **Integers**: `M`, resources, positions, radii, move budgets
+- **Floats**: Utility values, prices, `lambda_money`, spreads
+- Round-half-up for all quantity conversions
+
+### Performance Constraints
+- Price aggregation must remain O(N) average complexity
+- Use `SpatialIndex` for neighbor queries
+- Batch telemetry writes
+
+## Testing Requirements
+
+### Phase Gates (Must-Pass)
+- Unit tests for λ estimation determinism
+- Integration tests for money conservation
+- Strictly positive surplus enforcement tests
+- Exchange regime behavior validation
+- Determinism snapshots with fixed seeds
+- Performance benchmarks (no O(N²) paths)
+
+### Backward Compatibility
+- All legacy scenarios must run identically
+- `exchange_regime` defaults to `"barter_only"`
+- Money fields default to 0/NULL
+- Existing telemetry queries continue working
+
+## Pedagogical Goals
+
+### Teaching Objectives
+- Demonstrate emergence of money vs. barter
+- Show price discovery through λ convergence
+- Illustrate market thickness effects on exchange types
+- Model institutional preference for monetary exchange
+
+### Demo Scenarios Required
+1. Simple monetary exchange (Why money?)
+2. KKT convergence (How agents learn prices)
+3. Mixed regime dynamics (When is barter efficient?)
+4. Liquidity zones (Market thickness effects)
+5. Mode × regime interaction (Time constraints with money)
+
+## Code Organization
+
+### File Structure
+- **Core**: [src/vmt_engine/core/state.py](mdc:src/vmt_engine/core/state.py) - `Inventory.M`, `Agent.lambda_money`
+- **Economics**: [src/vmt_engine/econ/utility.py](mdc:src/vmt_engine/econ/utility.py) - `u_goods()`, `u_total()`, marginal utilities
+- **Trading**: [src/vmt_engine/systems/trading.py](mdc:src/vmt_engine/systems/trading.py) - Generalized matching and execution
+- **Quotes**: [src/vmt_engine/systems/quotes.py](mdc:src/vmt_engine/systems/quotes.py) - Money reservation prices
+- **Housekeeping**: [src/vmt_engine/systems/housekeeping.py](mdc:src/vmt_engine/systems/housekeeping.py) - λ updates in KKT mode
+- **Schema**: [src/scenarios/schema.py](mdc:src/scenarios/schema.py) - Money params validation
+- **Telemetry**: [src/telemetry/database.py](mdc:src/telemetry/database.py) - Extended schema
+
+### Key Algorithms
+- **find_compensating_block_generic()**: Search for mutually beneficial trades
+- **_aggregate_prices_median_lower()**: Deterministic price aggregation
+- **_compute_liquidity_depth()**: Count distinct money quotes
+- **_update_lambda_kkt()**: Endogenous λ estimation
+
+## Error Handling
+
+### Validation Points
+- `money_scale` must be ≥ 1
+- `lambda_bounds`: `lambda_min < lambda_max`, both positive
+- If `exchange_regime` needs money, require `M` in initial inventories
+- Catch negative `M` early (invariant violation)
+
+### User-Friendly Errors
+- Clear messages for missing money in money-only regime
+- Helpful hints for λ bounds violations
+- Descriptive telemetry schema migration warnings

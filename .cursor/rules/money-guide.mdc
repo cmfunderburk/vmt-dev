@@ -1,0 +1,191 @@
+---
+alwaysApply: true
+---
+
+# VMT Money System Implementation Guide
+
+## Overview
+
+The VMT money system is being implemented in 6 carefully planned phases to introduce monetary exchange capabilities while maintaining perfect backward compatibility. This guide helps developers navigate the implementation using the detailed planning documents in `docs/BIG/`.
+
+## Available Cursor Rules for Money Implementation
+
+### 📋 Core Implementation Rules
+**File**: `.cursor/rules/money-implementation.mdc`
+- Frozen architectural decisions (money as integer, KKT price aggregation, tie-breaking)
+- 6-phase implementation roadmap with success criteria
+- Critical invariants (determinism, type safety, performance)
+- File organization and key algorithms
+
+### 🗄️ Telemetry & Database Rules  
+**File**: `.cursor/rules/money-telemetry.mdc`
+- Database schema extensions with backward compatibility
+- Logging requirements and conditional logging logic
+- Query patterns for analysis
+- Migration strategy for existing databases
+
+### 🧪 Testing Requirements
+**File**: `.cursor/rules/money-testing.mdc`
+- Phase-specific test requirements with must-pass gates
+- Determinism and regression testing
+- Performance benchmarks and scaling tests
+- E2E test coverage requirements
+
+### 🎓 Pedagogical Guidelines
+**File**: `.cursor/rules/money-pedagogical.mdc`
+- Teaching objectives and target audiences
+- 5 required demo scenarios with specific insights
+- Classroom exercises and assessment ideas
+- Visualization requirements for education
+
+## Key Implementation Documents
+
+### SSOT (Single Source of Truth)
+**File**: [docs/BIG/money_SSOT_implementation_plan.md](mdc:docs/BIG/money_SSOT_implementation_plan.md)
+- Authoritative implementation plan - NO changes without updating this first
+- Frozen design decisions (§0-13)
+- Future extensions (§14)
+
+### Phase Checklists
+Located in [docs/BIG/](mdc:docs/BIG/):
+- `money_phase1_checklist.md` - Infrastructure (no behavioral changes)
+- `money_phase2_checklist.md` - Monetary exchange basics
+- `money_phase3_checklist.md` - KKT λ estimation
+- `money_phase4_checklist.md` - Mixed regimes
+- `money_phase5_checklist.md` - Liquidity gating
+- `money_phase6_checklist.md` - Polish and documentation
+
+### Telemetry Schema
+**File**: [docs/BIG/money_telemetry_schema.md](mdc:docs/BIG/money_telemetry_schema.md)
+- Complete database schema changes
+- Query examples
+- Backward compatibility guarantees
+
+## Implementation Workflow
+
+### Starting a New Phase
+
+1. **Check Prerequisites**
+   ```bash
+   pytest tests/test_money_phase{N-1}*.py -v  # Previous phase tests
+   ```
+
+2. **Create Feature Branch**
+   ```bash
+   git checkout -b feature/money-phase{N}-{description}
+   ```
+
+3. **Follow Phase Checklist**
+   - Open `docs/BIG/money_phase{N}_checklist.md`
+   - Work through items systematically
+   - Check off completed items
+
+4. **Test Continuously**
+   ```bash
+   pytest tests/test_money_phase{N}*.py -v  # Current phase
+   pytest tests/ -k "not money" -v          # Legacy tests
+   ```
+
+### Critical Invariants to Maintain
+
+#### ⚠️ Backward Compatibility
+- `exchange_regime` defaults to `"barter_only"`
+- All money fields default to 0 or NULL
+- Legacy scenarios MUST run identically
+
+#### 🎲 Determinism
+- Always sort agents by ID before processing
+- Use `(price, seller_id)` for stable sorting
+- Fixed seeds for all tests
+
+#### 📊 Performance
+- Price aggregation must stay O(N)
+- Use SpatialIndex for neighbor queries
+- Batch telemetry writes
+
+## Common Development Tasks
+
+### Adding a Money Parameter
+1. Add to `ScenarioParams` in [src/scenarios/schema.py](mdc:src/scenarios/schema.py)
+2. Add validation in `ScenarioParams.validate()`
+3. Parse in [src/scenarios/loader.py](mdc:src/scenarios/loader.py)
+4. Add telemetry logging if needed
+5. Write unit test
+6. Update documentation
+
+### Creating a Demo Scenario
+1. Create YAML in `scenarios/demos/`
+2. Define clear pedagogical purpose
+3. Include configuration comments
+4. Test with fixed seed
+5. Add to `scripts/run_demos.py`
+6. Document learning outcomes
+
+### Debugging Money Trades
+1. Check `exchange_regime` setting
+2. Verify agents have money (`inventory.M > 0`)
+3. Check quotes exist for money pairs
+4. Verify surplus is strictly positive
+5. Check telemetry logs for diagnostics
+
+## Testing Commands
+
+### Run All Money Tests
+```bash
+# All phases
+for phase in {1..6}; do
+    pytest tests/test_money_phase${phase}*.py -v
+done
+
+# Integration tests
+python scripts/run_demos.py
+
+# Performance
+python -m cProfile -o profile.prof main.py scenarios/money_test_mixed.yaml
+```
+
+### Verify Backward Compatibility
+```bash
+# Create baseline
+python main.py scenarios/three_agent_barter.yaml --seed 42
+cp logs/telemetry.db baseline.db
+
+# After changes
+python main.py scenarios/three_agent_barter.yaml --seed 42
+python scripts/compare_snapshots.py baseline.db logs/telemetry.db
+```
+
+## Code Review Checklist
+
+Before requesting review:
+- [ ] Phase checklist complete
+- [ ] All tests passing
+- [ ] No regressions in legacy scenarios
+- [ ] Documentation updated
+- [ ] Linters pass without warnings
+- [ ] Performance benchmarks met
+- [ ] Determinism verified
+
+## Getting Help
+
+### Resources
+- SSOT document for authoritative decisions
+- Phase checklists for step-by-step guidance
+- Test files for examples
+- Demo scenarios for reference implementations
+
+### Key Files to Understand
+- [src/vmt_engine/core/state.py](mdc:src/vmt_engine/core/state.py) - Inventory and Agent extensions
+- [src/vmt_engine/econ/utility.py](mdc:src/vmt_engine/econ/utility.py) - Utility functions
+- [src/vmt_engine/systems/trading.py](mdc:src/vmt_engine/systems/trading.py) - Trade execution
+- [src/vmt_engine/systems/housekeeping.py](mdc:src/vmt_engine/systems/housekeeping.py) - λ updates
+
+### Common Issues
+- **Money trades not executing**: Check exchange_regime and quotes
+- **λ not converging**: Verify price aggregation and smoothing
+- **Tests failing**: Check determinism and sorting
+- **Performance regression**: Profile and check for O(N²) paths
+
+## Notes on Implementation Status
+
+As of 2025-10-19, the money system planning is complete but implementation has not yet begun. The 6-phase approach ensures safe, incremental development with extensive testing at each stage. Total estimated effort: 50-65 hours across all phases.

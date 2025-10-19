@@ -1,0 +1,284 @@
+---
+description: Testing requirements and validation strategies for money implementation
+---
+
+# Money System Testing Guide
+
+## Testing Philosophy
+
+### Phased Testing Approach
+Each implementation phase has **must-pass gates** before proceeding:
+- Phase 1: No behavioral changes to legacy scenarios
+- Phase 2: Basic money trades working
+- Phase 3: λ convergence demonstrated
+- Phase 4: Mixed regime trade types verified
+- Phase 5: Liquidity gating behavior validated
+- Phase 6: Full E2E and regression tests
+
+### Determinism Requirements
+**Every test must be deterministic:**
+- Use fixed seeds (`--seed 42`)
+- Sort all collections before iteration
+- Verify identical results across multiple runs
+- Create snapshot comparisons for regression testing
+
+## Phase-Specific Test Requirements
+
+### Phase 1: Infrastructure Tests
+```python
+# Test backward compatibility
+def test_legacy_scenario_unchanged():
+    """Legacy scenarios must produce identical results."""
+    # Load scenario without money
+    # Run simulation
+    # Compare telemetry snapshots to baseline
+    # Assert: positions, inventories (A,B), trades identical
+
+# Test defaults
+def test_money_params_defaults():
+    """Default money params don't break existing scenarios."""
+    params = ScenarioParams()
+    assert params.exchange_regime == "barter_only"
+    assert params.money_scale == 1
+    params.validate()  # Should not raise
+
+# Test inventory extension
+def test_inventory_with_money():
+    inv = Inventory(A=10, B=20, M=100)
+    assert inv.M == 100
+    with pytest.raises(ValueError):
+        Inventory(A=5, B=10, M=-1)  # Negative M invalid
+```
+
+### Phase 2: Money Trade Tests
+```python
+# Test surplus calculation
+def test_money_trade_surplus():
+    """Money trades use correct surplus formula."""
+    # ΔU_buyer = u_goods(A_new, B_new) - u_goods(A_old, B_old) - λ·ΔM
+    # ΔU_seller = u_goods(A_new, B_new) - u_goods(A_old, B_old) + λ·ΔM
+    # Both must be strictly positive
+
+# Test regime enforcement
+def test_barter_blocked_in_money_only():
+    """Barter trades don't occur when exchange_regime=money_only."""
+    # Place agents with complementary goods
+    # Run with money_only regime
+    # Assert: no barter trades occurred
+
+# Test conservation
+def test_money_conservation():
+    """Total money supply is conserved."""
+    # Sum initial M across all agents
+    # Run simulation
+    # Sum final M across all agents
+    # Assert: initial_total == final_total
+```
+
+### Phase 3: KKT Tests
+```python
+# Test price aggregation
+def test_median_lower_deterministic():
+    """Median-lower aggregation is deterministic."""
+    prices = [(2.0, 0), (2.0, 1), (2.0, 2)]
+    # Sort by (price, seller_id)
+    result = _aggregate_prices_median_lower(prices)
+    # Run multiple times, verify same result
+
+# Test λ convergence
+def test_kkt_lambda_converges():
+    """λ values stabilize over time."""
+    # Run KKT scenario
+    # Query λ trajectory
+    # Verify: later changes < earlier changes
+
+# Test complexity
+def test_lambda_update_complexity():
+    """λ updates don't introduce O(N²) paths."""
+    # Run with [10, 20, 40, 80] agents
+    # Measure time for each
+    # Verify: roughly linear scaling
+```
+
+### Phase 4: Mixed Regime Tests
+```python
+# Test pair enumeration
+def test_mixed_regime_all_pairs():
+    """Mixed regime allows all exchange types."""
+    pairs = _get_allowed_pairs("mixed")
+    assert ("A", "M") in pairs
+    assert ("B", "M") in pairs
+    assert ("A", "B") in pairs
+
+# Test tie-breaking
+def test_money_first_tie_breaking():
+    """Money trades prioritized when surplus ties."""
+    # Create candidates with equal surplus
+    # One money trade, one barter
+    # Verify: money trade ranked first
+
+# Test mode interaction
+def test_forage_mode_blocks_all_trades():
+    """Forage mode prevents trading regardless of regime."""
+    # Set mode="forage", regime="mixed"
+    # Verify: no trades occur
+    # Verify: active_pairs = []
+```
+
+### Phase 5: Liquidity Gating Tests
+```python
+# Test depth calculation
+def test_liquidity_depth_includes_self():
+    """Agent includes self in depth count."""
+    # Agent has ask_A_in_M quote
+    # No neighbors
+    # Verify: depth['A'] == 1
+
+# Test gating logic
+def test_barter_enabled_below_threshold():
+    """Barter enabled when depth < threshold."""
+    threshold = 3
+    depth = {'A': 2, 'B': 5}
+    barter_enabled = (depth['A'] < threshold or depth['B'] < threshold)
+    assert barter_enabled
+
+# Test heterogeneity
+def test_different_agents_different_pairs():
+    """Agents in different liquidity environments get different allowed pairs."""
+    # Agent in dense area: no barter
+    # Agent in sparse area: barter allowed
+```
+
+## Integration Test Scenarios
+
+### Required Test Scenarios
+Each must be in `scenarios/` directory:
+
+1. **money_test_basic.yaml**: Simple money-only trades
+2. **money_test_kkt.yaml**: λ convergence demonstration
+3. **money_test_mixed.yaml**: Both money and barter
+4. **money_test_mode_interaction.yaml**: mode_schedule × exchange_regime
+5. **money_test_liquidity_gate.yaml**: Heterogeneous money holdings
+6. **money_test_sparse_liquidity.yaml**: Sparse agents forcing barter
+
+### Scenario Validation Criteria
+For each scenario:
+- Loads without errors
+- Runs to completion
+- Produces expected trade types
+- Telemetry logs correctly
+- Deterministic across runs
+
+## Performance Testing
+
+### Benchmarks Required
+```python
+# Baseline performance
+def benchmark_legacy_scenario(benchmark):
+    """Baseline performance without money."""
+    benchmark(run_simulation, "three_agent_barter.yaml")
+
+# Money overhead
+def benchmark_money_scenario(benchmark):
+    """Performance with money features."""
+    benchmark(run_simulation, "money_test_mixed.yaml")
+
+# Scaling test
+def test_scaling_with_agents():
+    """Verify O(N) scaling, not O(N²)."""
+    times = []
+    for n in [10, 20, 40, 80]:
+        t = time_simulation(n_agents=n)
+        times.append(t)
+    # Check roughly linear scaling
+```
+
+### Performance Targets
+- No more than 10% overhead for money features
+- λ updates must remain O(N) average complexity
+- Spatial queries use bucketed index
+- Telemetry batching prevents I/O bottleneck
+
+## Regression Testing
+
+### Snapshot Comparisons
+```bash
+# Before changes
+python main.py scenario.yaml --seed 42
+cp logs/telemetry.db baseline.db
+
+# After changes  
+python main.py scenario.yaml --seed 42
+python scripts/compare_snapshots.py baseline.db logs/telemetry.db
+```
+
+### Required Regression Tests
+```python
+# Run all phase tests
+for phase in [1, 2, 3, 4, 5]:
+    pytest tests/test_money_phase{phase}*.py -v
+
+# Run all legacy tests
+pytest tests/ -k "not money" -v
+
+# Verify demos
+python scripts/run_demos.py
+```
+
+## End-to-End Testing
+
+### E2E Test Coverage
+```python
+def test_e2e_all_regimes():
+    """Test all exchange regimes."""
+    for regime in ["barter_only", "money_only", "mixed", "mixed_liquidity_gated"]:
+        # Run scenario with regime
+        # Verify completes without errors
+
+def test_e2e_both_money_modes():
+    """Test both money modes."""
+    for mode in ["quasilinear", "kkt_lambda"]:
+        # Run scenario with mode
+        # Verify mode-specific behavior
+
+def test_e2e_mode_schedule_interaction():
+    """Test mode_schedule × exchange_regime."""
+    # Run with both controls active
+    # Verify correct interaction
+```
+
+## Validation Utilities
+
+### Helper Functions
+```python
+def assert_money_conservation(sim):
+    """Verify total money unchanged."""
+    initial = sum(a.inventory.M for a in sim.agents)
+    # ... run simulation ...
+    final = sum(a.inventory.M for a in sim.agents)
+    assert initial == final
+
+def assert_deterministic(scenario, seed=42):
+    """Verify simulation is deterministic."""
+    result1 = run_simulation(scenario, seed)
+    result2 = run_simulation(scenario, seed)
+    assert result1 == result2
+
+def assert_no_regression(scenario):
+    """Verify no behavioral changes."""
+    baseline = load_baseline(scenario)
+    current = run_simulation(scenario)
+    assert trajectories_equal(baseline, current)
+```
+
+## Testing Checklist
+
+Before merging any phase:
+- [ ] All unit tests pass
+- [ ] All integration tests pass
+- [ ] Performance benchmarks met
+- [ ] Determinism verified
+- [ ] Regression tests pass
+- [ ] Test coverage > 80%
+- [ ] No flaky tests
+- [ ] Documentation updated
