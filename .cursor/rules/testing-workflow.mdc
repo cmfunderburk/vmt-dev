@@ -10,7 +10,7 @@ Before committing ANY changes, run through this checklist:
 1. **Activate venv**: `source venv/bin/activate`
 2. **Delete stale DB if schema changed**: `rm logs/telemetry.db`
 3. **Run tests**: `pytest -q`
-4. **Verify results**: Must show "78 passed"
+4. **Verify results**: Must show "95 passed" (as of 2025-10-19)
 5. **Check dependencies** (if requirements changed): `pip list | grep -E "(pygame|numpy|pyyaml|pytest|PyQt5)"`
 
 ### Test Commands

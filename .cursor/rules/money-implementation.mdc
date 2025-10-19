@@ -49,6 +49,7 @@ When total surplus ties, apply money-first lexicographic ordering:
 - Extend telemetry schema (new columns, `tick_states` and `lambda_updates` tables) ✅
 - **Success**: All legacy scenarios run identically ✅
 - **Status**: Complete with 78 tests passing (up from 63 baseline)
+- **Note**: As of 2025-10-19, 95 tests total (17 telemetry tests added after Phase 1)
 
 ### Phase 2: Monetary Exchange Basics (Atomic Sub-phases) 🔄 REPLANNED
 Phase 2 has been restructured into three atomic sub-phases after initial attempt:

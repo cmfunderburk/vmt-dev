@@ -263,7 +263,7 @@ from scenarios.loader import load_scenario
 from telemetry.config import LogConfig
 
 scenario = load_scenario("scenarios/three_agent_barter.yaml")
-sim = Simulation(scenario, seed=42, log_config=LogConfig.summary())
+sim = Simulation(scenario, seed=42, log_config=LogConfig.standard())
 sim.run(max_ticks=100)
 
 print(f"Completed {sim.tick} ticks")

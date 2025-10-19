@@ -14,7 +14,7 @@ source venv/bin/activate  # Must always activate before operations
 
 **Dependencies**: pygame, numpy, PyQt5, pyyaml, pytest (see [requirements.txt](mdc:requirements.txt))
 
-**Testing**: ALWAYS run `pytest -q` before committing. Expected: 78 passed.
+**Testing**: ALWAYS run `pytest -q` before committing. Expected: 95 passed (as of 2025-10-19).
 
 **Critical Database Gotcha**: If tests fail with schema errors (`table decisions has no column named mode`), delete the stale database:
 ```bash
