@@ -1,24 +1,24 @@
 # vmt-dev - Token Analysis Report
 
-*Generated on 2025-10-19 14:59:57*
+*Generated on 2025-10-19 15:40:35*
 
 ## 📊 Executive Summary
 
 | Metric | Value |
 |--------|--------|
-| **Total Tokens** | 185.0K tokens |
-| **Total Files** | 116 files |
-| **Repository Size** | 0.9 MB |
-| **Average Tokens/File** | 1595 tokens |
+| **Total Tokens** | 167.9K tokens |
+| **Total Files** | 113 files |
+| **Repository Size** | 0.8 MB |
+| **Average Tokens/File** | 1486 tokens |
 
 ## 📄 File Type Breakdown
 
 | File Type | Token Count | Percentage | Files |
 |-----------|-------------|------------|-------|
-| Markdown | 121.5K | 65.7% | 52 |
-| Python | 52.0K | 28.1% | 48 |
-| YAML | 8.4K | 4.6% | 8 |
-| Text | 2.2K | 1.2% | 3 |
+| Markdown | 104.5K | 62.2% | 49 |
+| Python | 52.0K | 31.0% | 48 |
+| YAML | 8.4K | 5.0% | 8 |
+| Text | 2.2K | 1.3% | 3 |
 | Other | 544 | 0.3% | 3 |
 | Build/Meta | 222 | 0.1% | 1 |
 | Config | 9 | 0.0% | 1 |
@@ -36,7 +36,6 @@
 | `docs/BIG/money_phase5_checklist.md` | 4.3K | 0.0 MB |
 | `docs/.archive/money_valuation_design.md` | 4.3K | 0.0 MB |
 | `docs/4_typing_overview.md` | 4.0K | 0.0 MB |
-| `.cursor/rules/feature-development-checklist.mdc` | 4.0K | 0.0 MB |
 | `docs/.archive/mode_toggles_implementation_spec.md` | 3.8K | 0.0 MB |
 | `src/telemetry/db_loggers.py` | 3.8K | 0.0 MB |
 | `docs/.archive/PLAN_remove_summary_logging.md` | 3.6K | 0.0 MB |
@@ -47,6 +46,7 @@
 | `src/vmt_engine/systems/matching.py` | 3.0K | 0.0 MB |
 | `docs/BIG/implement/phase2_atomic_implementation_plan.md` | 3.0K | 0.0 MB |
 | `src/vmt_log_viewer/viewer.py` | 2.9K | 0.0 MB |
+| `docs/BIG/money_telemetry_schema.md` | 2.7K | 0.0 MB |
 
 
 ## 🤖 LLM Context Analysis
@@ -55,24 +55,24 @@
 
 | Model | Context Window | Repo Coverage |
 |-------|---------------|---------------|
-| GPT-4 | ~128K tokens | 69.2% |
-| Claude 3 | ~200K tokens | 108.1% |
-| Claude 3.5 Sonnet | ~200K tokens | 108.1% |
-| Gemini 1.5 Pro | ~1M tokens | 540.5% |
+| GPT-4 | ~128K tokens | 76.2% |
+| Claude 3 | ~200K tokens | 119.1% |
+| Claude 3.5 Sonnet | ~200K tokens | 119.1% |
+| Gemini 1.5 Pro | ~1M tokens | 595.4% |
 
 ### Recommendations
 
-- **Full Repository**: 185.0K tokens fits in: Gemini 1.5 Pro (~1.0M)
+- **Full Repository**: 167.9K tokens fits in: Gemini 1.5 Pro (~1.0M)
 - **Targeted Analysis**: Consider focusing on 40-60% of files for detailed reviews
 - **Code Reviews**: Use token counts to prioritize which files/modules to include
-- **Documentation**: 65.7% of tokens are documentation (substantial docs available)
+- **Documentation**: 62.2% of tokens are documentation (substantial docs available)
 
 
 ## 📈 Analysis Metadata
 
 - **Analysis Tool**: Repository Token Counter (full version with repotokens)
 - **Tokenization**: Accurate repotokens library
-- **Files Processed**: 116 code files
+- **Files Processed**: 113 code files
 - **Excluded**: Binary files, caches, logs, virtual environments
 - **Repository**: vmt-dev
 
