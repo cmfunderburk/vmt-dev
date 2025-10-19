@@ -1,4 +1,9 @@
 ---
+globs:
+  - tests/test_money*.py
+  - tests/test_m1_integration.py
+  - tests/test_mode*.py
+  - scripts/benchmark_performance.py
 description: Testing requirements and validation strategies for money implementation
 ---
 

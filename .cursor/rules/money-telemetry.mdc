@@ -1,4 +1,7 @@
 ---
+globs:
+  - src/telemetry/**/*.py
+  - docs/BIG/money_telemetry_schema.md
 description: Telemetry and database schema guidelines for money system
 ---
 

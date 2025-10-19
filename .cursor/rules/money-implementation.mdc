@@ -1,4 +1,12 @@
 ---
+globs:
+  - src/vmt_engine/econ/**/*.py
+  - src/vmt_engine/systems/trading.py
+  - src/vmt_engine/systems/quotes.py
+  - src/vmt_engine/systems/decision.py
+  - src/vmt_engine/core/state.py
+  - tests/test_money*.py
+  - docs/BIG/money*.md
 description: Money system implementation guidelines and architectural decisions
 ---
 

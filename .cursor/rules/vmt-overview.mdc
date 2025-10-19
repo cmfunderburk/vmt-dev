@@ -1,46 +1,12 @@
 ---
-alwaysApply: true
+alwaysApply: false
+description: "High-level overview of the VMT project architecture, entry points, and key algorithms."
 ---
 ## VMT Project Overview
 
 **VMT** is a deterministic spatial agent-based simulation for teaching and researching microeconomic behavior. It implements a 7-phase discrete-time tick cycle on an N×N grid where agents engage in bilateral barter trading and resource foraging.
 
-### Critical Setup Requirements
-
-**Virtual Environment**: The directory is named `venv` (NOT `.venv`):
-```bash
-source venv/bin/activate  # Must always activate before operations
-```
-
-**Dependencies**: pygame, numpy, PyQt5, pyyaml, pytest (see [requirements.txt](mdc:requirements.txt))
-
-**Testing**: ALWAYS run `pytest -q` before committing. Expected: 95 passed (as of 2025-10-19).
-
-**Critical Database Gotcha**: If tests fail with schema errors (`table decisions has no column named mode`), delete the stale database:
-```bash
-rm logs/telemetry.db && pytest -q
-```
-
-### The 7-Phase Tick Cycle (Sacred Order)
-
-1. **Perception** → 2. **Decision** → 3. **Movement** → 4. **Trade** → 5. **Forage** → 6. **Resource Regeneration** → 7. **Housekeeping**
-
-See [src/vmt_engine/simulation.py](mdc:src/vmt_engine/simulation.py) and [src/vmt_engine/systems/](mdc:src/vmt_engine/systems/)
-
-### Determinism Rules (Non-Negotiable)
-
-- **Always** process agents sorted by `agent.id`
-- **Always** process trade pairs sorted by `(min_id, max_id)`
-- **Always** use round-half-up: `floor(price * ΔA + 0.5)`
-- **Never** mutate quotes mid-tick (only refresh in Housekeeping)
-- **Never** use nondeterministic dict iteration for side effects
-- Set `agent.inventory_changed = True` when inventories change
-
-### Type Invariants
-
-- **Integers**: Inventories (A, B, M), resources, positions, `vision_radius`, `interaction_radius`, `move_budget_per_tick`
-- **Floats**: Utility values, prices, `ask_A_in_B`, `bid_A_in_B`
-- See [src/vmt_engine/core/state.py](mdc:src/vmt_engine/core/state.py) and [docs/4_typing_overview.md](mdc:docs/4_typing_overview.md)
+See `core-invariants.mdc` for critical setup requirements, determinism rules, and type invariants.
 
 ### Architecture Map
 
@@ -50,6 +16,8 @@ See [src/vmt_engine/simulation.py](mdc:src/vmt_engine/simulation.py) and [src/vm
 - **Scenarios**: [src/scenarios/schema.py](mdc:src/scenarios/schema.py), [src/scenarios/loader.py](mdc:src/scenarios/loader.py)
 - **Telemetry**: [src/telemetry/](mdc:src/telemetry/) - SQLite batching to `./logs/telemetry.db`
 - **GUI**: [src/vmt_launcher/](mdc:src/vmt_launcher/), [src/vmt_log_viewer/](mdc:src/vmt_log_viewer/), [src/vmt_pygame/](mdc:src/vmt_pygame/)
+
+**Note**: The `llm_counter/` directory is a separate utility and not part of the VMT codebase. It should be ignored in all code analysis and edits.
 
 ### Entry Points
 

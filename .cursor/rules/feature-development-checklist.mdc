@@ -1,0 +1,551 @@
+---
+description: Systematic workflow for planning and implementing new features
+---
+
+# Feature Development Checklist
+
+This guide provides a structured workflow for adding new features to VMT, ensuring consistency with project architecture, determinism requirements, and documentation standards.
+
+## Pre-Development Planning
+
+### 1. Align with Strategic Roadmap
+
+Before starting implementation, verify alignment with project vision:
+
+- [ ] **Check roadmap**: Review [docs/3_strategic_roadmap.md](mdc:docs/3_strategic_roadmap.md)
+- [ ] **Identify phase**: Which development phase does this feature belong to?
+  - Phase A: Foraging & Barter (COMPLETE)
+  - Phase B: Money & Markets (IN PROGRESS - see `docs/BIG/money_*.md`)
+  - Phase C: Production & Capital
+  - Phase D: General Equilibrium
+- [ ] **Verify prerequisites**: Are all prerequisite features complete?
+- [ ] **Consider scope**: Does this fit the "visualization-first" pedagogical goal?
+
+### 2. Review Existing Implementations
+
+Learn from similar features already in the codebase:
+
+- [ ] **Find analogous features**: Search for similar functionality
+- [ ] **Review implementation patterns**: How were they structured?
+- [ ] **Check tests**: What testing patterns were used?
+- [ ] **Read relevant docs**: Check technical manual for architectural context
+
+### 3. Create Implementation Plan (For Major Features)
+
+For non-trivial features, create a planning document:
+
+**Location**: `docs/BIG/` or `docs/tmp/` depending on scope
+
+**Template structure**:
+```markdown
+# Feature Name Implementation Plan
+
+## Overview
+- What: Brief description
+- Why: Pedagogical/research motivation
+- When: Target phase/timeline
+
+## Design Decisions
+- Key architectural choices
+- Trade-offs considered
+- Backward compatibility strategy
+
+## Implementation Checklist
+- [ ] Core engine changes
+- [ ] Schema updates
+- [ ] Telemetry additions
+- [ ] Test requirements
+- [ ] Documentation updates
+
+## Success Criteria
+- How will we know it works?
+- What scenarios demonstrate the feature?
+```
+
+**Example**: See [docs/BIG/money_SSOT_implementation_plan.md](mdc:docs/BIG/money_SSOT_implementation_plan.md) for a comprehensive example.
+
+## Development Workflow
+
+### Phase 1: Core Implementation
+
+#### 1.1 Create Feature Branch
+```bash
+git checkout -b feature/short-description
+# Examples: feature/money-phase2a, feature/production-basics
+```
+
+#### 1.2 Start with Data Structures
+
+**For new agent properties**:
+- [ ] Add fields to `Agent` dataclass in [src/vmt_engine/core/state.py](mdc:src/vmt_engine/core/state.py)
+- [ ] Maintain **type invariants** (see [docs/4_typing_overview.md](mdc:docs/4_typing_overview.md))
+  - Integers: inventories, positions, counts
+  - Floats: utilities, prices, rates
+- [ ] Add default values for **backward compatibility**
+- [ ] Update `__repr__` if needed for debugging
+
+**For new grid properties**:
+- [ ] Add fields to `Grid` dataclass in [src/vmt_engine/core/state.py](mdc:src/vmt_engine/core/state.py)
+- [ ] Ensure deterministic initialization
+
+**For new scenario parameters**:
+- [ ] Add fields to `ScenarioParams` in [src/scenarios/schema.py](mdc:src/scenarios/schema.py)
+- [ ] Add validation in `validate()` method
+- [ ] Add YAML parsing in [src/scenarios/loader.py](mdc:src/scenarios/loader.py)
+- [ ] Provide sensible defaults for optional parameters
+
+#### 1.3 Implement Core Logic
+
+**If adding a new system phase**:
+- [ ] Create module in [src/vmt_engine/systems/](mdc:src/vmt_engine/systems/)
+- [ ] Maintain **determinism** (see [.cursor/rules/core-invariants.mdc](mdc:.cursor/rules/core-invariants.mdc)):
+  - Sort agents by `agent.id`
+  - Use fixed tie-breakers
+  - Avoid nondeterministic iteration
+- [ ] Integrate into tick cycle in [src/vmt_engine/simulation.py](mdc:src/vmt_engine/simulation.py)
+- [ ] Respect the sacred 7-phase order
+
+**If modifying existing systems**:
+- [ ] Read existing code carefully
+- [ ] Preserve determinism invariants
+- [ ] Maintain backward compatibility
+- [ ] Follow established patterns (e.g., `find_compensating_block` for trading)
+
+**Performance considerations**:
+- [ ] Use `SpatialIndex` for proximity queries (avoid O(N²) loops)
+- [ ] Batch database writes (use existing telemetry patterns)
+- [ ] Profile critical paths if adding to hot loops
+
+#### 1.4 Update Docstrings
+
+As you implement, document:
+```python
+def new_function(agent: Agent, grid: Grid) -> bool:
+    """
+    Brief one-line description.
+    
+    Longer description explaining:
+    - What this function does
+    - Why it exists (economic/simulation purpose)
+    - Key algorithm details
+    
+    Args:
+        agent: Agent performing the action
+        grid: Simulation grid state
+        
+    Returns:
+        True if action succeeded, False otherwise
+        
+    Note:
+        - Any determinism requirements
+        - Performance considerations
+        - Related functions/systems
+    """
+```
+
+### Phase 2: Schema & Telemetry
+
+#### 2.1 Update Scenario Schema
+
+If feature requires new YAML parameters:
+
+- [ ] Update [src/scenarios/schema.py](mdc:src/scenarios/schema.py) dataclasses
+- [ ] Add validation logic
+- [ ] Update [src/scenarios/loader.py](mdc:src/scenarios/loader.py) parsing
+- [ ] Test with invalid inputs to ensure proper error messages
+
+#### 2.2 Add Telemetry Logging
+
+If feature generates loggable events:
+
+- [ ] **Identify what to log**: Decisions, actions, state changes
+- [ ] **Add table/columns** to [src/telemetry/database.py](mdc:src/telemetry/database.py)
+  - Use **additive schema changes only** (never remove columns)
+  - Provide default values for backward compatibility
+- [ ] **Create logger** in [src/telemetry/db_loggers.py](mdc:src/telemetry/db_loggers.py)
+- [ ] **Respect log levels**: 
+  - `STANDARD`: Key events (decisions, successful actions)
+  - `DEBUG`: Detailed info (failed attempts, intermediate states)
+- [ ] **Batch writes**: Use existing batching patterns for performance
+
+**⚠️ Critical**: After schema changes:
+```bash
+rm logs/telemetry.db  # Delete old database
+pytest -q              # Tests will create new schema
+```
+
+### Phase 3: Testing
+
+#### 3.1 Write Unit Tests
+
+Create test file: `tests/test_<feature>.py`
+
+**Required test types**:
+
+```python
+# 1. Basic functionality
+def test_feature_basic_case():
+    """Test simplest successful case."""
+    assert expected_behavior()
+
+# 2. Edge cases
+def test_feature_boundary_conditions():
+    """Test zero values, max values, etc."""
+    assert handles_edge_case()
+
+# 3. Determinism
+def test_feature_deterministic():
+    """Same seed produces identical results."""
+    result1 = run_with_seed(42)
+    result2 = run_with_seed(42)
+    assert result1 == result2
+
+# 4. Backward compatibility
+def test_feature_backward_compatible():
+    """Old scenarios still work."""
+    scenario = load_scenario("scenarios/legacy.yaml")
+    sim = Simulation(scenario)
+    sim.run(max_ticks=10)  # Should not crash
+```
+
+**Testing guidelines**:
+- [ ] Test both success and failure paths
+- [ ] Use `pytest.mark.parametrize` for multiple cases
+- [ ] Keep tests fast (use minimal scenarios)
+- [ ] Verify determinism with multiple seeds
+
+#### 3.2 Write Integration Tests
+
+Test feature in realistic scenarios:
+
+- [ ] Create test scenario YAML in `tests/` or `scenarios/`
+- [ ] Test feature interacts correctly with other systems
+- [ ] Verify telemetry logs expected data
+- [ ] Check GUI displays feature correctly (if applicable)
+
+#### 3.3 Run Full Test Suite
+
+```bash
+pytest -q                        # All tests must pass (95+)
+pytest tests/test_<feature>.py -v  # Your new tests
+pytest -k "not money" -v         # Legacy tests (backward compat check)
+```
+
+### Phase 4: Demo Scenarios
+
+#### 4.1 Create Pedagogical Scenarios
+
+Features should be demonstrable:
+
+- [ ] Create scenario in `scenarios/<feature>_demo.yaml`
+- [ ] Design to showcase feature clearly
+- [ ] Include comments explaining parameters
+- [ ] Keep small enough to run quickly (< 5 seconds)
+- [ ] Verify visualization is clear and informative
+
+**Example structure**:
+```yaml
+# Scenario: Demonstrating <feature>
+# Purpose: Show how <feature> affects agent behavior
+# Expected outcome: <what to observe>
+
+grid:
+  size: 20
+
+agents:
+  count: 5  # Small count for clarity
+  # ... rest of config
+```
+
+#### 4.2 Test Scenario Manually
+
+```bash
+# CLI test
+python main.py scenarios/<feature>_demo.yaml --seed 42
+
+# GUI test
+python launcher.py  # Select your scenario
+```
+
+**Verify**:
+- [ ] Feature behavior is visible in visualization
+- [ ] Telemetry logs expected events
+- [ ] No errors or warnings
+- [ ] Performance is acceptable
+
+### Phase 5: Documentation
+
+#### 5.1 Update Core Documentation
+
+**Always update**:
+- [ ] [CHANGELOG.md](mdc:CHANGELOG.md) - Add entry under "Unreleased"
+- [ ] Docstrings in modified files
+
+**Update if applicable**:
+- [ ] [docs/2_technical_manual.md](mdc:docs/2_technical_manual.md) - If architecture changed
+- [ ] [docs/4_typing_overview.md](mdc:docs/4_typing_overview.md) - If new type contracts
+- [ ] [docs/1_project_overview.md](mdc:docs/1_project_overview.md) - If user-facing feature
+- [ ] [src/vmt_engine/README.md](mdc:src/vmt_engine/README.md) - If engine behavior changed
+
+#### 5.2 Update Cursor Rules (If Needed)
+
+For major features that establish new patterns:
+- [ ] Consider adding `.cursor/rules/<feature>.mdc`
+- [ ] Update existing rules if patterns changed
+- [ ] Add file path references for discoverability
+
+#### 5.3 CHANGELOG Entry Template
+
+```markdown
+### Added
+- **Feature Name** (YYYY-MM-DD): Brief description
+  - What it does
+  - Where to find it (`path/to/file.py`)
+  - Key parameters or configuration
+  - Example usage or scenario reference
+  - See `docs/path/to/details.md` for full documentation
+```
+
+### Phase 6: Performance & Validation
+
+#### 6.1 Performance Testing
+
+For features affecting core loops:
+
+```bash
+# Benchmark before and after
+python scripts/benchmark_performance.py
+
+# Check for regressions
+# Acceptable: <5% slowdown for new features
+# Investigate: >10% slowdown
+```
+
+#### 6.2 Determinism Validation
+
+For features affecting simulation logic:
+
+```bash
+# Compare telemetry with multiple seeds
+python scripts/compare_telemetry_snapshots.py
+```
+
+Expected: Identical results for same seed
+
+#### 6.3 Regression Testing
+
+```bash
+# Run all existing scenarios
+for scenario in scenarios/*.yaml; do
+  echo "Testing $scenario"
+  python main.py "$scenario" --seed 42 --max-ticks 100
+done
+```
+
+All should complete without errors.
+
+## Pre-Commit Final Checklist
+
+Before merging feature:
+
+### Code Quality
+- [ ] All tests pass: `pytest -q` → 95+ passed
+- [ ] No commented-out code
+- [ ] No debug print statements
+- [ ] No TODO comments without tracking
+- [ ] Consistent formatting (follow existing style)
+- [ ] Type hints added for new functions
+
+### Determinism & Compatibility
+- [ ] Determinism verified (same seed → same output)
+- [ ] Backward compatibility verified (old scenarios work)
+- [ ] No breaking changes (or documented as BREAKING in CHANGELOG)
+
+### Documentation
+- [ ] CHANGELOG.md updated
+- [ ] Docstrings complete
+- [ ] Technical manual updated (if needed)
+- [ ] Demo scenario created
+
+### Database
+- [ ] Old `logs/telemetry.db` deleted and recreated
+- [ ] Schema changes documented
+- [ ] New tables/columns have defaults
+
+### Performance
+- [ ] No significant regression (<5% slowdown acceptable)
+- [ ] Spatial queries use `SpatialIndex`
+- [ ] Database writes are batched
+
+## Feature-Specific Guidelines
+
+### For Economic Features (Trading, Pricing, Utility)
+
+**Extra requirements**:
+- [ ] Consult economic theory references
+- [ ] Verify mathematical correctness
+- [ ] Test with extreme parameters (α=0, α=1, ρ→-∞, etc.)
+- [ ] Consider pedagogical clarity (Will students understand this?)
+- [ ] Add visualization to show economic concepts
+
+**Reference existing**:
+- [src/vmt_engine/econ/utility.py](mdc:src/vmt_engine/econ/utility.py) - Utility functions
+- [src/vmt_engine/systems/trading.py](mdc:src/vmt_engine/systems/trading.py) - Trade algorithms
+- [src/vmt_engine/systems/quotes.py](mdc:src/vmt_engine/systems/quotes.py) - Price discovery
+
+### For Spatial Features (Movement, Foraging)
+
+**Extra requirements**:
+- [ ] Use Manhattan distance (existing pattern)
+- [ ] Implement deterministic tie-breakers
+- [ ] Use `SpatialIndex` for neighbor queries
+- [ ] Consider grid boundaries (wraparound? walls?)
+- [ ] Test with various grid sizes
+
+**Reference existing**:
+- [src/vmt_engine/systems/movement.py](mdc:src/vmt_engine/systems/movement.py) - Movement patterns
+- [src/vmt_engine/core/spatial_index.py](mdc:src/vmt_engine/core/spatial_index.py) - Spatial queries
+
+### For GUI Features
+
+**Extra requirements**:
+- [ ] Test on different screen sizes
+- [ ] Ensure responsive layout
+- [ ] Add tooltips for complex controls
+- [ ] Provide in-context help/documentation
+- [ ] Handle edge cases gracefully (empty data, etc.)
+- [ ] Test with various themes (if applicable)
+
+**Reference existing**:
+- [src/vmt_launcher/](mdc:src/vmt_launcher/) - GUI launcher
+- [src/vmt_log_viewer/](mdc:src/vmt_log_viewer/) - Log viewer
+
+## Common Pitfalls to Avoid
+
+### ❌ Breaking Determinism
+```python
+# BAD: Nondeterministic iteration
+for agent in agents:  # Dict order may vary
+    process(agent)
+
+# GOOD: Sorted iteration
+for agent in sorted(agents, key=lambda a: a.id):
+    process(agent)
+```
+
+### ❌ Breaking Backward Compatibility
+```python
+# BAD: Required parameter
+def __init__(self, new_param: int):
+    self.new_param = new_param
+
+# GOOD: Optional with default
+def __init__(self, new_param: int = 0):
+    self.new_param = new_param
+```
+
+### ❌ Mutating Quotes Mid-Tick
+```python
+# BAD: Quote change during trade phase
+agent.quote.ask_A_in_B = new_price
+
+# GOOD: Set flag, recompute in Housekeeping
+agent.inventory_changed = True
+# Quote refresh happens in Housekeeping phase
+```
+
+### ❌ O(N²) Spatial Queries
+```python
+# BAD: Nested loop over all agents
+neighbors = [a for a in all_agents 
+             if distance(agent, a) < radius]
+
+# GOOD: Use spatial index
+neighbors = spatial_index.query_radius(
+    agent.x, agent.y, radius
+)
+```
+
+### ❌ Mixing Integer and Float Types
+```python
+# BAD: Float inventory
+agent.inventory.A = 10.5
+
+# GOOD: Integer quantities
+agent.inventory.A = 10  # Always int
+```
+
+## Quick Reference Commands
+
+```bash
+# Development workflow
+git checkout -b feature/name
+source venv/bin/activate
+pytest -q                           # Run tests
+python main.py scenarios/demo.yaml  # Manual test
+rm logs/telemetry.db                # After schema changes
+
+# Before commit
+pytest -q                           # All tests pass
+python scripts/benchmark_performance.py  # No regression
+git add -A
+git commit -m "feat: description"
+```
+
+## Example: Adding a Simple Feature
+
+**Scenario**: Add a "stamina" attribute that depletes with movement
+
+### 1. Planning
+- Add `stamina: int` to `Agent` dataclass (integer type)
+- Decrement in movement phase
+- Log stamina in agent snapshots
+- Create demo scenario showing stamina depletion
+
+### 2. Implementation
+```python
+# src/vmt_engine/core/state.py
+@dataclass
+class Agent:
+    # ... existing fields
+    stamina: int = 100  # Default for backward compatibility
+```
+
+```python
+# src/vmt_engine/systems/movement.py
+def execute_movement(agent, ...):
+    # ... existing movement code
+    if moved:
+        agent.stamina -= 1  # Deplete stamina
+```
+
+### 3. Telemetry
+```python
+# src/telemetry/database.py
+CREATE TABLE agent_snapshots (
+    # ... existing columns
+    stamina INTEGER DEFAULT 100  -- New column with default
+)
+```
+
+### 4. Testing
+```python
+# tests/test_stamina.py
+def test_stamina_depletes_with_movement():
+    scenario = create_simple_scenario()
+    sim = Simulation(scenario, seed=42)
+    initial_stamina = sim.agents[0].stamina
+    sim.tick()  # Agent moves
+    assert sim.agents[0].stamina < initial_stamina
+```
+
+### 5. Documentation
+```markdown
+# CHANGELOG.md
+### Added
+- **Agent Stamina** (2025-10-19): Agents now have a `stamina` attribute 
+  that depletes by 1 with each movement action. Defaults to 100 for 
+  backward compatibility. See `scenarios/stamina_demo.yaml` for example.
+```
+
+**Total work**: ~1-2 hours for simple features following this checklist.

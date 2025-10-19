@@ -1,4 +1,8 @@
 ---
+globs:
+  - scenarios/*.yaml
+  - docs/1_project_overview.md
+  - docs/BIG/money_phase*.md
 description: Pedagogical goals and demo scenario requirements for money system
 ---
 

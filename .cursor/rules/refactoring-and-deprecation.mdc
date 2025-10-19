@@ -1,0 +1,331 @@
+---
+globs:
+  - src/**/*.py
+  - tests/**/*.py
+description: Guidelines for safe refactoring, deprecation, and code removal
+---
+
+# Refactoring & Deprecation Guidelines
+
+## Philosophy
+
+Code removal and refactoring are **high-risk operations** that can break determinism, backward compatibility, and existing tests. This guide provides a systematic workflow to minimize risk.
+
+## Deprecation Workflow (Multi-Step Process)
+
+### Step 1: Mark as Deprecated
+Add Python `DeprecationWarning` with clear migration path and timeline:
+
+```python
+import warnings
+
+def old_function(x):
+    warnings.warn(
+        "old_function is deprecated and will be removed after 2025-11-01. "
+        "Use new_function instead. See docs/CHANGELOG.md for migration guide.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return new_function(x)
+```
+
+**Documentation requirements:**
+- Update docstring with `.. deprecated:: version` tag
+- Add entry to [CHANGELOG.md](mdc:CHANGELOG.md)
+- Document migration path in relevant docs (technical manual, type contracts, etc.)
+
+### Step 2: Migrate All Callers
+Before removal, ALL internal usages must be updated:
+
+1. **Find all usages**:
+   ```bash
+   grep -r "old_function" src/ tests/
+   ```
+   
+2. **Update each caller** to use new API
+
+3. **Run full test suite**:
+   ```bash
+   pytest -q
+   ```
+   
+4. **Verify determinism** (if core engine changed):
+   ```bash
+   python scripts/compare_telemetry_snapshots.py
+   ```
+
+### Step 3: Grace Period
+Wait for the timeline specified in the deprecation warning (minimum 2 weeks for external-facing APIs, can be shorter for internal refactoring).
+
+### Step 4: Remove Deprecated Code
+
+1. **Pre-removal checks**:
+   - [ ] All internal usages migrated
+   - [ ] Tests updated (no tests calling deprecated code)
+   - [ ] Documentation updated
+   - [ ] CHANGELOG entry added
+
+2. **Remove the code**
+
+3. **Post-removal validation**:
+   ```bash
+   pytest -q                                    # All tests pass
+   python scripts/benchmark_performance.py      # No performance regression
+   ```
+
+## Safe Refactoring Checklist
+
+### Before Starting Refactoring
+
+- [ ] **Understand the scope**: What does this code do? Who calls it?
+- [ ] **Check for side effects**: Does it mutate global state, write logs, etc.?
+- [ ] **Identify all usages**: Use `grep -r` or IDE "Find All References"
+- [ ] **Review related tests**: What behavior is being tested?
+- [ ] **Create a branch**: `git checkout -b refactor/description`
+
+### During Refactoring
+
+- [ ] **Preserve determinism**: Maintain sorting, tie-breaking, rounding rules
+- [ ] **Keep type contracts**: See [docs/4_typing_overview.md](mdc:docs/4_typing_overview.md)
+- [ ] **Maintain backward compatibility**: Old scenarios must still work
+- [ ] **Update docstrings**: Keep documentation in sync with code
+- [ ] **Run tests frequently**: `pytest -q` after each logical change
+
+### After Refactoring
+
+- [ ] **Full test suite**: `pytest -q` → 95+ tests pass
+- [ ] **Check for regressions**: Run relevant scenario YAML files manually
+- [ ] **Performance check**: Use `scripts/benchmark_performance.py` for core engine changes
+- [ ] **Update documentation**:
+  - [ ] Docstrings in code
+  - [ ] [docs/2_technical_manual.md](mdc:docs/2_technical_manual.md) if architecture changed
+  - [ ] [docs/4_typing_overview.md](mdc:docs/4_typing_overview.md) if types changed
+  - [ ] Relevant `.cursor/rules/*.mdc` files
+  - [ ] [CHANGELOG.md](mdc:CHANGELOG.md)
+
+## Specific Refactoring Patterns
+
+### Renaming Functions/Classes
+
+```python
+# Step 1: Create new name, keep old as alias
+def new_name(x):
+    """Improved implementation."""
+    return x * 2
+
+def old_name(x):
+    """.. deprecated:: 2025-10-19
+       Use new_name instead.
+    """
+    warnings.warn("old_name is deprecated, use new_name", DeprecationWarning)
+    return new_name(x)
+
+# Step 2: Migrate all callers to new_name
+# Step 3: Remove old_name after grace period
+```
+
+### Changing Function Signatures
+
+```python
+# Bad: Breaks existing code
+def calculate(a, b, mode):  # Added required 'mode' parameter
+    ...
+
+# Good: Add with default
+def calculate(a, b, mode="default"):  # mode is optional
+    ...
+```
+
+**If you MUST break compatibility:**
+1. Create new function with new signature
+2. Deprecate old function
+3. Follow deprecation workflow above
+
+### Removing Configuration Fields
+
+Example: The unused `export_csv` and `csv_dir` fields in `src/telemetry/config.py`
+
+**Option 1: Leave as harmless (preferred if low complexity)**
+- Add comment: `# Deprecated: No longer used as of 2025-10-19`
+- Update docstring to note deprecation
+- Don't validate or process the field
+
+**Option 2: Full removal (if field causes confusion)**
+1. Add deprecation warning in `__init__`:
+   ```python
+   if export_csv is not None:
+       warnings.warn("export_csv is deprecated and ignored", DeprecationWarning)
+   ```
+2. Wait grace period
+3. Remove parameter from `__init__` signature
+4. Remove from dataclass fields
+
+### Moving Code Between Modules
+
+When moving functions/classes to new locations:
+
+1. **Create new location** with implementation
+2. **Add import alias in old location**:
+   ```python
+   # In old_module.py
+   from new_module import NewClass
+   
+   # Deprecated alias
+   OldClass = NewClass  # Deprecated, use new_module.NewClass
+   ```
+3. **Migrate callers** to import from new location
+4. **Remove alias** after grace period
+
+## Finding Dead Code
+
+### Manual Search Strategies
+
+```bash
+# Find function definitions
+grep -n "^def function_name" src/
+
+# Find class definitions  
+grep -n "^class ClassName" src/
+
+# Find all usages (excluding definition)
+grep -rn "function_name\|ClassName" src/ tests/ | grep -v "^def\|^class"
+```
+
+### Common Dead Code Indicators
+
+- **No test coverage**: Function not called in any test
+- **No imports**: Class/function not imported anywhere
+- **Commented-out code**: Already commented, safe to remove
+- **TODO comments**: May indicate incomplete/abandoned features
+
+**⚠️ Warning**: Some code may be used only in:
+- Interactive mode (GUI)
+- CLI scripts (`main.py`, `launcher.py`, `view_logs.py`)
+- Future/planned features (check docs)
+
+Always verify before removing!
+
+## High-Risk Refactoring Areas
+
+These areas require **extra caution** due to determinism requirements:
+
+### 🔴 Critical (Can Break Determinism)
+- **Trading system** ([src/vmt_engine/systems/trading.py](mdc:src/vmt_engine/systems/trading.py))
+- **Quote calculation** ([src/vmt_engine/systems/quotes.py](mdc:src/vmt_engine/systems/quotes.py))
+- **Movement tie-breakers** ([src/vmt_engine/systems/movement.py](mdc:src/vmt_engine/systems/movement.py))
+- **Partner selection** ([src/vmt_engine/systems/decision.py](mdc:src/vmt_engine/systems/decision.py))
+- **Utility functions** ([src/vmt_engine/econ/utility.py](mdc:src/vmt_engine/econ/utility.py))
+- **Spatial index** ([src/vmt_engine/core/spatial_index.py](mdc:src/vmt_engine/core/spatial_index.py))
+
+**Required validation**: Run determinism check with multiple seeds:
+```bash
+python scripts/compare_telemetry_snapshots.py
+```
+
+### 🟡 Medium Risk (Can Break Backward Compatibility)
+- **Scenario schema** ([src/scenarios/schema.py](mdc:src/scenarios/schema.py))
+- **Database schema** ([src/telemetry/database.py](mdc:src/telemetry/database.py))
+- **Core state objects** ([src/vmt_engine/core/state.py](mdc:src/vmt_engine/core/state.py))
+
+**Required validation**: Test all scenarios in `scenarios/` directory
+
+### 🟢 Low Risk (Mostly Safe)
+- **GUI code** (`src/vmt_launcher/`, `src/vmt_log_viewer/`, `src/vmt_pygame/`)
+- **Visualization** (no impact on simulation logic)
+- **Log formatting** (cosmetic changes)
+
+## Database Schema Changes (Special Case)
+
+**⚠️ Critical**: Database schema has **no automatic migration**
+
+### Adding Columns (Safe)
+```python
+# In src/telemetry/database.py
+CREATE TABLE IF NOT EXISTS table_name (
+    existing_col INTEGER,
+    new_col INTEGER DEFAULT 0  -- Safe: has default value
+)
+```
+
+### Removing Columns (DANGEROUS)
+**Don't do this.** Instead:
+1. Stop writing to the column
+2. Leave schema unchanged
+3. Add comment: `-- Deprecated: no longer used as of YYYY-MM-DD`
+
+### After Schema Changes
+**Always delete old database**:
+```bash
+rm logs/telemetry.db
+pytest -q  # Will create new DB with updated schema
+```
+
+Document in [docs/BIG/money_telemetry_schema.md](mdc:docs/BIG/money_telemetry_schema.md)
+
+## Documentation Update Checklist
+
+After any refactoring, check if these docs need updates:
+
+- [ ] [CHANGELOG.md](mdc:CHANGELOG.md) - Add entry describing change
+- [ ] [docs/2_technical_manual.md](mdc:docs/2_technical_manual.md) - If architecture/algorithms changed
+- [ ] [docs/4_typing_overview.md](mdc:docs/4_typing_overview.md) - If type contracts changed
+- [ ] [src/vmt_engine/README.md](mdc:src/vmt_engine/README.md) - If engine behavior changed
+- [ ] Relevant `.cursor/rules/*.mdc` files - Update examples/references
+- [ ] Docstrings in modified files - Keep in sync with code
+
+## Code Review Self-Checklist
+
+Before committing refactoring, verify:
+
+- [ ] **No commented-out code** left behind
+- [ ] **No TODO comments** introduced without issue tracking
+- [ ] **No debug print statements** left in code
+- [ ] **All imports used** (no unused imports)
+- [ ] **Consistent formatting** (follow existing style)
+- [ ] **Tests pass**: `pytest -q`
+- [ ] **No performance regression** (for core engine changes)
+- [ ] **Documentation updated** (see checklist above)
+
+## Emergency Rollback
+
+If refactoring breaks something unexpectedly:
+
+```bash
+# Rollback uncommitted changes
+git restore .
+
+# Rollback committed changes
+git log --oneline  # Find commit hash before refactoring
+git revert <commit-hash>
+
+# Or hard reset (USE WITH CAUTION)
+git reset --hard <commit-hash>
+```
+
+**Then**: Delete telemetry DB and re-test:
+```bash
+rm logs/telemetry.db
+pytest -q
+```
+
+## Quick Reference: Common Commands
+
+```bash
+# Find all usages of a symbol
+grep -rn "symbol_name" src/ tests/
+
+# Run tests
+pytest -q
+
+# Run specific test file
+pytest tests/test_file.py -v
+
+# Check for determinism
+python scripts/compare_telemetry_snapshots.py
+
+# Benchmark performance
+python scripts/benchmark_performance.py
+
+# Delete stale database
+rm logs/telemetry.db
+```

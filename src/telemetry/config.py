@@ -44,12 +44,11 @@ class LogConfig:
     use_database: bool = True
     db_path: Optional[str] = None  # If None, use default
     
-    # Legacy CSV support
-    export_csv: bool = False
-    csv_dir: Optional[str] = None
-    
     # Batch settings for performance
     batch_size: int = 100  # Commit to DB every N records
+    
+    # Note: CSV export is available via the log viewer GUI (src/vmt_log_viewer/csv_export.py)
+    # Automatic CSV export during simulation is not currently supported
     
     def __post_init__(self):
         """Adjust settings based on log level."""

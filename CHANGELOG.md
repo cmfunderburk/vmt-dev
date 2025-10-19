@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Remaining levels**: STANDARD (default, comprehensive production logging) and DEBUG (adds failed trade attempt logging)
   - **See**: `docs/PLAN_remove_summary_logging.md` for full implementation details
 
+### Removed
+- **Unused CSV Config Fields** (2025-10-19): Removed `export_csv` and `csv_dir` fields from `LogConfig` dataclass in `src/telemetry/config.py`
+  - **Non-breaking**: These fields were never used in the codebase; they were placeholders for automatic CSV export during simulation
+  - **Note**: CSV export functionality remains available via the log viewer GUI (`src/vmt_log_viewer/csv_export.py`)
+  - **Rationale**: Simplifies configuration by removing dead code; automatic CSV export during simulation is not currently a planned feature
+
 ### Changed
 - **Telemetry Configuration Simplified** (2025-10-19): `LogLevel` enum renumbered (STANDARD=1, DEBUG=2) and `__post_init__` logic simplified to only handle DEBUG level configuration
 

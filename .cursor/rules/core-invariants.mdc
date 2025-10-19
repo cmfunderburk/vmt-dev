@@ -1,0 +1,104 @@
+---
+alwaysApply: true
+---
+
+# VMT Core Invariants
+
+These invariants MUST be maintained across all code changes. Violating these breaks determinism, backward compatibility, or type safety.
+
+## Determinism Rules (SACRED - DO NOT BREAK)
+
+### Loop Ordering
+- **Always sort agent loops by `agent.id`**: `for agent in sorted(agents, key=lambda a: a.id)`
+- **Sort trade pairs by `(min_id, max_id)`**: ensures identical processing order across runs
+- **Quote/price sorting**: When iterating prices, sort by `(price, seller_id)` for stability
+
+### Mutation Constraints
+- **Never mutate quotes mid-tick**: Quotes are read-only during tick phases; only recompute in Housekeeping phase
+- **Set `agent.inventory_changed = True`** whenever inventories mutate (triggers quote refresh)
+- **One trade attempt per pair per tick**: failed attempts set mutual cooldown
+
+### Rounding
+- **Integer mapping uses round-half-up**: `floor(x + 0.5)` for float→int conversions (e.g., price→quantity mapping)
+- **Never use Python's default `round()`** (uses banker's rounding)
+
+### Phase Order (The Sacred 7-Phase Tick)
+Must execute in this exact order:
+1. **Perception** - Build neighbor sets via SpatialIndex
+2. **Decision** - Choose partners, honor cooldowns
+3. **Movement** - Apply moves with deterministic tie-breakers
+4. **Trade** - Execute bilateral exchanges
+5. **Forage** - Harvest resources
+6. **Resource Regeneration** - Regrow grid resources
+7. **Housekeeping** - Recompute quotes, clear flags
+
+**Reference**: [src/vmt_engine/simulation.py](mdc:src/vmt_engine/simulation.py), [docs/2_technical_manual.md](mdc:docs/2_technical_manual.md)
+
+## Type Invariants
+
+### Integer Fields
+- **Positions**: `agent.x`, `agent.y`
+- **Inventories**: `agent.inventory.A`, `agent.inventory.B`, `agent.inventory.M` (money)
+- **Resources**: `grid.resources[x,y]`, `grid.resources_initial[x,y]`
+- **Spatial parameters**: `vision_radius`, `interaction_radius`, `move_budget_per_tick`
+
+### Float Fields
+- **Economic values**: prices, utilities, spreads, valuations
+- **Utility weights**: `w_A`, `w_B`, `w_M`
+- **Elasticity/rho**: CES utility parameters
+- **Lambda**: money-mode utility parameter
+
+**Reference**: [docs/4_typing_overview.md](mdc:docs/4_typing_overview.md)
+
+## Spatial Queries (Performance Critical)
+
+- **Always use SpatialIndex** for neighbor queries: `spatial_index.query_radius(x, y, radius)`
+- **Always use SpatialIndex for pair construction**: `spatial_index.query_pairs_within_radius(agents, radius)`
+- **Never use O(N²) loops** for distance-based operations
+
+**Reference**: [src/vmt_engine/core/spatial_index.py](mdc:src/vmt_engine/core/spatial_index.py)
+
+## Movement Tie-Breakers (Deterministic Conflict Resolution)
+
+When multiple agents want the same cell:
+1. Reduce `|dx|` before `|dy|`
+2. Prefer negative direction on ties
+3. Diagonal deadlock rule: agent with lower ID wins
+
+**Reference**: [src/vmt_engine/systems/movement.py](mdc:src/vmt_engine/systems/movement.py)
+
+## Backward Compatibility
+
+- **New features must not break existing scenarios**: All YAML files under `scenarios/` must continue to work
+- **Default values for new fields**: Ensure old scenarios run without modification
+- **Schema validation**: Use `ScenarioParams.validate()` to catch breaking changes
+- **Telemetry schema**: Additive only (never remove columns)
+
+**Reference**: [src/scenarios/schema.py](mdc:src/scenarios/schema.py), [src/telemetry/database.py](mdc:src/telemetry/database.py)
+
+## Testing Requirements
+
+- **Run full suite before commits**: `pytest -q` (95+ tests must pass)
+- **Performance benchmarks**: Use `scripts/benchmark_performance.py` to detect regressions
+- **Determinism check**: Same seed → identical output (verify with `compare_telemetry_snapshots.py`)
+
+**Reference**: [pytest.ini](mdc:pytest.ini), [scripts/](mdc:scripts/)
+
+## Critical Database Gotcha
+
+⚠️ **If you see SQLite schema errors (missing columns):**
+```bash
+rm logs/telemetry.db
+# Then re-run your simulation
+```
+The DB schema is not auto-migrated. After schema changes, always delete the old database.
+
+**Reference**: [src/telemetry/database.py](mdc:src/telemetry/database.py)
+
+## Environment Setup
+
+- **Use `venv` not `.venv`**: `source venv/bin/activate`
+- **PYTHONPATH for ad-hoc scripts**: `PYTHONPATH=.:src python script.py`
+- **Test configuration**: `pytest.ini` sets `pythonpath = . src` automatically
+
+**Reference**: [.github/copilot-instructions.md](mdc:.github/copilot-instructions.md)
