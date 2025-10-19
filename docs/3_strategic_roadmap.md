@@ -54,7 +54,7 @@ This section provides a concrete, step-by-step implementation plan for the next 
     - **Action:** Create `scenarios/foundational_barter_demo.yaml`.
     - **Details:** Create a heavily-commented 3-4 agent scenario that serves as an executable tutorial.
 - [ ] **Integration Test:**
-    - **Action:** Create `tests/test_v1_1_integration.py`.
+    - **Action:** Create `tests/test_barter_integration.py`.
     - **Details:** Write a test that runs the foundational demo and asserts deterministic outcomes (final inventories, number of trades).
 
 ---
