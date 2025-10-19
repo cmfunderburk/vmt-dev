@@ -1,52 +1,51 @@
 # vmt-dev - Token Analysis Report
 
-*Generated on 2025-10-18 19:53:16*
+*Generated on 2025-10-19 08:59:22*
 
 ## 📊 Executive Summary
 
 | Metric | Value |
 |--------|--------|
-| **Total Tokens** | 85.7K tokens |
-| **Total Files** | 68 files |
+| **Total Tokens** | 104.7K tokens |
+| **Total Files** | 70 files |
 | **Repository Size** | 0.4 MB |
-| **Average Tokens/File** | 1261 tokens |
+| **Average Tokens/File** | 1495 tokens |
 
 ## 📄 File Type Breakdown
 
 | File Type | Token Count | Percentage | Files |
 |-----------|-------------|------------|-------|
-| Python | 44.3K | 51.6% | 44 |
-| Markdown | 40.3K | 47.0% | 16 |
-| YAML | 900 | 1.0% | 3 |
-| Build/Meta | 222 | 0.3% | 1 |
+| Markdown | 56.6K | 54.1% | 18 |
+| Python | 46.2K | 44.1% | 44 |
+| YAML | 1.6K | 1.5% | 5 |
+| Build/Meta | 222 | 0.2% | 1 |
 | Text | 41 | 0.0% | 1 |
 | Config | 9 | 0.0% | 1 |
-| Other | 0 | 0.0% | 2 |
 
 ## 🔥 Top 20 Largest Files
 
 | File | Tokens | Size |
 |------|--------|------|
-| `docs/tmp/son45_energy_budget_review.md` | 7.6K | 0.0 MB |
+| `docs/BIG/money_phase2_checklist.md` | 6.2K | 0.0 MB |
 | `src/vmt_launcher/scenario_builder.py` | 6.2K | 0.0 MB |
-| `docs/BIG/next-steps-opus.md` | 5.8K | 0.0 MB |
+| `docs/BIG/money_phase1_checklist.md` | 5.8K | 0.0 MB |
+| `docs/BIG/money_phase3_checklist.md` | 5.5K | 0.0 MB |
+| `docs/BIG/money_SSOT_implementation_plan.md` | 5.2K | 0.0 MB |
+| `docs/BIG/money_phase6_checklist.md` | 5.2K | 0.0 MB |
+| `docs/BIG/money_phase4_checklist.md` | 4.7K | 0.0 MB |
+| `docs/BIG/money_phase5_checklist.md` | 4.3K | 0.0 MB |
 | `docs/4_typing_overview.md` | 4.0K | 0.0 MB |
-| `src/telemetry/db_loggers.py` | 3.4K | 0.0 MB |
-| `docs/tmp/gpt5h_energy_budget_review.md` | 3.1K | 0.0 MB |
-| `src/vmt_engine/systems/matching.py` | 2.9K | 0.0 MB |
+| `src/telemetry/db_loggers.py` | 3.5K | 0.0 MB |
+| `src/vmt_engine/systems/matching.py` | 3.0K | 0.0 MB |
 | `src/vmt_log_viewer/viewer.py` | 2.9K | 0.0 MB |
+| `docs/BIG/money_telemetry_schema.md` | 2.7K | 0.0 MB |
 | `src/vmt_pygame/renderer.py` | 2.6K | 0.0 MB |
-| `docs/BIG/review-full-opus.md` | 2.6K | 0.0 MB |
 | `10-18_ORIENTATION.md` | 2.6K | 0.0 MB |
 | `docs/tmp/lintcetera.md` | 2.1K | 0.0 MB |
+| `src/telemetry/database.py` | 2.0K | 0.0 MB |
+| `src/vmt_engine/simulation.py` | 1.9K | 0.0 MB |
 | `src/vmt_log_viewer/csv_export.py` | 1.9K | 0.0 MB |
 | `docs/2_technical_manual.md` | 1.9K | 0.0 MB |
-| `docs/3_strategic_roadmap.md` | 1.9K | 0.0 MB |
-| `src/telemetry/database.py` | 1.9K | 0.0 MB |
-| `docs/tmp/gem_energy_budget_review.md` | 1.9K | 0.0 MB |
-| `docs/1_project_overview.md` | 1.8K | 0.0 MB |
-| `docs/tmp/code_review.md` | 1.8K | 0.0 MB |
-| `docs/BIG/review-full.md` | 1.6K | 0.0 MB |
 
 
 ## 🤖 LLM Context Analysis
@@ -55,24 +54,25 @@
 
 | Model | Context Window | Repo Coverage |
 |-------|---------------|---------------|
-| GPT-4 | ~128K tokens | 149.3% |
-| Claude 3 | ~200K tokens | 233.3% |
-| Claude 3.5 Sonnet | ~200K tokens | 233.3% |
-| Gemini 1.5 Pro | ~1M tokens | 1166.3% |
+| GPT-4 | ~128K tokens | 122.3% |
+| Claude 3 | ~200K tokens | 191.1% |
+| Claude 3.5 Sonnet | ~200K tokens | 191.1% |
+| Gemini 1.5 Pro | ~1M tokens | 955.3% |
 
 ### Recommendations
 
-- **Full Repository**: 85.7K tokens fits in: GPT-4 (~128.0K), Claude 3/3.5 (~200.0K), Gemini 1.5 Pro (~1.0M)
+- **Full Repository**: 104.7K tokens fits in: Claude 3/3.5 (~200.0K), Gemini 1.5 Pro (~1.0M)
 - **Single-Context Analysis**: Entire codebase can be analyzed without chunking
+- **Tip**: For faster processing, consider focused analysis on specific modules
 - **Code Reviews**: Use token counts to prioritize which files/modules to include
-- **Documentation**: 47.0% of tokens are documentation (substantial docs available)
+- **Documentation**: 54.1% of tokens are documentation (substantial docs available)
 
 
 ## 📈 Analysis Metadata
 
 - **Analysis Tool**: Repository Token Counter (full version with repotokens)
 - **Tokenization**: Accurate repotokens library
-- **Files Processed**: 68 code files
+- **Files Processed**: 70 code files
 - **Excluded**: Binary files, caches, logs, virtual environments
 - **Repository**: vmt-dev
 
