@@ -1,13 +1,12 @@
 # VMT Project Orientation & Comprehensive Action Plan
 **Date:** October 18, 2025  
-**Version:** VMT v1.1.0  
 **Status:** Production Ready (Core) / Planning Next Features
 
 ---
 
 ## Executive Summary
 
-The VMT (Visualizing Microeconomic Theory) project is a **deterministic spatial agent-based simulation** for teaching and researching microeconomic behavior. Currently at v1.1.0, it successfully demonstrates bilateral barter exchange with foraging in a spatial grid environment. While the core is production-ready with 54+ passing tests, several critical documentation tasks and planned features await implementation.
+The VMT (Visualizing Microeconomic Theory) project is a **deterministic spatial agent-based simulation** for teaching and researching microeconomic behavior. The core engine successfully demonstrates bilateral barter exchange with foraging in a spatial grid environment. While the core is production-ready with 54+ passing tests, several critical documentation tasks and planned features await implementation.
 
 ## Current Project State
 
@@ -46,9 +45,9 @@ The VMT (Visualizing Microeconomic Theory) project is a **deterministic spatial 
 
 ## Critical Open Issues & Gaps
 
-### 🔴 HIGH PRIORITY - v1.1 Polish (from Strategic Roadmap)
+### 🔴 HIGH PRIORITY - Foundational Polish (from Strategic Roadmap)
 
-Based on `docs/tmp/code_review.md`, these items from the v1.1 milestone remain **incomplete**:
+Based on `docs/tmp/code_review.md`, these items from the initial milestone remain **incomplete**:
 
 1. **Core Engine Documentation** (`vmt_engine/README.md`)
    - **Status:** ❌ Does not exist
@@ -60,8 +59,8 @@ Based on `docs/tmp/code_review.md`, these items from the v1.1 milestone remain *
    - **Impact:** No executable tutorial for new users
    - **Action:** Create heavily-commented 3-4 agent scenario as learning example
 
-3. **Integration Test** (`tests/test_v1_1_integration.py`)
-   - **Status:** ❌ Missing (only `test_m1_integration.py` for foraging exists)
+3. **Integration Test** (`tests/test_barter_integration.py`)
+   - **Status:** ❌ Missing (only a foraging integration test exists)
    - **Impact:** No end-to-end validation of barter scenarios
    - **Action:** Create deterministic multi-agent barter scenario test
 
@@ -113,7 +112,7 @@ From `docs/tmp/lintcetera.md` analysis:
 
 ## Comprehensive Action Plan
 
-### Phase 1: Complete v1.1 Polish (1-2 days)
+### Phase 1: Foundational Polish (1-2 days)
 **Goal:** Solidify foundation before adding features
 
 - [ ] **1.1 Create `vmt_engine/README.md`**
@@ -126,7 +125,7 @@ From `docs/tmp/lintcetera.md` analysis:
   - Extensive inline comments explaining each parameter
   - Expected outcomes documented
 
-- [ ] **1.3 Create `test_v1_1_integration.py`**
+- [ ] **1.3 Create `test_barter_integration.py`**
   - Run foundational demo for fixed ticks
   - Assert final inventories match expected
   - Verify specific trades occurred
@@ -161,7 +160,7 @@ From `docs/tmp/lintcetera.md` analysis:
   - Log viewer trajectory visualization (or mark as future)
   - Trade filtering implementation (or document scope)
 
-### Phase 3: v1.2 Mode Toggles (2-3 days)
+### Phase 3: Mode Toggles (2-3 days)
 **Goal:** Add forage-only/trade-only cycling
 
 - [ ] **3.1 Schema Updates**
@@ -178,7 +177,7 @@ From `docs/tmp/lintcetera.md` analysis:
   - Log mode changes to database
   - Add mode column to decisions table
 
-### Phase 4: v1.3 Money Introduction (3-4 days)
+### Phase 4: Money Introduction (3-4 days)
 **Goal:** Add quasilinear utility money system
 
 - [ ] **4.1 Core Changes**
@@ -196,7 +195,7 @@ From `docs/tmp/lintcetera.md` analysis:
   - Verify utility accounting with money
   - Test money as medium of exchange
 
-### Phase 5: v1.4 Market Prototype (4-5 days)
+### Phase 5: Market Prototype (4-5 days)
 **Goal:** Implement posted-price markets
 
 - [ ] **5.1 Market Detection**
@@ -221,7 +220,7 @@ From `docs/tmp/lintcetera.md` analysis:
 
 1. **Energy Budget Feature**
    - Three detailed proposals in `tmp/` (800+ lines each!)
-   - **Decision Needed:** Implement now or defer to v2.0?
+   - **Decision Needed:** Implement now or defer?
    - **Recommendation:** Defer - focus on money/markets first
 
 2. **Type System Enforcement**
@@ -246,7 +245,7 @@ From `docs/tmp/lintcetera.md` analysis:
 5. **Money Implementation**
    - Option A: Quasilinear (simple, λ parameter)
    - Option B: Instrumental (emergent value)
-   - **Current Plan:** Start with A, consider B for v2
+   - **Current Plan:** Start with A, consider B for a future iteration
 
 6. **Market Mechanisms**
    - Posted-price vs. double auction
@@ -271,9 +270,9 @@ From `docs/tmp/lintcetera.md` analysis:
 
 ## Next Immediate Steps (This Week)
 
-1. **Monday-Tuesday:** Complete v1.1 Polish checklist
+1. **Monday-Tuesday:** Complete Foundational Polish checklist
 2. **Wednesday:** Code quality pass and tooling setup
-3. **Thursday-Friday:** Begin v1.2 mode toggles implementation
+3. **Thursday-Friday:** Begin mode toggles implementation
 4. **Weekend:** Review progress, update this orientation doc
 
 ---
@@ -292,7 +291,7 @@ From `docs/tmp/lintcetera.md` analysis:
    - Scenario replay tests?
    - GUI automation tests?
 
-4. **Release Planning:** When should we tag v1.2? After mode toggles or wait for money?
+4. **Release Planning:** How should we batch the upcoming features into releases?
 
 ---
 

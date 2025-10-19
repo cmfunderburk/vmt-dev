@@ -1,8 +1,6 @@
 # VMT - Visualizing Microeconomic Theory
 
 [![Tests](https://img.shields.io/badge/tests-54%2B%2F54%2B%20passing-brightgreen)]()
-[![Version](https://img.shields.io/badge/version-1.1.0-blue)]()
-[![Status](https://img.shields.io/badge/status-production%20ready-blue)]()
 [![Python](https://img.shields.io/badge/python-3.11-blue)]()
 [![GUI](https://img.shields.io/badge/GUI-PyQt5-green)]()
 

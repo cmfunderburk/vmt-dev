@@ -16,6 +16,11 @@ The hub contains:
 - **Strategic Roadmap**: The vision and plan for future development.
 - **Type System & Data Contracts**: The formal specification for all data structures.
 
+### Versioning policy
+- This project is pre-release. Do not introduce numeric versioning (e.g., SemVer) unless explicitly authorized by the maintainer.
+- Use date+time-based identifiers (e.g., `2025-10-19-1430`) for labeling snapshots in docs, branches, tags, and changelogs.
+- Treat existing numeric version/status badges as legacy and avoid updating or adding new ones.
+
 ## 🚀 Quick Start
 
 ```bash
