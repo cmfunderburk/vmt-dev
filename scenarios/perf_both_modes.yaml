@@ -151,7 +151,7 @@ params:
   # Resources - moderate density and respawn
   forage_rate: 1
   resource_growth_rate: 1
-  resource_regen_cooldown: 10
+  resource_regen_cooldown: 5
   
   # Trading
   trade_cooldown_ticks: 10
