@@ -239,7 +239,14 @@ class VMTRenderer:
             
             # Draw inventory below agent (only if cell size is large enough)
             if self.cell_size >= 20:
-                inv_text = f"A:{agent.inventory.A} B:{agent.inventory.B}"
+                # Check if money system is active
+                has_money = agent.inventory.M > 0 or self.sim.params.get('exchange_regime') in ('money_only', 'mixed')
+                
+                if has_money:
+                    inv_text = f"A:{agent.inventory.A} B:{agent.inventory.B} M:{agent.inventory.M}"
+                else:
+                    inv_text = f"A:{agent.inventory.A} B:{agent.inventory.B}"
+                
                 inv_label = self.small_font.render(inv_text, True, self.COLOR_BLACK)
                 inv_width = inv_label.get_width()
                 self.screen.blit(inv_label, (px - inv_width // 2, py + radius + 2))
@@ -272,7 +279,16 @@ class VMTRenderer:
         # Total inventory across all agents
         total_A = sum(a.inventory.A for a in self.sim.agents)
         total_B = sum(a.inventory.B for a in self.sim.agents)
-        inv_text = f"Total Inventory - A: {total_A}  B: {total_B}"
+        total_M = sum(a.inventory.M for a in self.sim.agents)
+        
+        # Show money if any agent has it or money system is active
+        has_money = total_M > 0 or self.sim.params.get('exchange_regime') in ('money_only', 'mixed')
+        
+        if has_money:
+            inv_text = f"Total Inventory - A: {total_A}  B: {total_B}  M: {total_M}"
+        else:
+            inv_text = f"Total Inventory - A: {total_A}  B: {total_B}"
+        
         inv_label = self.font.render(inv_text, True, self.COLOR_BLACK)
         self.screen.blit(inv_label, (10, hud_y + 40))
         
@@ -284,16 +300,38 @@ class VMTRenderer:
         controls_label = self.small_font.render(controls_text, True, self.COLOR_BLACK)
         self.screen.blit(controls_label, (10, hud_y + 60))
 
-        # Recent trades
+        # Recent trades (flexible format for barter and monetary)
         trade_hud_y = hud_y
         trade_title = self.font.render("Recent Trades:", True, self.COLOR_BLACK)
         self.screen.blit(trade_title, (250, trade_hud_y))
+        
         for i, trade in enumerate(reversed(self.recent_trades)):
             if i >= 5: break
-            trade_text = (
-                f"T{trade['tick']}: {trade['buyer_id']} buys {trade['dA']}A from {trade['seller_id']} "
-                f"for {trade['dB']}B @ {trade['price']:.2f}"
-            )
+            
+            # Format trade based on type
+            tick = trade['tick']
+            buyer = trade['buyer_id']
+            seller = trade['seller_id']
+            dA = trade['dA']
+            dB = trade['dB']
+            dM = trade.get('dM', 0)
+            price = trade['price']
+            
+            # Determine trade type and format appropriately
+            if dM != 0:
+                # Monetary trade
+                if dA > 0:
+                    # Good A for money
+                    trade_text = f"T{tick}: {buyer} buys {dA}A from {seller} for {dM}M @ {price:.2f}"
+                elif dB > 0:
+                    # Good B for money
+                    trade_text = f"T{tick}: {buyer} buys {dB}B from {seller} for {dM}M @ {price:.2f}"
+                else:
+                    trade_text = f"T{tick}: Monetary trade"
+            else:
+                # Barter trade
+                trade_text = f"T{tick}: {buyer} buys {dA}A from {seller} for {dB}B @ {price:.2f}"
+            
             trade_label = self.small_font.render(trade_text, True, self.COLOR_BLACK)
             self.screen.blit(trade_label, (250, trade_hud_y + 20 + i * 15))
     

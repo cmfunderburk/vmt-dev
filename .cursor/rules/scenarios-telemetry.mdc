@@ -74,17 +74,88 @@ mode_schedule:
   start_mode: "forage"        # or "trade"
 ```
 
-#### Creating New Scenarios
+#### Creating New Test Scenarios (STRICT REQUIREMENTS)
 
-1. Copy existing scenario from [scenarios/](mdc:scenarios/) as template
-2. Modify parameters
-3. **Ensure spatial params are integers** (`vision_radius`, `interaction_radius`, `move_budget_per_tick`)
-4. **Ensure utility weights sum to 1.0**
-5. Test loading:
-   ```python
-   from scenarios.loader import load_scenario
-   scenario = load_scenario("scenarios/your_scenario.yaml")
-   ```
+**For test scenarios with <10 agents, EVERY agent must have a UNIQUE utility function.**
+
+Use the **complementary pairing pattern** (algorithm):
+
+1. **Agent 2k-1** (odd: 1, 3, 5, ...): Randomly assign utility type
+   - If **Linear**: 
+     - vA ~ Uniform(0.1, 0.9)
+     - **vB = 1 - vA** (exactly 1.0, not ≈)
+   - If **CES**: 
+     - rho ~ Uniform(-2.0, 0.99)
+     - wA ~ Uniform(0.1, 0.9)
+     - **wB = 1 - wA** (exactly 1.0, not ≈)
+
+2. **Agent 2k** (even: 2, 4, 6, ...): Complementary to Agent 2k-1
+   - **Same utility type** as paired agent
+   - **Reverse preferences**:
+     - Linear: If 2k-1 has (vA, vB), then 2k gets (vB, vA)
+     - CES: If 2k-1 has (rho₁, wA, wB), then 2k gets (rho₂, wB, wA) where rho₂ ~ Uniform(-2.0, 0.99)
+
+3. Repeat: Agent 3 random → Agent 4 complements 3 → Agent 5 random → etc.
+
+**Initial endowments:**
+- Each good (A, B, M), each agent: independently from Uniform(1, 50), round to integer
+
+**Strict normalization:**
+- Linear: **vA + vB = 1.0** (exactly)
+- CES: **wA + wB = 1.0** (exactly)
+- CES: **rho ∈ (-2.0, 0.99]** (strictly avoid rho=1.0)
+- Mix weights: **∑weights = 1.0** (exactly; use 1/N for N agents)
+
+**Test parameter defaults (ALWAYS use these):**
+- **interaction_radius: 1** (always 1 in tests, never higher)
+- **move_budget_per_tick: 1** (always 1 in tests, never higher)
+- vision_radius: Can vary, typically 5-10
+- spread: Typically 0.0-0.1
+- dA_max: Typically 3-5
+- epsilon: Typically 0.001
+
+**Example for 4-agent scenario:**
+```yaml
+utilities:
+  mix:
+    # Agent 1 (random linear)
+    - {type: linear, weight: 0.25, params: {vA: 0.73, vB: 0.27}}
+    # Agent 2 (complement to 1)
+    - {type: linear, weight: 0.25, params: {vA: 0.27, vB: 0.73}}
+    # Agent 3 (random CES)
+    - {type: ces, weight: 0.25, params: {rho: -0.42, wA: 0.81, wB: 0.19}}
+    # Agent 4 (complement to 3, new rho)
+    - {type: ces, weight: 0.25, params: {rho: 0.65, wA: 0.19, wB: 0.81}}
+
+initial_inventories:
+  A: [23, 7, 41, 15]   # Each ~ Uniform(1, 50)
+  B: [8, 32, 19, 5]    # Independent draws
+  M: [0, 87, 34, 12]   # For monetary scenarios
+```
+
+**Verification checklist:**
+- ✅ vA + vB = 1.0 for all linear utilities (0.73+0.27=1.0, 0.27+0.73=1.0)
+- ✅ wA + wB = 1.0 for all CES utilities (0.81+0.19=1.0, 0.19+0.81=1.0)
+- ✅ All 4 utilities are unique (different parameters)
+- ✅ Complementary pairs guarantee gains from trade
+- ✅ weights sum to 1.0 (4 × 0.25 = 1.0)
+
+**Why this is REQUIRED:**
+- Identical agents → identical MRS → zero gains from trade
+- Homogeneity makes tests non-deterministic (no trades → agents wander randomly)
+- Complementary pairing guarantees mutual benefit exists
+- Essential for monetary scenarios where heterogeneity creates liquidity
+
+**GUI Integration (Future):**
+This pattern should be implemented in Launcher GUI as checkbox in Basic Settings tab.
+- See [.cursor/rules/gui-development.mdc](mdc:.cursor/rules/gui-development.mdc) for implementation spec
+- When enabled: Auto-generates utilities and endowments per algorithm above
+- Saves user time and guarantees economic validity
+
+**Reference scenarios:**
+- ✅ [scenarios/money_test_basic.yaml](mdc:scenarios/money_test_basic.yaml) - Follows pattern
+- ✅ [scenarios/three_agent_barter.yaml](mdc:scenarios/three_agent_barter.yaml) - Uses mix
+- ❌ **NEVER CREATE**: Agents with identical utilities and endowments
 
 #### Common Mistakes
 
@@ -92,6 +163,12 @@ mode_schedule:
 - ❌ Utility weights not summing to 1.0
 - ❌ Using `ΔA_max` instead of `dA_max` (legacy name)
 - ❌ Float inventories or resource amounts (MUST be int)
+- ❌ **CRITICAL: interaction_radius > 1 in tests** - ALWAYS use interaction_radius: 1 in test scenarios
+- ❌ **CRITICAL: move_budget_per_tick > 1 in tests** - ALWAYS use move_budget_per_tick: 1 in test scenarios
+- ❌ **CRITICAL: Homogeneous agents in test scenarios** - Every agent must have unique utility function
+  - Never use same utility parameters for multiple agents in tests
+  - Must follow complementary pairing pattern above
+  - Homogeneity eliminates gains from trade → tests won't exercise code
 
 ### Telemetry System (SQLite Logging)
 

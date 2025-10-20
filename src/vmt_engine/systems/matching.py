@@ -27,6 +27,9 @@ def compute_surplus(agent_i: 'Agent', agent_j: 'Agent') -> float:
     - overlap_dir1 = agent_i buys A from agent_j (i.bid - j.ask)
     - overlap_dir2 = agent_j buys A from agent_i (j.bid - i.ask)
     
+    DEPRECATED: This function uses barter-only logic. For money-aware matching,
+    use the generic matching primitives in Phase 2b.
+    
     Args:
         agent_i: First agent
         agent_j: Second agent
@@ -34,8 +37,14 @@ def compute_surplus(agent_i: 'Agent', agent_j: 'Agent') -> float:
     Returns:
         Best overlap (positive indicates potential for trade)
     """
-    overlap_dir1 = agent_i.quotes.bid_A_in_B - agent_j.quotes.ask_A_in_B  # i buys from j
-    overlap_dir2 = agent_j.quotes.bid_A_in_B - agent_i.quotes.ask_A_in_B  # j buys from i
+    # Use dict.get() with default 0.0 for safety (money-aware API)
+    bid_i = agent_i.quotes.get('bid_A_in_B', 0.0)
+    ask_i = agent_i.quotes.get('ask_A_in_B', 0.0)
+    bid_j = agent_j.quotes.get('bid_A_in_B', 0.0)
+    ask_j = agent_j.quotes.get('ask_A_in_B', 0.0)
+    
+    overlap_dir1 = bid_i - ask_j  # i buys from j
+    overlap_dir2 = bid_j - ask_i  # j buys from i
     return max(overlap_dir1, overlap_dir2)
 
 
@@ -171,6 +180,9 @@ def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
     to find mutually beneficial terms of trade. This handles the case where
     the midpoint price doesn't work due to integer rounding effects.
     
+    DEPRECATED: This function uses barter-only logic. For money-aware matching,
+    use find_compensating_block_generic in Phase 2b.
+    
     Args:
         buyer: Agent buying good A
         seller: Agent selling good A
@@ -185,9 +197,9 @@ def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
     Returns:
         (dA, dB, actual_price) tuple or None if no feasible block found
     """
-    # Get the valid price range
-    ask = seller.quotes.ask_A_in_B
-    bid = buyer.quotes.bid_A_in_B
+    # Get the valid price range (money-aware API: use dict.get())
+    ask = seller.quotes.get('ask_A_in_B', 1.0)
+    bid = buyer.quotes.get('bid_A_in_B', 1.0)
     
     # Iterate over trade sizes
     for dA in range(1, dA_max + 1):
@@ -293,6 +305,9 @@ def trade_pair(agent_i: 'Agent', agent_j: 'Agent', params: dict[str, Any],
     This continues until no mutually beneficial trades remain, at which
     point agents will unpair and seek other opportunities.
     
+    DEPRECATED: This function uses barter-only logic. For money-aware trading,
+    use generic matching primitives in Phase 2b.
+    
     Args:
         agent_i: First agent
         agent_j: Second agent
@@ -303,9 +318,14 @@ def trade_pair(agent_i: 'Agent', agent_j: 'Agent', params: dict[str, Any],
     Returns:
         True if a trade occurred this tick
     """
-    # Compute surplus in both directions
-    overlap_dir1 = agent_i.quotes.bid_A_in_B - agent_j.quotes.ask_A_in_B  # i buys from j
-    overlap_dir2 = agent_j.quotes.bid_A_in_B - agent_i.quotes.ask_A_in_B  # j buys from i
+    # Compute surplus in both directions (money-aware API: use dict.get())
+    bid_i = agent_i.quotes.get('bid_A_in_B', 0.0)
+    ask_i = agent_i.quotes.get('ask_A_in_B', 0.0)
+    bid_j = agent_j.quotes.get('bid_A_in_B', 0.0)
+    ask_j = agent_j.quotes.get('ask_A_in_B', 0.0)
+    
+    overlap_dir1 = bid_i - ask_j  # i buys from j
+    overlap_dir2 = bid_j - ask_i  # j buys from i
     
     if overlap_dir1 <= 0 and overlap_dir2 <= 0:
         return False  # No positive surplus
@@ -320,8 +340,10 @@ def trade_pair(agent_i: 'Agent', agent_j: 'Agent', params: dict[str, Any],
         direction = "j_buys_A"
         surplus = overlap_dir2
     
-    # Midpoint price hint
-    price = 0.5 * (seller.quotes.ask_A_in_B + buyer.quotes.bid_A_in_B)
+    # Midpoint price hint (money-aware API: use dict.get())
+    ask = seller.quotes.get('ask_A_in_B', 1.0)
+    bid = buyer.quotes.get('bid_A_in_B', 1.0)
+    price = 0.5 * (ask + bid)
     
     # Find compensating block (with price search)
     block = find_compensating_block(
@@ -354,4 +376,352 @@ def trade_pair(agent_i: 'Agent', agent_j: 'Agent', params: dict[str, Any],
     agent_j.inventory_changed = True
     
     return True
+
+
+# ============================================================================
+# Phase 2b: Generic Matching Primitives (Money-Aware)
+# ============================================================================
+
+def find_compensating_block_generic(
+    agent_i: 'Agent', 
+    agent_j: 'Agent',
+    pair: str,
+    params: dict[str, Any],
+    epsilon: float = 1e-9
+) -> tuple[int, int, int, int, int, int, float, float] | None:
+    """
+    Find mutually beneficial trade block for any exchange pair.
+    
+    Supports three pairs:
+    - "A<->B": Barter exchange (agent i gives ΔA_i, receives ΔB_i)
+    - "A<->M": Good A for money (agent i gives ΔA_i, receives ΔM_i)
+    - "B<->M": Good B for money (agent i gives ΔB_i, receives ΔM_i)
+    
+    Search strategy (matches legacy find_compensating_block):
+    - Try quantities in ascending order: dA ∈ [1, 2, ..., dA_max]
+    - For each quantity, try candidate prices from generate_price_candidates()
+    - Prices are sorted low-to-high and include integer-yielding values
+    - Return FIRST (dA, price) combination where both ΔU_i > 0 AND ΔU_j > 0
+    
+    Economic correctness:
+    - Agents act rationally: accept any trade that strictly improves their utility
+    - Utilities are ordinal - agents don't try to "maximize" across trades
+    - Deterministic search order ensures reproducibility
+    
+    Args:
+        agent_i: First agent
+        agent_j: Second agent
+        pair: Exchange pair ("A<->B", "A<->M", or "B<->M")
+        params: Simulation parameters (must include 'utility' key for each agent)
+        epsilon: Threshold for strict utility improvement
+        
+    Returns:
+        Tuple of (dA_i, dB_i, dM_i, dA_j, dB_j, dM_j, surplus_i, surplus_j)
+        representing the best trade block, or None if no mutually beneficial trade exists.
+        
+        For barter A<->B:
+            - agent i: gives dA_i > 0, receives dB_i > 0; dM_i = 0
+            - agent j: receives dA_j > 0, gives dB_j > 0; dM_j = 0
+            - dA_i = dA_j, dB_i = dB_j (conservation)
+        
+        For A<->M:
+            - agent i gives ΔA, receives ΔM (or vice versa)
+            - dB_i = dB_j = 0 (no B exchange)
+        
+        For B<->M:
+            - agent i gives ΔB, receives ΔM (or vice versa)
+            - dA_i = dA_j = 0 (no A exchange)
+    """
+    from ..econ.utility import u_total
+    
+    # Get agent utilities
+    if not agent_i.utility or not agent_j.utility:
+        return None
+    
+    params_i = {'utility': agent_i.utility, 'lambda_money': agent_i.lambda_money}
+    params_j = {'utility': agent_j.utility, 'lambda_money': agent_j.lambda_money}
+    
+    # Current utility
+    u_i_0 = u_total(agent_i.inventory, params_i)
+    u_j_0 = u_total(agent_j.inventory, params_j)
+    
+    dA_max = params.get('dA_max', 5)
+    
+    if pair == "A<->B":
+        # Barter: agent i and j exchange A for B
+        # Try both directions: i gives A (seller) or i gives B (buyer)
+        
+        # Direction 1: agent i sells A, buys B
+        ask_i = agent_i.quotes.get('ask_A_in_B', float('inf'))
+        bid_j = agent_j.quotes.get('bid_A_in_B', 0.0)
+        
+        if ask_i <= bid_j:
+            # Generate price candidates in overlap region
+            price_candidates = generate_price_candidates(ask_i, bid_j, 1)
+            
+            for dA in range(1, min(dA_max + 1, agent_i.inventory.A + 1)):
+                for price in generate_price_candidates(ask_i, bid_j, dA):
+                    dB = int(floor(price * dA + 0.5))
+                    
+                    if dB <= 0 or dB > agent_j.inventory.B:
+                        continue
+                    
+                    # Check utility improvements
+                    from ..core.state import Inventory
+                    inv_i_new = Inventory(A=agent_i.inventory.A - dA, B=agent_i.inventory.B + dB, M=agent_i.inventory.M)
+                    inv_j_new = Inventory(A=agent_j.inventory.A + dA, B=agent_j.inventory.B - dB, M=agent_j.inventory.M)
+                    
+                    u_i_new = u_total(inv_i_new, params_i)
+                    u_j_new = u_total(inv_j_new, params_j)
+                    
+                    surplus_i = u_i_new - u_i_0
+                    surplus_j = u_j_new - u_j_0
+                    
+                    if surplus_i > epsilon and surplus_j > epsilon:
+                        # Return FIRST mutually beneficial trade found
+                        return (-dA, dB, 0, dA, -dB, 0, surplus_i, surplus_j)
+        
+        # Direction 2: agent i buys A, sells B
+        bid_i = agent_i.quotes.get('bid_A_in_B', 0.0)
+        ask_j = agent_j.quotes.get('ask_A_in_B', float('inf'))
+        
+        if ask_j <= bid_i:
+            for dA in range(1, min(dA_max + 1, agent_j.inventory.A + 1)):
+                for price in generate_price_candidates(ask_j, bid_i, dA):
+                    dB = int(floor(price * dA + 0.5))
+                    
+                    if dB <= 0 or dB > agent_i.inventory.B:
+                        continue
+                    
+                    from ..core.state import Inventory
+                    inv_i_new = Inventory(A=agent_i.inventory.A + dA, B=agent_i.inventory.B - dB, M=agent_i.inventory.M)
+                    inv_j_new = Inventory(A=agent_j.inventory.A - dA, B=agent_j.inventory.B + dB, M=agent_j.inventory.M)
+                    
+                    u_i_new = u_total(inv_i_new, params_i)
+                    u_j_new = u_total(inv_j_new, params_j)
+                    
+                    surplus_i = u_i_new - u_i_0
+                    surplus_j = u_j_new - u_j_0
+                    
+                    if surplus_i > epsilon and surplus_j > epsilon:
+                        # Return FIRST mutually beneficial trade found
+                        return (dA, -dB, 0, -dA, dB, 0, surplus_i, surplus_j)
+    
+    elif pair == "A<->M":
+        # Good A for money
+        # Direction 1: agent i sells A for M
+        ask_i = agent_i.quotes.get('ask_A_in_M', float('inf'))
+        bid_j = agent_j.quotes.get('bid_A_in_M', 0.0)
+        
+        if ask_i <= bid_j:
+            for dA in range(1, min(dA_max + 1, agent_i.inventory.A + 1)):
+                for price in generate_price_candidates(ask_i, bid_j, dA):
+                    dM = int(floor(price * dA + 0.5))
+                    
+                    if dM <= 0 or dM > agent_j.inventory.M:
+                        continue
+                    
+                    from ..core.state import Inventory
+                    inv_i_new = Inventory(A=agent_i.inventory.A - dA, B=agent_i.inventory.B, M=agent_i.inventory.M + dM)
+                    inv_j_new = Inventory(A=agent_j.inventory.A + dA, B=agent_j.inventory.B, M=agent_j.inventory.M - dM)
+                    
+                    u_i_new = u_total(inv_i_new, params_i)
+                    u_j_new = u_total(inv_j_new, params_j)
+                    
+                    surplus_i = u_i_new - u_i_0
+                    surplus_j = u_j_new - u_j_0
+                    
+                    if surplus_i > epsilon and surplus_j > epsilon:
+                        # Return FIRST mutually beneficial trade found
+                        return (-dA, 0, dM, dA, 0, -dM, surplus_i, surplus_j)
+        
+        # Direction 2: agent i buys A for M
+        bid_i = agent_i.quotes.get('bid_A_in_M', 0.0)
+        ask_j = agent_j.quotes.get('ask_A_in_M', float('inf'))
+        
+        if ask_j <= bid_i:
+            for dA in range(1, min(dA_max + 1, agent_j.inventory.A + 1)):
+                for price in generate_price_candidates(ask_j, bid_i, dA):
+                    dM = int(floor(price * dA + 0.5))
+                    
+                    if dM <= 0 or dM > agent_i.inventory.M:
+                        continue
+                    
+                    from ..core.state import Inventory
+                    inv_i_new = Inventory(A=agent_i.inventory.A + dA, B=agent_i.inventory.B, M=agent_i.inventory.M - dM)
+                    inv_j_new = Inventory(A=agent_j.inventory.A - dA, B=agent_j.inventory.B, M=agent_j.inventory.M + dM)
+                    
+                    u_i_new = u_total(inv_i_new, params_i)
+                    u_j_new = u_total(inv_j_new, params_j)
+                    
+                    surplus_i = u_i_new - u_i_0
+                    surplus_j = u_j_new - u_j_0
+                    
+                    if surplus_i > epsilon and surplus_j > epsilon:
+                        # Return FIRST mutually beneficial trade found
+                        return (dA, 0, -dM, -dA, 0, dM, surplus_i, surplus_j)
+    
+    elif pair == "B<->M":
+        # Good B for money
+        # Direction 1: agent i sells B for M
+        ask_i = agent_i.quotes.get('ask_B_in_M', float('inf'))
+        bid_j = agent_j.quotes.get('bid_B_in_M', 0.0)
+        
+        if ask_i <= bid_j:
+            for dB in range(1, min(dA_max + 1, agent_i.inventory.B + 1)):
+                for price in generate_price_candidates(ask_i, bid_j, dB):
+                    dM = int(floor(price * dB + 0.5))
+                    
+                    if dM <= 0 or dM > agent_j.inventory.M:
+                        continue
+                    
+                    from ..core.state import Inventory
+                    inv_i_new = Inventory(A=agent_i.inventory.A, B=agent_i.inventory.B - dB, M=agent_i.inventory.M + dM)
+                    inv_j_new = Inventory(A=agent_j.inventory.A, B=agent_j.inventory.B + dB, M=agent_j.inventory.M - dM)
+                    
+                    u_i_new = u_total(inv_i_new, params_i)
+                    u_j_new = u_total(inv_j_new, params_j)
+                    
+                    surplus_i = u_i_new - u_i_0
+                    surplus_j = u_j_new - u_j_0
+                    
+                    if surplus_i > epsilon and surplus_j > epsilon:
+                        # Return FIRST mutually beneficial trade found
+                        return (0, -dB, dM, 0, dB, -dM, surplus_i, surplus_j)
+        
+        # Direction 2: agent i buys B for M
+        bid_i = agent_i.quotes.get('bid_B_in_M', 0.0)
+        ask_j = agent_j.quotes.get('ask_B_in_M', float('inf'))
+        
+        if ask_j <= bid_i:
+            for dB in range(1, min(dA_max + 1, agent_j.inventory.B + 1)):
+                for price in generate_price_candidates(ask_j, bid_i, dB):
+                    dM = int(floor(price * dB + 0.5))
+                    
+                    if dM <= 0 or dM > agent_i.inventory.M:
+                        continue
+                    
+                    from ..core.state import Inventory
+                    inv_i_new = Inventory(A=agent_i.inventory.A, B=agent_i.inventory.B + dB, M=agent_i.inventory.M - dM)
+                    inv_j_new = Inventory(A=agent_j.inventory.A, B=agent_j.inventory.B - dB, M=agent_j.inventory.M + dM)
+                    
+                    u_i_new = u_total(inv_i_new, params_i)
+                    u_j_new = u_total(inv_j_new, params_j)
+                    
+                    surplus_i = u_i_new - u_i_0
+                    surplus_j = u_j_new - u_j_0
+                    
+                    if surplus_i > epsilon and surplus_j > epsilon:
+                        # Return FIRST mutually beneficial trade found
+                        return (0, dB, -dM, 0, -dB, dM, surplus_i, surplus_j)
+    
+    # No mutually beneficial trade found
+    return None
+
+
+def find_best_trade(
+    agent_i: 'Agent',
+    agent_j: 'Agent',
+    exchange_regime: str,
+    params: dict[str, Any],
+    epsilon: float = 1e-9
+) -> tuple[str, tuple] | None:
+    """
+    Find a mutually beneficial trade across allowed exchange pairs.
+    
+    Search strategy:
+    - Try pairs in fixed order: A<->B, then A<->M, then B<->M (as allowed by regime)
+    - Return FIRST pair that yields a mutually beneficial trade
+    - Within each pair, uses same search as legacy algorithm (see find_compensating_block_generic)
+    
+    Economic correctness:
+    - Agents act rationally: accept first trade found where ΔU > 0
+    - No attempt to "maximize" or "optimize" across multiple opportunities
+    - Deterministic ordering ensures reproducibility
+    
+    Args:
+        agent_i: First agent
+        agent_j: Second agent
+        exchange_regime: "barter_only", "money_only", or "mixed"
+        params: Simulation parameters
+        epsilon: Threshold for strict improvement
+        
+    Returns:
+        Tuple of (pair_name, trade_tuple) where trade_tuple is the result
+        from find_compensating_block_generic, or None if no trade possible.
+        
+        pair_name is one of: "A<->B", "A<->M", "B<->M"
+    """
+    # Determine which pairs to try based on regime
+    if exchange_regime == "barter_only":
+        candidate_pairs = ["A<->B"]
+    elif exchange_regime == "money_only":
+        candidate_pairs = ["A<->M", "B<->M"]
+    elif exchange_regime == "mixed":
+        candidate_pairs = ["A<->B", "A<->M", "B<->M"]
+    else:
+        # Unknown regime, default to barter
+        candidate_pairs = ["A<->B"]
+    
+    # Try each allowed pair in deterministic order
+    # Return FIRST successful trade found
+    for pair in candidate_pairs:
+        trade = find_compensating_block_generic(agent_i, agent_j, pair, params, epsilon)
+        
+        if trade is not None:
+            # Found a mutually beneficial trade - return immediately
+            return (pair, trade)
+    
+    # No mutually beneficial trade found in any pair
+    return None
+
+
+def execute_trade_generic(
+    agent_i: 'Agent',
+    agent_j: 'Agent',
+    trade: tuple
+) -> None:
+    """
+    Execute a trade, updating both agents' inventories.
+    
+    Args:
+        agent_i: First agent
+        agent_j: Second agent
+        trade: Trade tuple (dA_i, dB_i, dM_i, dA_j, dB_j, dM_j, surplus_i, surplus_j)
+               from find_compensating_block_generic
+        
+    Invariants maintained:
+    - Non-negativity: All inventories remain ≥ 0
+    - Conservation: dA_i + dA_j = 0, dB_i + dB_j = 0, dM_i + dM_j = 0
+    - Integer quantities
+    - inventory_changed flags set for both agents
+    """
+    dA_i, dB_i, dM_i, dA_j, dB_j, dM_j, surplus_i, surplus_j = trade
+    
+    # Verify conservation
+    assert dA_i + dA_j == 0, f"Good A not conserved: {dA_i} + {dA_j} != 0"
+    assert dB_i + dB_j == 0, f"Good B not conserved: {dB_i} + {dB_j} != 0"
+    assert dM_i + dM_j == 0, f"Money not conserved: {dM_i} + {dM_j} != 0"
+    
+    # Apply changes to agent i
+    agent_i.inventory.A += dA_i
+    agent_i.inventory.B += dB_i
+    agent_i.inventory.M += dM_i
+    
+    # Apply changes to agent j
+    agent_j.inventory.A += dA_j
+    agent_j.inventory.B += dB_j
+    agent_j.inventory.M += dM_j
+    
+    # Verify non-negativity
+    assert agent_i.inventory.A >= 0, f"Agent {agent_i.id} A inventory negative: {agent_i.inventory.A}"
+    assert agent_i.inventory.B >= 0, f"Agent {agent_i.id} B inventory negative: {agent_i.inventory.B}"
+    assert agent_i.inventory.M >= 0, f"Agent {agent_i.id} M inventory negative: {agent_i.inventory.M}"
+    assert agent_j.inventory.A >= 0, f"Agent {agent_j.id} A inventory negative: {agent_j.inventory.A}"
+    assert agent_j.inventory.B >= 0, f"Agent {agent_j.id} B inventory negative: {agent_j.inventory.B}"
+    assert agent_j.inventory.M >= 0, f"Agent {agent_j.id} M inventory negative: {agent_j.inventory.M}"
+    
+    # Set inventory_changed flags
+    agent_i.inventory_changed = True
+    agent_j.inventory_changed = True
 

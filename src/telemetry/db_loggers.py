@@ -118,12 +118,17 @@ class TelemetryManager:
             target_x = agent.target_pos[0] if agent.target_pos else None
             target_y = agent.target_pos[1] if agent.target_pos else None
             
+            # Money-aware API: use dict.get() for safe access
+            ask_A_in_B = float(agent.quotes.get('ask_A_in_B', 0.0))
+            bid_A_in_B = float(agent.quotes.get('bid_A_in_B', 0.0))
+            p_min = float(agent.quotes.get('p_min_A_in_B', 0.0))
+            p_max = float(agent.quotes.get('p_max_A_in_B', 0.0))
+            
             self._agent_snapshot_buffer.append((
                 self.run_id, tick, agent.id,
                 int(agent.pos[0]), int(agent.pos[1]),  # Convert numpy int to Python int
                 int(agent.inventory.A), int(agent.inventory.B), float(utility_val),
-                float(agent.quotes.ask_A_in_B), float(agent.quotes.bid_A_in_B),
-                float(agent.quotes.p_min), float(agent.quotes.p_max),
+                ask_A_in_B, bid_A_in_B, p_min, p_max,
                 target_agent_id, target_x if target_x is None else int(target_x), 
                 target_y if target_y is None else int(target_y), utility_type
             ))
@@ -196,7 +201,7 @@ class TelemetryManager:
             self._flush_decisions()
     
     def log_trade(self, tick: int, x: int, y: int, buyer_id: int, seller_id: int,
-                  dA: int, dB: int, price: float, direction: str):
+                  dA: int, dB: int, price: float, direction: str, dM: int = 0):
         """
         Log a successful trade.
         
@@ -209,6 +214,7 @@ class TelemetryManager:
             dB: Amount of good B traded
             price: Trade price
             direction: Trade direction string
+            dM: Amount of money traded (Phase 2+, default 0 for barter)
         """
         if not self.config.log_trades or self.db is None or self.run_id is None:
             return
@@ -216,14 +222,14 @@ class TelemetryManager:
         self._trade_buffer.append((
             self.run_id, tick, int(x), int(y),
             int(buyer_id), int(seller_id),
-            int(dA), int(dB), float(price), direction
+            int(dA), int(dB), int(dM), float(price), direction
         ))
         
-        # Also store for renderer
+        # Also store for renderer (Phase 2+: include dM)
         self.recent_trades_for_renderer.append({
             "tick": tick, "x": x, "y": y,
             "buyer_id": buyer_id, "seller_id": seller_id,
-            "dA": dA, "dB": dB, "price": price, "direction": direction
+            "dA": dA, "dB": dB, "dM": dM, "price": price, "direction": direction
         })
         if len(self.recent_trades_for_renderer) > 20:
             self.recent_trades_for_renderer.pop(0)
@@ -384,8 +390,8 @@ class TelemetryManager:
         
         self.db.executemany("""
             INSERT INTO trades
-            (run_id, tick, x, y, buyer_id, seller_id, dA, dB, price, direction)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (run_id, tick, x, y, buyer_id, seller_id, dA, dB, dM, price, direction)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, self._trade_buffer)
         self.db.commit()
         self._trade_buffer.clear()
