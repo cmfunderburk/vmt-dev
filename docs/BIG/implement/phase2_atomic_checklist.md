@@ -64,7 +64,7 @@ Tests
 Gates
 - [ ] `pytest -q tests/test_matching_money.py` green
 - [ ] Legacy suite still green
-- [ ] Accept temporary perf regressions unless TPS < 5 on standard tests
+- [ ] Accept temporary perf regressions -- currently developing on a subpar machine, so we are not worried about perceived regressions
 
 ---
 

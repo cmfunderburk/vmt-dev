@@ -20,6 +20,34 @@ description: Guidelines for GUI applications (PyQt5, Pygame) and entry points
 - Launch simulations
 - Scenario builder dialog
 
+#### Scenario Builder - Auto-Generate Diverse Agents
+
+**Feature request (not yet implemented):**
+
+Add checkbox in Basic Settings tab: **"Auto-generate diverse agents"**
+
+When enabled:
+1. User specifies number of agents N
+2. Algorithm auto-fills Utility Functions tab following complementary pairing pattern:
+   - Agents 1, 3, 5, ... (odd): Random utility type and parameters
+   - Agents 2, 4, 6, ... (even): Complementary to previous agent
+3. Auto-fills Initial Inventories with random endowments
+
+**Algorithm details:** See [.cursor/rules/scenarios-telemetry.mdc](mdc:.cursor/rules/scenarios-telemetry.mdc) section "Creating New Test Scenarios"
+
+**Implementation location:** [src/vmt_launcher/scenario_builder.py](mdc:src/vmt_launcher/scenario_builder.py)
+
+**Key functions needed:**
+```python
+def generate_diverse_utilities(n_agents: int, rng) -> list[dict]:
+    """Generate N unique utilities using complementary pairing."""
+    # Odd agents: random
+    # Even agents: complement previous
+    
+def generate_random_endowments(n_agents: int, n_goods: int, rng) -> dict:
+    """Generate random endowments ~ Uniform(1, 50) per agent per good."""
+```
+
 ### Log Viewer Features
 - Timeline scrubber
 - Agent inspection

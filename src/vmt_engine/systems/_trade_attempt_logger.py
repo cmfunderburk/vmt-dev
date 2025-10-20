@@ -37,10 +37,16 @@ def log_trade_attempt(
     buyer_U_final = buyer.utility.u(buyer_A_final, buyer_B_final) if buyer.utility else 0.0
     seller_U_final = seller.utility.u(seller_A_final, seller_B_final) if seller.utility else 0.0
 
+    # Money-aware API: use dict.get() for safe access
+    buyer_ask = buyer.quotes.get('ask_A_in_B', 0.0)
+    buyer_bid = buyer.quotes.get('bid_A_in_B', 0.0)
+    seller_ask = seller.quotes.get('ask_A_in_B', 0.0)
+    seller_bid = seller.quotes.get('bid_A_in_B', 0.0)
+    
     telemetry.log_trade_attempt(
         tick, buyer.id, seller.id, direction, price,
-        buyer.quotes.ask_A_in_B, buyer.quotes.bid_A_in_B,
-        seller.quotes.ask_A_in_B, seller.quotes.bid_A_in_B, surplus,
+        buyer_ask, buyer_bid,
+        seller_ask, seller_bid, surplus,
         dA, dB,
         buyer_A_init, buyer_B_init, buyer_U_init,
         buyer_A_final, buyer_B_final, buyer_U_final, buyer_improves,

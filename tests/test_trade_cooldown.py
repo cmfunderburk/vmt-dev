@@ -3,7 +3,7 @@ Tests for trade cooldown system.
 """
 
 import pytest
-from vmt_engine.core import Agent, Inventory, Quote
+from vmt_engine.core import Agent, Inventory
 from vmt_engine.econ.utility import UCES
 from vmt_engine.systems.matching import choose_partner
 
@@ -14,13 +14,13 @@ def test_trade_cooldown_prevents_retargeting():
     agent1 = Agent(
         id=1, pos=(0, 0), inventory=Inventory(A=8, B=4),
         utility=UCES(rho=-0.5, wA=1.0, wB=1.0),
-        quotes=Quote(ask_A_in_B=0.5, bid_A_in_B=0.5, p_min=0.5, p_max=0.5)
+        quotes={'ask_A_in_B': 0.5, 'bid_A_in_B': 0.5, 'p_min_A_in_B': 0.5, 'p_max_A_in_B': 0.5}
     )
     
     agent2 = Agent(
         id=2, pos=(0, 1), inventory=Inventory(A=4, B=8),
         utility=UCES(rho=-0.5, wA=1.0, wB=1.0),
-        quotes=Quote(ask_A_in_B=2.0, bid_A_in_B=2.0, p_min=2.0, p_max=2.0)
+        quotes={'ask_A_in_B': 2.0, 'bid_A_in_B': 2.0, 'p_min_A_in_B': 2.0, 'p_max_A_in_B': 2.0}
     )
     
     # Simulate failed trade at tick 10, cooldown until tick 15
@@ -44,19 +44,19 @@ def test_cooldown_allows_other_partners():
     agent1 = Agent(
         id=1, pos=(0, 0), inventory=Inventory(A=5, B=5),
         utility=UCES(rho=-0.5, wA=1.0, wB=1.0),
-        quotes=Quote(ask_A_in_B=1.0, bid_A_in_B=1.0, p_min=1.0, p_max=1.0)
+        quotes={'ask_A_in_B': 1.0, 'bid_A_in_B': 1.0, 'p_min_A_in_B': 1.0, 'p_max_A_in_B': 1.0}
     )
     
     agent2 = Agent(
         id=2, pos=(0, 1), inventory=Inventory(A=3, B=7),
         utility=UCES(rho=-0.5, wA=1.0, wB=1.0),
-        quotes=Quote(ask_A_in_B=2.0, bid_A_in_B=2.0, p_min=2.0, p_max=2.0)
+        quotes={'ask_A_in_B': 2.0, 'bid_A_in_B': 2.0, 'p_min_A_in_B': 2.0, 'p_max_A_in_B': 2.0}
     )
     
     agent3 = Agent(
         id=3, pos=(1, 0), inventory=Inventory(A=7, B=3),
         utility=UCES(rho=-0.5, wA=1.0, wB=1.0),
-        quotes=Quote(ask_A_in_B=0.5, bid_A_in_B=0.5, p_min=0.5, p_max=0.5)
+        quotes={'ask_A_in_B': 0.5, 'bid_A_in_B': 0.5, 'p_min_A_in_B': 0.5, 'p_max_A_in_B': 0.5}
     )
     
     # Agent 1 has cooldown with agent 2
@@ -75,13 +75,13 @@ def test_cooldown_with_no_surplus():
     agent1 = Agent(
         id=1, pos=(0, 0), inventory=Inventory(A=5, B=5),
         utility=UCES(rho=-0.5, wA=1.0, wB=1.0),
-        quotes=Quote(ask_A_in_B=1.0, bid_A_in_B=1.0, p_min=1.0, p_max=1.0)
+        quotes={'ask_A_in_B': 1.0, 'bid_A_in_B': 1.0, 'p_min_A_in_B': 1.0, 'p_max_A_in_B': 1.0}
     )
     
     agent2 = Agent(
         id=2, pos=(0, 1), inventory=Inventory(A=5, B=5),
         utility=UCES(rho=-0.5, wA=1.0, wB=1.0),
-        quotes=Quote(ask_A_in_B=1.0, bid_A_in_B=1.0, p_min=1.0, p_max=1.0)
+        quotes={'ask_A_in_B': 1.0, 'bid_A_in_B': 1.0, 'p_min_A_in_B': 1.0, 'p_max_A_in_B': 1.0}
     )
     
     # Set cooldown
@@ -99,7 +99,7 @@ def test_cooldown_zero_disables():
     agent1 = Agent(
         id=1, pos=(0, 0), inventory=Inventory(A=5, B=5),
         utility=UCES(rho=-0.5, wA=1.0, wB=1.0),
-        quotes=Quote(ask_A_in_B=1.0, bid_A_in_B=1.0, p_min=1.0, p_max=1.0)
+        quotes={'ask_A_in_B': 1.0, 'bid_A_in_B': 1.0, 'p_min_A_in_B': 1.0, 'p_max_A_in_B': 1.0}
     )
     
     # Cooldown until same tick (cooldown_ticks=0)
@@ -108,7 +108,7 @@ def test_cooldown_zero_disables():
     # Same tick should already expire
     neighbors = [(2, (0, 1))]
     agent2 = Agent(id=2, pos=(0,1), inventory=Inventory(A=3, B=7),
-                   quotes=Quote(ask_A_in_B=2.0, bid_A_in_B=2.0, p_min=2.0, p_max=2.0))
+                   quotes={'ask_A_in_B': 2.0, 'bid_A_in_B': 2.0, 'p_min_A_in_B': 2.0, 'p_max_A_in_B': 2.0})
     
     partner, _, _ = choose_partner(agent1, neighbors, {2: agent2}, current_tick=10)
     assert partner == 2, "With cooldown_ticks=0, should immediately be available"

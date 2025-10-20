@@ -123,15 +123,20 @@ class Simulation:
         # Parse initial inventories
         inv_A = self.config.initial_inventories['A']
         inv_B = self.config.initial_inventories['B']
+        inv_M = self.config.initial_inventories.get('M', 0)  # Phase 1+: Money inventory
         
         # Convert to lists if needed
         if isinstance(inv_A, int):
             inv_A = [inv_A] * n_agents
         if isinstance(inv_B, int):
             inv_B = [inv_B] * n_agents
+        if isinstance(inv_M, int):
+            inv_M = [inv_M] * n_agents
         
         if len(inv_A) != n_agents or len(inv_B) != n_agents:
             raise ValueError(f"Initial inventory lists must match agent count {n_agents}")
+        if isinstance(inv_M, list) and len(inv_M) != n_agents:
+            raise ValueError(f"Initial M inventory list must match agent count {n_agents}")
         
         # Sample utility types according to mix weights
         utility_configs = []
@@ -161,7 +166,9 @@ class Simulation:
         for i in range(n_agents):
             pos = positions[i]
             
-            inventory = Inventory(A=inv_A[i], B=inv_B[i])
+            # Phase 1+: Include M inventory
+            M_val = inv_M[i] if isinstance(inv_M, list) else inv_M
+            inventory = Inventory(A=inv_A[i], B=inv_B[i], M=M_val)
             
             # Create utility
             utility = create_utility({

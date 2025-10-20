@@ -1,5 +1,9 @@
 """
 Agent representation and initialization.
+
+Money-aware API (Phase 2):
+- Agent.quotes is now dict[str, float] with keys for all exchange pairs
+- Legacy Quote dataclass access is deprecated
 """
 
 from dataclasses import dataclass, field
@@ -17,7 +21,7 @@ class Agent:
     pos: Position
     inventory: Inventory
     utility: Optional['Utility'] = None
-    quotes: Quote = field(default_factory=lambda: Quote(ask_A_in_B=0.0, bid_A_in_B=0.0, p_min=0.0, p_max=0.0))
+    quotes: dict[str, float] = field(default_factory=dict)  # Money-aware: dict of all exchange pairs
     vision_radius: int = 5
     move_budget_per_tick: int = 1
     
