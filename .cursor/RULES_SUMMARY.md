@@ -25,7 +25,7 @@ This directory contains comprehensive Cursor Rules to help AI coding agents work
   - Environment setup (venv, PYTHONPATH)
 
 #### 2. **vmt-overview.mdc** (55 lines)
-- **Type**: On-demand (description-based)
+- **Type**: Always applied (big picture reference)
 - **Purpose**: High-level project orientation and quick reference
 - **Contents**:
   - Project architecture map

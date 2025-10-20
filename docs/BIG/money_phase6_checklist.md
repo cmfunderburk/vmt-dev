@@ -1,736 +1,702 @@
-### Money Implementation — Phase 6: Polish and Documentation
+### Money Implementation — Phase 3: KKT λ Estimation (ADVANCED)
 
 Author: VMT Assistant
 Date: 2025-10-19
+**Revised**: 2025-10-20 (deferred to after Phase 6 - advanced feature)
 
-**Prerequisite**: Phase 5 complete (liquidity gating working)
+**Prerequisite**: Phase 6 complete (quasilinear system polished and working)
 
-**Goal**: Polish UI/UX, complete documentation, create demo scenarios, and prepare for release.
+**Goal**: Implement KKT λ estimation mode where agents endogenously estimate marginal utility of money from observed prices. This is an **advanced feature** that adds adaptive λ behavior on top of the working quasilinear foundation.
 
 **Success Criteria**:
-- Renderer visualizes money transfers and mode overlays
-- Log viewer supports money queries and filters
-- Complete documentation for all money features
-- Demo scenarios showcase different regimes
-- Code review ready
+- λ updates based on neighbor price aggregation
+- Median-lower aggregation deterministic and stable
+- λ converges within bounds
+- Smoothing parameter (alpha) works correctly
+- No O(N²) performance paths
+- **Works correctly with all three regimes** (tested on barter_only, money_only, mixed)
+
+**Note**: This phase implements adaptive λ estimation. The simpler quasilinear mode (fixed λ) is already working and production-ready from Phases 2, 4, 6.
 
 ---
 
-## Pre-Phase 6 Verification
+## Pre-Phase 3 Verification
 
-- [ ] **Verify Phase 5 complete**
+- [ ] **Verify Phase 6 complete**
   ```bash
-  pytest tests/test_liquidity_gating*.py -v
-  python main.py scenarios/money_test_liquidity_gate.yaml --seed 42
+  pytest tests/test_money_phase2*.py tests/test_mixed_regime*.py -v
+  python main.py scenarios/money_test_mixed.yaml --seed 42
+  # Verify quasilinear system fully working
   ```
 
-- [ ] **Create Phase 6 branch**
+- [ ] **Create Phase 3 branch**
   ```bash
-  git checkout -b feature/money-phase6-polish
+  git checkout -b feature/money-phase3-kkt-lambda
+  ```
+
+- [ ] **Create KKT test scenario**
+  ```bash
+  # Create scenarios/money_test_kkt.yaml (see Part 1.1)
   ```
 
 ---
 
-## Part 1: Renderer Enhancements
+## Part 1: Test Scenario Creation
 
-### 1.1) Money inventory visualization
+### 1.1) Create KKT test scenario
 
-**File**: `src/vmt_pygame/renderer.py`
+**File**: `scenarios/money_test_kkt.yaml` (create new)
 
-- [ ] **Add money display to agent rendering**
-  ```python
-  def _draw_agent(self, agent: Agent, screen):
-      # Existing: draw agent circle, inventory bars
-      
-      # NEW: Draw money indicator
-      if agent.inventory.M > 0:
-          # Draw small coin icon or "M" label
-          font_small = pygame.font.Font(None, 16)
-          money_text = font_small.render(f"${agent.inventory.M}", True, (255, 215, 0))
-          screen.blit(money_text, (agent.pos[0] * CELL_SIZE + 5, 
-                                   agent.pos[1] * CELL_SIZE + 25))
-  ```
-
-- [ ] **Add money transfer animation**
-  ```python
-  def _animate_trade(self, trade_info: dict, screen):
-      """Animate completed trade with money flow."""
-      # Existing: draw line between traders
-      
-      # NEW: If dM > 0, show gold sparkles/flow
-      if trade_info.get('dM', 0) > 0:
-          # Draw gold particles flowing from buyer to seller
-          self._draw_money_flow(
-              trade_info['buyer_pos'], 
-              trade_info['seller_pos'],
-              trade_info['dM']
-          )
+- [ ] **Write KKT scenario**
+  ```yaml
+  schema_version: 1
+  name: "KKT Lambda Estimation Test"
+  N: 15
+  agents: 10
   
-  def _draw_money_flow(self, from_pos, to_pos, amount):
-      """Draw animated money transfer."""
-      # Golden sparkle effect
-      for i in range(5):
-          # Interpolate positions
-          t = (pygame.time.get_ticks() % 1000) / 1000.0
-          x = from_pos[0] + (to_pos[0] - from_pos[0]) * t
-          y = from_pos[1] + (to_pos[1] - from_pos[1]) * t
+  initial_inventories:
+    A: [10, 8, 6, 4, 2, 0, 0, 2, 4, 6]
+    B: [0, 2, 4, 6, 8, 10, 8, 6, 4, 2]
+    M: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
+  
+  utilities:
+    mix:
+      - type: ces
+        weight: 0.7
+        params:
+          rho: 0.5
+          wA: 0.6
+          wB: 0.4
+      - type: ces
+        weight: 0.3
+        params:
+          rho: -0.5
+          wA: 0.5
+          wB: 0.5
+  
+  params:
+    spread: 0.05
+    vision_radius: 8
+    interaction_radius: 1
+    move_budget_per_tick: 1
+    dA_max: 3
+    forage_rate: 1
+    
+    # KKT mode params
+    exchange_regime: money_only
+    money_mode: kkt_lambda
+    money_scale: 1
+    lambda_money: 1.0           # Initial λ
+    lambda_update_rate: 0.2     # Smoothing alpha
+    lambda_bounds:
+      lambda_min: 0.000001
+      lambda_max: 1000000.0
+  
+  resource_seed:
+    density: 0.15
+    amount: 5
+  ```
+
+- [ ] **Verify scenario loads**
+  ```bash
+  python -c "from scenarios.loader import load_scenario; cfg = load_scenario('scenarios/money_test_kkt.yaml'); print(f'KKT mode: {cfg.params.money_mode}')"
+  ```
+
+---
+
+## Part 2: Price Aggregation System
+
+### 2.1) Implement neighbor price collection
+
+**File**: `src/vmt_engine/systems/housekeeping.py`
+
+- [ ] **Add `_collect_neighbor_prices()` helper**
+  ```python
+  def _collect_neighbor_prices(agent: Agent, neighbors: list[Agent], 
+                                good: str, epsilon: float) -> list[tuple[float, int]]:
+      """
+      Collect neighbor ask prices for a good in money.
+      
+      Args:
+          agent: Agent collecting prices
+          neighbors: List of neighbors within vision_radius
+          good: "A" or "B"
+          epsilon: Small constant for safety
           
-          pygame.draw.circle(screen, (255, 215, 0), (int(x), int(y)), 3)
+      Returns:
+          List of (price, seller_id) tuples, sorted for determinism
+      """
+      prices = []
+      
+      # Include self price
+      if good == "A" and 'ask_A_in_M' in agent.quotes:
+          prices.append((agent.quotes['ask_A_in_M'], agent.id))
+      elif good == "B" and 'ask_B_in_M' in agent.quotes:
+          prices.append((agent.quotes['ask_B_in_M'], agent.id))
+      
+      # Collect neighbor prices
+      for neighbor in neighbors:
+          if good == "A" and 'ask_A_in_M' in neighbor.quotes:
+              prices.append((neighbor.quotes['ask_A_in_M'], neighbor.id))
+          elif good == "B" and 'ask_B_in_M' in neighbor.quotes:
+              prices.append((neighbor.quotes['ask_B_in_M'], neighbor.id))
+      
+      # Sort deterministically: (price, seller_id)
+      prices.sort(key=lambda x: (x[0], x[1]))
+      
+      return prices
   ```
 
-### 1.2) Mode overlay visualization
+### 2.2) Implement median-lower aggregation
 
-- [ ] **Add mode/regime overlay to top-left corner**
+- [ ] **Add `_aggregate_prices_median_lower()` helper**
   ```python
-  def _draw_mode_overlay(self, sim: Simulation, screen):
-      """Display current mode and exchange regime."""
-      font = pygame.font.Font(None, 24)
+  def _aggregate_prices_median_lower(prices: list[tuple[float, int]]) -> float | None:
+      """
+      Aggregate prices using median-lower rule.
       
-      # Get mode and regime
-      mode = sim.current_mode
-      regime = sim.params['exchange_regime']
-      active_pairs = sim._get_active_exchange_pairs()
+      For even-length lists, take the lower of the two middle values.
+      For odd-length lists, take the exact median.
       
-      # Choose color based on regime
-      if regime == "money_only":
-          color = (255, 215, 0)  # Gold
-          regime_text = "Monetary Only"
-      elif regime == "barter_only":
-          color = (0, 255, 0)  # Green
-          regime_text = "Barter Only"
-      elif regime in ["mixed", "mixed_liquidity_gated"]:
-          color = (100, 149, 237)  # Cornflower blue
-          regime_text = "Mixed" if regime == "mixed" else "Gated Mixed"
+      Args:
+          prices: Sorted list of (price, seller_id) tuples
+          
+      Returns:
+          Aggregated price, or None if prices is empty
+      """
+      if not prices:
+          return None
+      
+      n = len(prices)
+      if n % 2 == 1:
+          # Odd: take exact median
+          return prices[n // 2][0]
       else:
-          color = (128, 128, 128)
-          regime_text = regime
-      
-      # Display mode
-      mode_text = font.render(f"Mode: {mode.upper()}", True, (255, 255, 255))
-      screen.blit(mode_text, (10, 10))
-      
-      # Display regime
-      regime_text_render = font.render(f"Regime: {regime_text}", True, color)
-      screen.blit(regime_text_render, (10, 35))
-      
-      # Display active pairs
-      if active_pairs:
-          pairs_str = ", ".join(active_pairs)
-          pairs_text = font.render(f"Active: [{pairs_str}]", True, (200, 200, 200))
-          screen.blit(pairs_text, (10, 60))
+          # Even: take lower of two middle values
+          return prices[(n // 2) - 1][0]
   ```
 
-- [ ] **Call overlay in main render loop**
+- [ ] **Test price aggregation**
   ```python
-  def render(self, sim: Simulation):
-      # ... existing rendering ...
+  # In tests/test_kkt_price_aggregation.py (create new)
+  def test_median_lower_odd():
+      prices = [(1.0, 0), (2.0, 1), (3.0, 2)]
+      result = _aggregate_prices_median_lower(prices)
+      assert result == 2.0
+  
+  def test_median_lower_even():
+      prices = [(1.0, 0), (2.0, 1), (3.0, 2), (4.0, 3)]
+      result = _aggregate_prices_median_lower(prices)
+      assert result == 2.0  # Lower of [2.0, 3.0]
+  
+  def test_median_lower_deterministic():
+      # Same prices, different seller IDs
+      prices1 = [(2.0, 0), (2.0, 1), (2.0, 2)]
+      prices2 = [(2.0, 2), (2.0, 1), (2.0, 0)]
+      # After sorting by (price, id):
+      prices2.sort(key=lambda x: (x[0], x[1]))
       
-      # Add mode overlay
-      self._draw_mode_overlay(sim, self.screen)
-      
-      pygame.display.flip()
+      r1 = _aggregate_prices_median_lower(prices1)
+      r2 = _aggregate_prices_median_lower(prices2)
+      assert r1 == r2
   ```
 
-### 1.3) Lambda heatmap (optional)
+### 2.3) Implement cross-quote inference fallback
 
-- [ ] **Add lambda visualization toggle**
+- [ ] **Add `_infer_price_from_cross_quotes()` helper**
   ```python
-  def _draw_lambda_heatmap(self, sim: Simulation, screen):
-      """Draw heatmap of lambda values across agents."""
-      if not self.show_lambda:
+  def _infer_price_from_cross_quotes(agent: Agent, good: str, 
+                                      p_other: float | None, 
+                                      neighbors: list[Agent],
+                                      epsilon: float) -> float | None:
+      """
+      Infer price of good A (or B) from prices of B (or A) using cross quotes.
+      
+      If no direct A-in-M quotes are available, but B-in-M quotes are,
+      use p_A ≈ p_B * (B_in_A cross quote).
+      
+      Args:
+          agent: Agent inferring price
+          good: "A" or "B"
+          p_other: Aggregated price of the other good (can be None)
+          neighbors: Neighbors for collecting cross quotes
+          epsilon: Small constant
+          
+      Returns:
+          Inferred price or None
+      """
+      if p_other is None:
+          return None
+      
+      # Collect cross quotes (A<->B)
+      if good == "A":
+          # Need p_B and bid_A_in_B (how much B per A)
+          # p_A ≈ p_B / bid_A_in_B
+          if 'bid_A_in_B' in agent.quotes:
+              return p_other / max(agent.quotes['bid_A_in_B'], epsilon)
+      else:
+          # Need p_A and bid_B_in_A
+          if 'bid_B_in_A' in agent.quotes:
+              return p_other / max(agent.quotes['bid_B_in_A'], epsilon)
+      
+      return None
+  ```
+
+---
+
+## Part 3: λ Update Logic
+
+### 3.1) Implement λ estimation in HousekeepingSystem
+
+**File**: `src/vmt_engine/systems/housekeeping.py`
+
+- [ ] **Add `_update_lambda_kkt()` method to HousekeepingSystem**
+  ```python
+  def _update_lambda_kkt(self, agent: Agent, sim: "Simulation") -> None:
+      """
+      Update agent's lambda using KKT estimation.
+      
+      Steps:
+      1. Collect neighbor prices for A and B in money
+      2. Aggregate using median-lower
+      3. Compute λ_hat_A = MU_A / p_A, λ_hat_B = MU_B / p_B
+      4. Set λ_hat = min(λ_hat_A, λ_hat_B)
+      5. Smooth: λ_new = (1-α)*λ_old + α*λ_hat
+      6. Clamp to bounds
+      """
+      epsilon = sim.params['epsilon']
+      alpha = sim.params['lambda_update_rate']
+      bounds = sim.params['lambda_bounds']
+      lambda_min = bounds['lambda_min']
+      lambda_max = bounds['lambda_max']
+      
+      # Get neighbors within vision radius
+      neighbor_ids = sim.spatial_index.query_radius(agent.pos, agent.vision_radius)
+      neighbors = [sim.agent_by_id[nid] for nid in neighbor_ids if nid != agent.id]
+      
+      # Collect and aggregate prices
+      prices_A = self._collect_neighbor_prices(agent, neighbors, "A", epsilon)
+      prices_B = self._collect_neighbor_prices(agent, neighbors, "B", epsilon)
+      
+      p_hat_A = self._aggregate_prices_median_lower(prices_A)
+      p_hat_B = self._aggregate_prices_median_lower(prices_B)
+      
+      # Fallback: infer missing prices from cross quotes
+      if p_hat_A is None and p_hat_B is not None:
+          p_hat_A = self._infer_price_from_cross_quotes(agent, "A", p_hat_B, neighbors, epsilon)
+      if p_hat_B is None and p_hat_A is not None:
+          p_hat_B = self._infer_price_from_cross_quotes(agent, "B", p_hat_A, neighbors, epsilon)
+      
+      # If still no prices, keep current λ
+      if p_hat_A is None and p_hat_B is None:
           return
       
-      # Get lambda range
-      lambdas = [a.lambda_money for a in sim.agents]
-      min_lambda = min(lambdas)
-      max_lambda = max(lambdas)
+      # Compute marginal utilities
+      mu_A = agent.utility.mu_A(agent.inventory.A, agent.inventory.B, epsilon)
+      mu_B = agent.utility.mu_B(agent.inventory.A, agent.inventory.B, epsilon)
       
-      for agent in sim.agents:
-          # Normalize lambda to color
-          if max_lambda > min_lambda:
-              normalized = (agent.lambda_money - min_lambda) / (max_lambda - min_lambda)
-          else:
-              normalized = 0.5
-          
-          # Color: blue (low λ) to red (high λ)
-          color = self._lambda_to_color(normalized)
-          
-          # Draw circle at agent position
-          pos_px = (agent.pos[0] * CELL_SIZE, agent.pos[1] * CELL_SIZE)
-          pygame.draw.circle(screen, color, pos_px, CELL_SIZE // 3, 2)
-  ```
-
----
-
-## Part 2: Log Viewer Enhancements
-
-### 2.1) Money trade filter
-
-**File**: `src/vmt_log_viewer/queries.py` (or wherever queries are defined)
-
-- [ ] **Add money trade query**
-  ```python
-  def get_money_trades(db_path: str, run_id: int) -> list:
-      """Get all trades involving money."""
-      conn = sqlite3.connect(db_path)
-      cursor = conn.execute("""
-          SELECT tick, buyer_id, seller_id, 
-                 dA, dB, dM, price, exchange_pair_type,
-                 buyer_surplus, seller_surplus
-          FROM trades
-          WHERE run_id = ? AND dM != 0
-          ORDER BY tick
-      """, (run_id,))
-      result = cursor.fetchall()
-      conn.close()
-      return result
-  ```
-
-### 2.2) Lambda trajectory view
-
-**File**: `src/vmt_log_viewer/` (UI components)
-
-- [ ] **Add lambda plot tab**
-  ```python
-  class LambdaTrajectoryView(QWidget):
-      """Widget for plotting lambda trajectories."""
+      # Compute λ estimates
+      lambda_hat_A = mu_A / max(p_hat_A, epsilon) if p_hat_A is not None else None
+      lambda_hat_B = mu_B / max(p_hat_B, epsilon) if p_hat_B is not None else None
       
-      def __init__(self, db_path: str, run_id: int):
-          super().__init__()
-          self.db_path = db_path
-          self.run_id = run_id
-          self.init_ui()
-      
-      def init_ui(self):
-          layout = QVBoxLayout()
-          
-          # Agent selector
-          self.agent_selector = QComboBox()
-          self.agent_selector.addItem("All Agents")
-          # Populate with agent IDs from database
-          layout.addWidget(QLabel("Select Agent:"))
-          layout.addWidget(self.agent_selector)
-          
-          # Plot canvas
-          self.canvas = MatplotlibCanvas()
-          layout.addWidget(self.canvas)
-          
-          # Update button
-          update_btn = QPushButton("Update Plot")
-          update_btn.clicked.connect(self.update_plot)
-          layout.addWidget(update_btn)
-          
-          self.setLayout(layout)
-      
-      def update_plot(self):
-          """Query database and update plot."""
-          # Query lambda values
-          # Plot on canvas
-          pass
-  ```
-
-### 2.3) Mode timeline view
-
-- [ ] **Add mode timeline visualization**
-  ```python
-  class ModeTimelineView(QWidget):
-      """Widget for visualizing mode transitions."""
-      
-      def __init__(self, db_path: str, run_id: int):
-          super().__init__()
-          # Query tick_states table
-          # Display timeline with color-coded modes
-          # Show exchange regime changes
-          pass
-  ```
-
-### 2.4) CSV export enhancements
-
-- [ ] **Include money columns in CSV export**
-  ```python
-  def export_to_csv(db_path: str, run_id: int, output_path: str):
-      """Export run data to CSV including money columns."""
-      conn = sqlite3.connect(db_path)
-      
-      # Export trades with money columns
-      df_trades = pd.read_sql_query("""
-          SELECT tick, buyer_id, seller_id,
-                 dA, dB, dM, price, exchange_pair_type,
-                 buyer_surplus, seller_surplus,
-                 buyer_lambda, seller_lambda
-          FROM trades
-          WHERE run_id = ?
-      """, conn, params=(run_id,))
-      
-      df_trades.to_csv(f"{output_path}_trades.csv", index=False)
-      
-      # Export agent snapshots with money
-      df_agents = pd.read_sql_query("""
-          SELECT tick, agent_id, x, y,
-                 inventory_A, inventory_B, inventory_M,
-                 lambda_money, utility,
-                 ask_A_in_M, bid_A_in_M, ask_B_in_M, bid_B_in_M
-          FROM agent_snapshots
-          WHERE run_id = ?
-      """, conn, params=(run_id,))
-      
-      df_agents.to_csv(f"{output_path}_agents.csv", index=False)
-      
-      conn.close()
-  ```
-
----
-
-## Part 3: Demo Scenarios
-
-### 3.1) Create showcase scenarios
-
-**Files**: Create in `scenarios/demos/` directory
-
-- [ ] **Demo 1: Simple monetary exchange**
-  ```yaml
-  # scenarios/demos/demo_01_simple_money.yaml
-  # 3 agents, clear complementary needs, money enables exchange
-  # Pedagogical: "Why money?"
-  ```
-
-- [ ] **Demo 2: KKT convergence**
-  ```yaml
-  # scenarios/demos/demo_02_kkt_convergence.yaml
-  # Show λ converging to equilibrium
-  # Pedagogical: "How do agents learn prices?"
-  ```
-
-- [ ] **Demo 3: Mixed regime dynamics**
-  ```yaml
-  # scenarios/demos/demo_03_mixed_regime.yaml
-  # Both money and barter coexist
-  # Pedagogical: "When is barter efficient?"
-  ```
-
-- [ ] **Demo 4: Liquidity emergence**
-  ```yaml
-  # scenarios/demos/demo_04_liquidity_zones.yaml
-  # Spatial variation in liquidity
-  # Pedagogical: "Market thickness and exchange types"
-  ```
-
-- [ ] **Demo 5: Mode interaction**
-  ```yaml
-  # scenarios/demos/demo_05_mode_schedule_money.yaml
-  # Alternating forage/trade with money
-  # Pedagogical: "Time constraints with monetary exchange"
-  ```
-
-### 3.2) Create demo runner script
-
-**File**: `scripts/run_demos.py` (create new)
-
-- [ ] **Automated demo runner**
-  ```python
-  import subprocess
-  import sys
-  from pathlib import Path
-  
-  DEMOS = [
-      ("demo_01_simple_money.yaml", "Simple Monetary Exchange", 50),
-      ("demo_02_kkt_convergence.yaml", "KKT Lambda Convergence", 100),
-      ("demo_03_mixed_regime.yaml", "Mixed Regime Dynamics", 80),
-      ("demo_04_liquidity_zones.yaml", "Liquidity Zones", 100),
-      ("demo_05_mode_schedule_money.yaml", "Mode Schedule + Money", 150),
-  ]
-  
-  def run_demo(scenario_file: str, title: str, ticks: int):
-      """Run a single demo scenario."""
-      print(f"\n{'='*60}")
-      print(f"Demo: {title}")
-      print(f"Scenario: {scenario_file}")
-      print(f"Running for {ticks} ticks...")
-      print(f"{'='*60}\n")
-      
-      result = subprocess.run([
-          sys.executable, "main.py",
-          f"scenarios/demos/{scenario_file}",
-          "--seed", "42"
-      ])
-      
-      if result.returncode != 0:
-          print(f"✗ Demo failed: {title}")
-          return False
+      # Take minimum (most binding constraint)
+      if lambda_hat_A is not None and lambda_hat_B is not None:
+          lambda_hat = min(lambda_hat_A, lambda_hat_B)
+      elif lambda_hat_A is not None:
+          lambda_hat = lambda_hat_A
       else:
-          print(f"✓ Demo completed: {title}")
-          return True
-  
-  def main():
-      print("Running all money demo scenarios...")
+          lambda_hat = lambda_hat_B
       
-      results = []
-      for scenario, title, ticks in DEMOS:
-          success = run_demo(scenario, title, ticks)
-          results.append((title, success))
+      # Smooth
+      lambda_old = agent.lambda_money
+      lambda_new = (1 - alpha) * lambda_old + alpha * lambda_hat
       
-      print(f"\n{'='*60}")
-      print("Demo Summary:")
-      print(f"{'='*60}")
-      for title, success in results:
-          status = "✓ PASS" if success else "✗ FAIL"
-          print(f"{status}: {title}")
+      # Clamp to bounds
+      clamped = False
+      clamp_type = None
+      if lambda_new < lambda_min:
+          lambda_new = lambda_min
+          clamped = True
+          clamp_type = "lower"
+      elif lambda_new > lambda_max:
+          lambda_new = lambda_max
+          clamped = True
+          clamp_type = "upper"
       
-      all_passed = all(success for _, success in results)
-      sys.exit(0 if all_passed else 1)
-  
-  if __name__ == '__main__':
-      main()
+      # Update agent
+      agent.lambda_money = lambda_new
+      
+      # Set flag if change is significant
+      tolerance = 1e-9
+      if abs(lambda_new - lambda_old) > tolerance:
+          agent.lambda_changed = True
+      
+      # Log lambda update for diagnostics
+      if sim.telemetry and abs(lambda_new - lambda_old) > tolerance:
+          sim.telemetry.log_lambda_update(
+              tick=sim.tick,
+              agent_id=agent.id,
+              lambda_old=lambda_old,
+              lambda_new=lambda_new,
+              lambda_hat_A=lambda_hat_A if lambda_hat_A else 0.0,
+              lambda_hat_B=lambda_hat_B if lambda_hat_B else 0.0,
+              lambda_hat=lambda_hat,
+              clamped=clamped,
+              clamp_type=clamp_type
+          )
   ```
 
----
+### 3.2) Integrate λ updates into HousekeepingSystem
 
-## Part 4: Documentation Completion
-
-### 4.1) User documentation
-
-**File**: `docs/user_guide_money.md` (create new)
-
-- [ ] **Write comprehensive user guide**
-  ```markdown
-  # VMT Money System User Guide
-  
-  ## Introduction
-  - What is the money system?
-  - Why was it added?
-  - Pedagogical goals
-  
-  ## Quick Start
-  - Simplest money scenario
-  - Running your first money simulation
-  - Interpreting results
-  
-  ## Configuration Reference
-  - money_mode: quasilinear vs kkt_lambda
-  - exchange_regime: barter_only, money_only, mixed, mixed_liquidity_gated
-  - lambda_money and lambda_bounds
-  - liquidity_gate parameters
-  
-  ## Scenarios
-  - Example configurations
-  - When to use each regime
-  - Classroom exercises
-  
-  ## Interpreting Results
-  - Understanding λ values
-  - Trade type distributions
-  - Liquidity depth metrics
-  
-  ## Troubleshooting
-  - Common issues
-  - Performance tips
-  - FAQ
-  ```
-
-### 4.2) Technical documentation
-
-**File**: `docs/technical/money_implementation.md` (create new)
-
-- [ ] **Write technical reference**
-  ```markdown
-  # Money System Technical Reference
-  
-  ## Architecture Overview
-  - Two-layer control (mode_schedule × exchange_regime)
-  - Quote system extensions
-  - Trading mechanism generalization
-  
-  ## Algorithms
-  - KKT λ estimation (median-lower aggregation)
-  - Liquidity depth calculation
-  - Tie-breaking policy
-  
-  ## Data Structures
-  - Inventory.M field
-  - Agent lambda state
-  - Quote extensions
-  
-  ## Telemetry Schema
-  - Reference to money_telemetry_schema.md
-  
-  ## Performance Considerations
-  - Complexity analysis
-  - Optimization techniques
-  
-  ## Testing Strategy
-  - Unit test coverage
-  - Integration test scenarios
-  - Determinism guarantees
-  ```
-
-### 4.3) Update main README
-
-**File**: `docs/README.md`
-
-- [ ] **Add money system section**
-  ```markdown
-  ## Money System
-  
-  VMT now includes a comprehensive money system for teaching monetary economics:
-  
-  - **Multiple modes**: Quasi-linear utility or endogenous λ estimation (KKT)
-  - **Flexible regimes**: Barter-only, money-only, mixed, or liquidity-gated
-  - **Full observability**: Track λ convergence, trade types, liquidity depth
-  - **Pedagogical scenarios**: Pre-built demos for classroom use
-  
-  See [Money User Guide](user_guide_money.md) for details.
-  ```
-
-### 4.4) API documentation
-
-- [ ] **Generate docstrings for all money-related functions**
-- [ ] **Run docstring coverage check**
-  ```bash
-  interrogate src/vmt_engine src/scenarios src/telemetry --verbose
-  ```
-
----
-
-## Part 5: Code Quality and Polish
-
-### 5.1) Code review prep
-
-- [ ] **Self-review checklist**
-  - [ ] All functions have docstrings
-  - [ ] Type hints consistent
-  - [ ] No TODO comments left in code
-  - [ ] Magic numbers replaced with named constants
-  - [ ] No dead code
-  - [ ] Error messages clear and helpful
-
-- [ ] **Run linters**
-  ```bash
-  flake8 src/vmt_engine src/scenarios src/telemetry
-  black --check src/
-  mypy src/vmt_engine src/scenarios src/telemetry
-  ```
-
-- [ ] **Fix all linter warnings**
-
-### 5.2) Performance profiling
-
-- [ ] **Profile large money scenario**
-  ```bash
-  python -m cProfile -o money_profile.prof main.py scenarios/large_money_scenario.yaml --seed 42
-  python -m pstats money_profile.prof
-  # Check: no unexpected O(N²) hotspots
-  ```
-
-- [ ] **Memory profiling**
-  ```bash
-  python -m memory_profiler main.py scenarios/large_money_scenario.yaml
-  # Verify: no memory leaks with money features
-  ```
-
-### 5.3) Error handling audit
-
-- [ ] **Check all money-related error paths**
-  - [ ] Invalid money_mode value → clear error
-  - [ ] Missing M in money_only regime → helpful error
-  - [ ] Negative M value → caught early
-  - [ ] Lambda bounds validation → clear message
-
----
-
-## Part 6: Testing and Validation
-
-### 6.1) End-to-end test suite
-
-**File**: `tests/test_money_e2e.py` (create new)
-
-- [ ] **Comprehensive E2E tests**
+- [ ] **Call `_update_lambda_kkt()` in `execute()`**
   ```python
-  def test_e2e_all_regimes():
-      """Run simulation through all regimes."""
-      regimes = ["barter_only", "money_only", "mixed", "mixed_liquidity_gated"]
-      for regime in regimes:
-          # Run scenario with each regime
-          # Verify: completes without errors
-          # Verify: telemetry logs correctly
-          pass
+  class HousekeepingSystem:
+      def execute(self, sim: "Simulation") -> None:
+          for agent in sorted(sim.agents, key=lambda a: a.id):
+              # Existing: update quotes if inventory changed
+              if agent.inventory_changed:
+                  agent.quotes = compute_quotes(agent, sim.params['spread'], sim.params['epsilon'])
+                  agent.inventory_changed = False
+              
+              # NEW: update lambda in KKT mode
+              if sim.params['money_mode'] == 'kkt_lambda':
+                  self._update_lambda_kkt(agent, sim)
+                  
+                  # If lambda changed, recompute quotes
+                  if agent.lambda_changed:
+                      agent.quotes = compute_quotes(agent, sim.params['spread'], sim.params['epsilon'])
+                      agent.lambda_changed = False
+              
+              # Existing: cooldown management, etc.
+              # ...
+  ```
+
+---
+
+## Part 4: Telemetry Integration
+
+### 4.1) Implement `log_lambda_update()`
+
+**File**: `src/telemetry/db_loggers.py`
+
+- [ ] **Complete `log_lambda_update()` implementation**
+  ```python
+  def log_lambda_update(self, tick: int, agent_id: int,
+                       lambda_old: float, lambda_new: float,
+                       lambda_hat_A: float, lambda_hat_B: float, 
+                       lambda_hat: float,
+                       clamped: bool, clamp_type: str = None):
+      """Log KKT lambda update."""
+      if not self.config.use_database or self.db is None:
+          return
+      
+      self.db.execute("""
+          INSERT INTO lambda_updates 
+          (run_id, tick, agent_id, lambda_old, lambda_new,
+           lambda_hat_A, lambda_hat_B, lambda_hat, clamped, clamp_type)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      """, (self.run_id, tick, agent_id, lambda_old, lambda_new,
+            lambda_hat_A, lambda_hat_B, lambda_hat, 
+            int(clamped), clamp_type))
+      
+      if self.tick % self.batch_size == 0:
+          self.db.commit()
+  ```
+
+### 4.2) Update agent snapshot logging
+
+- [ ] **Include perceived prices in snapshots**
+  ```python
+  # In HousekeepingSystem or wherever agent snapshots are logged:
+  # Store p_hat_A and p_hat_B in agent for logging
+  agent._perceived_price_A = p_hat_A  # Temporary storage for telemetry
+  agent._perceived_price_B = p_hat_B
   
-  def test_e2e_both_money_modes():
-      """Run with both quasilinear and kkt_lambda."""
-      for mode in ["quasilinear", "kkt_lambda"]:
-          # Run scenario
-          # Verify: mode-specific behavior
-          pass
+  # Then in log_agent_snapshot(), include these:
+  # perceived_price_A, perceived_price_B
+  ```
+
+---
+
+## Part 5: Performance Optimization
+
+### 5.1) Verify O(N) complexity
+
+- [ ] **Profile price collection**
+  ```python
+  # In tests/test_kkt_performance.py (create new)
+  def test_lambda_update_complexity():
+      """Verify λ updates don't introduce O(N²) paths."""
+      import time
+      from vmt_engine.simulation import Simulation
+      from scenarios.loader import load_scenario
+      from telemetry.config import LogConfig
+      
+      # Run with increasing agent counts
+      times = []
+      agent_counts = [10, 20, 40, 80]
+      
+      for n_agents in agent_counts:
+          # Modify scenario to have n_agents
+          # Run for fixed ticks
+          start = time.time()
+          # ... run simulation ...
+          elapsed = time.time() - start
+          times.append(elapsed)
+      
+      # Check that time grows roughly linearly with N
+      # (allowing for some overhead)
+      ratio_1 = times[1] / times[0]
+      ratio_2 = times[2] / times[1]
+      
+      # Should be roughly 2x (linear), not 4x (quadratic)
+      assert ratio_1 < 3.0
+      assert ratio_2 < 3.0
+  ```
+
+### 5.2) Optimize neighbor queries
+
+- [ ] **Ensure spatial index used**
+  ```python
+  # Verify that neighbor collection uses spatial_index.query_radius()
+  # Not a manual distance check over all agents
+  ```
+
+---
+
+## Part 6: Testing
+
+### 6.1) Unit tests for λ estimation
+
+**File**: `tests/test_kkt_lambda_estimation.py` (create new)
+
+- [ ] **Test λ computation**
+  ```python
+  def test_lambda_hat_computation():
+      """Test basic λ estimation from prices."""
+      # Given MU_A=2.0, p_A=4.0
+      # λ_hat_A = 2.0 / 4.0 = 0.5
+      assert abs(_compute_lambda_hat(mu=2.0, price=4.0) - 0.5) < 1e-9
   
-  def test_e2e_mode_schedule_interaction():
-      """Run with mode_schedule × exchange_regime."""
-      # Run scenario with both controls
-      # Verify: correct interaction
+  def test_lambda_min_constraint():
+      """Test λ_hat_A vs λ_hat_B minimum."""
+      lambda_hat_A = 1.0
+      lambda_hat_B = 0.5
+      lambda_hat = min(lambda_hat_A, lambda_hat_B)
+      assert lambda_hat == 0.5
+  ```
+
+- [ ] **Test smoothing**
+  ```python
+  def test_lambda_smoothing():
+      """Test exponential smoothing of λ."""
+      lambda_old = 1.0
+      lambda_hat = 0.5
+      alpha = 0.2
+      
+      lambda_new = (1 - alpha) * lambda_old + alpha * lambda_hat
+      expected = 0.8 * 1.0 + 0.2 * 0.5  # = 0.9
+      
+      assert abs(lambda_new - expected) < 1e-9
+  ```
+
+- [ ] **Test clamping**
+  ```python
+  def test_lambda_clamping():
+      """Test λ stays within bounds."""
+      lambda_hat = 1e10  # Way above bound
+      lambda_max = 1e6
+      
+      lambda_new = min(lambda_hat, lambda_max)
+      assert lambda_new == lambda_max
+  ```
+
+### 6.2) Integration tests
+
+**File**: `tests/test_kkt_integration.py` (create new)
+
+- [ ] **Test KKT convergence**
+  ```python
+  def test_kkt_lambda_converges():
+      """Verify λ values stabilize over time."""
+      from vmt_engine.simulation import Simulation
+      from scenarios.loader import load_scenario
+      from telemetry.config import LogConfig
+      import sqlite3
+      import tempfile
+      
+      with tempfile.TemporaryDirectory() as tmpdir:
+          db_path = f"{tmpdir}/test.db"
+          config = load_scenario("scenarios/money_test_kkt.yaml")
+          log_cfg = LogConfig(use_database=True, db_path=db_path)
+          
+          sim = Simulation(config, seed=42, log_config=log_cfg)
+          sim.run(max_ticks=100)
+          sim.close()
+          
+          # Query lambda trajectory for agent 0
+          conn = sqlite3.connect(db_path)
+          cursor = conn.execute("""
+              SELECT tick, lambda_money FROM agent_snapshots 
+              WHERE run_id=1 AND agent_id=0 AND tick IN (10, 50, 90)
+              ORDER BY tick
+          """)
+          lambdas = [row[1] for row in cursor.fetchall()]
+          conn.close()
+          
+          # Check that λ changes less over time (converging)
+          change_early = abs(lambdas[1] - lambdas[0])
+          change_late = abs(lambdas[2] - lambdas[1])
+          
+          # Later changes should be smaller (or at least not much larger)
+          assert change_late <= change_early * 1.5
+  ```
+
+- [ ] **Test determinism with KKT**
+  ```python
+  def test_kkt_deterministic():
+      """Verify KKT mode is deterministic."""
+      # Run same scenario twice with same seed
+      # Compare lambda trajectories
+      # Should be identical
       pass
   ```
 
-### 6.2) Regression test suite
+### 6.3) Stress tests
 
-- [ ] **Run full regression suite**
-  ```bash
-  pytest tests/ -v --tb=short
+- [ ] **Test λ with extreme initial values**
+  ```python
+  def test_lambda_from_extreme_initial():
+      """Test λ converges even from extreme initial values."""
+      # Set initial λ = 1e-10 (very low)
+      # Run KKT estimation
+      # Verify λ moves toward reasonable range
+      pass
   ```
 
-- [ ] **Verify all phases still pass**
-  ```bash
-  for phase in {1..5}; do
-      echo "Testing Phase $phase..."
-      pytest tests/test_money_phase${phase}*.py -v
-  done
-  ```
-
-### 6.3) Demo validation
-
-- [ ] **Run all demo scenarios**
-  ```bash
-  python scripts/run_demos.py
-  ```
-
-- [ ] **Verify demos in GUI**
-  ```bash
-  python launcher.py
-  # Manually run each demo from GUI
-  # Verify: renderer shows money features
-  # Verify: no crashes or visual glitches
+- [ ] **Test with no neighbors**
+  ```python
+  def test_lambda_no_neighbors():
+      """Test λ update when agent has no neighbors in vision."""
+      # Place agent alone on grid
+      # Run tick
+      # Verify: λ doesn't change (or handles gracefully)
+      pass
   ```
 
 ---
 
-## Part 7: Release Preparation
+## Part 7: Validation and Debugging
 
-### 7.1) Changelog
+### 7.1) Add diagnostic logging
 
-**File**: `CHANGELOG.md` (update)
-
-- [ ] **Add money system entry**
-  ```markdown
-  ## 2025-10-19 — Money System Implementation
-  
-  ### Added
-  - Money as integer inventory (M field)
-  - Quasi-linear utility mode
-  - KKT λ estimation mode with endogenous price discovery
-  - Four exchange regimes: barter_only, money_only, mixed, mixed_liquidity_gated
-  - Money-first tie-breaking in mixed regimes
-  - Liquidity depth metric and gating logic
-  - Comprehensive telemetry for money trades and λ trajectories
-  - Renderer enhancements: money visualization, mode overlays, λ heatmap
-  - Log viewer: money trade filters, λ plots, mode timeline
-  - Five demo scenarios showcasing money features
-  - Complete documentation (user guide + technical reference)
-  
-  ### Changed
-  - Extended Inventory dataclass with M field
-  - Generalized trading system for goods-for-goods and goods-for-money
-  - Enhanced telemetry schema (9 new columns, 2 new tables)
-  
-  ### Backward Compatibility
-  - All changes backward compatible with defaults
-  - Legacy scenarios run identically
-  - exchange_regime defaults to "barter_only"
+- [ ] **Add verbose logging for λ updates (debug mode)**
+  ```python
+  # In HousekeepingSystem, add optional debug prints:
+  if sim.params.get('debug_lambda', False):
+      print(f"Agent {agent.id}: λ {lambda_old:.4f} → {lambda_new:.4f} "
+            f"(p̂_A={p_hat_A:.2f}, p̂_B={p_hat_B:.2f})")
   ```
 
-### 7.2) Migration guide (if needed)
+### 7.2) Create visualization script
 
-**File**: `docs/migration_money.md` (create if needed)
+**File**: `scripts/plot_lambda_trajectories.py` (create new)
 
-- [ ] **Write migration guide for existing users**
-  ```markdown
-  # Migrating to Money System
+- [ ] **Script to plot λ over time**
+  ```python
+  import sqlite3
+  import matplotlib.pyplot as plt
   
-  ## For Existing Scenarios
-  - No changes required
-  - Add `exchange_regime: money_only` to enable money
-  - Add `M` to initial_inventories
+  def plot_lambda_trajectories(db_path: str, run_id: int):
+      conn = sqlite3.connect(db_path)
+      cursor = conn.execute("""
+          SELECT tick, agent_id, lambda_money 
+          FROM agent_snapshots 
+          WHERE run_id=? 
+          ORDER BY agent_id, tick
+      """, (run_id,))
+      
+      data = {}
+      for tick, agent_id, lambda_val in cursor:
+          if agent_id not in data:
+              data[agent_id] = {'ticks': [], 'lambdas': []}
+          data[agent_id]['ticks'].append(tick)
+          data[agent_id]['lambdas'].append(lambda_val)
+      
+      conn.close()
+      
+      for agent_id, values in data.items():
+          plt.plot(values['ticks'], values['lambdas'], label=f'Agent {agent_id}')
+      
+      plt.xlabel('Tick')
+      plt.ylabel('λ (Marginal Utility of Money)')
+      plt.title('KKT λ Convergence')
+      plt.legend()
+      plt.grid(True)
+      plt.show()
   
-  ## For Custom Extensions
-  - Check if custom code accesses Inventory
-  - Update to handle M field
-  
-  ## For Database Queries
-  - New columns available in agent_snapshots and trades
-  - See money_telemetry_schema.md for details
+  if __name__ == '__main__':
+      import sys
+      plot_lambda_trajectories(sys.argv[1], int(sys.argv[2]))
   ```
 
-### 7.3) Contributor guide
+- [ ] **Test visualization**
+  ```bash
+  python scripts/plot_lambda_trajectories.py logs/telemetry.db 1
+  # Visually verify: λ values converge or stabilize
+  ```
 
-**File**: `docs/CONTRIBUTING.md` (update)
+---
 
-- [ ] **Add money system development notes**
-  - How to add new money modes
-  - How to extend exchange regimes
-  - Testing requirements for money features
+## Part 8: Documentation
+
+### 8.1) Document KKT mode
+
+- [ ] **Add section to README**
+  - Explain quasi-linear vs KKT mode
+  - When to use each
+  - Interpretation of λ in KKT mode
+
+- [ ] **Update typing overview**
+  - Document `lambda_update_rate` parameter
+  - Document `lambda_bounds` structure
+  - Document `lambda_changed` flag semantics
+
+### 8.2) Add inline documentation
+
+- [ ] **Document median-lower rule**
+- [ ] **Document cross-quote inference logic**
+- [ ] **Document smoothing rationale**
 
 ---
 
 ## Completion Criteria
 
-**Phase 6 is complete when**:
+**Phase 3 is complete when**:
 
-✅ Renderer visualizes money transfers, mode overlays, optional λ heatmap
-✅ Log viewer has money filters, λ plots, mode timeline
-✅ All 5 demo scenarios work and are pedagogically sound
-✅ User guide complete and tested
-✅ Technical documentation complete
-✅ Code passes all linters with no warnings
-✅ Performance profiling shows no regressions
-✅ All E2E tests pass
-✅ Changelog and migration guide written
-✅ Demos validated in GUI
+✅ KKT λ estimation implemented in HousekeepingSystem
+✅ Median-lower price aggregation tested and deterministic
+✅ λ smoothing with alpha parameter works correctly
+✅ λ clamping to bounds enforced
+✅ Cross-quote inference fallback implemented
+✅ λ updates logged to telemetry
+✅ Performance verified (no O(N²) paths)
+✅ λ convergence demonstrated in test scenarios
+✅ Visualization script works
+✅ All Phase 2 tests still pass
 
-**Ready for Merge/Release when**:
-- Code review approved by maintainer
-- All tests pass on CI (if configured)
-- Documentation reviewed for accuracy and completeness
-- Demo scenarios tested in classroom setting (if possible)
-
----
-
-## Post-Release
-
-### Future enhancements (not in Phase 6)
-
-- [ ] Agent-specific exchange regimes (per §14.1 of SSOT)
-- [ ] Spatial zones for regimes (per §14.1)
-- [ ] Endogenous money acquisition via labor/production (per §14.2)
-- [ ] Credit and debt (negative M) (per §14.3)
-- [ ] Multiple currencies (per §14.4)
-- [ ] Dynamic regime switching (per §14.5)
+**Ready for Phase 4 when**:
+- Can run KKT scenario and observe λ values stabilizing
+- Can plot λ trajectories showing convergence
+- Can verify determinism across multiple runs
+- Performance benchmarks show linear scaling
 
 ---
 
 **Estimated effort**: 10-14 hours
 
 See also:
-- `money_SSOT_implementation_plan.md` (complete reference)
-- `money_phase1_checklist.md` through `money_phase5_checklist.md` (prerequisites)
-- `money_telemetry_schema.md` (database reference)
-
----
-
-## Final Checklist
-
-Before declaring Phase 6 complete:
-
-- [ ] All previous phases (1-5) tests passing
-- [ ] Renderer enhancements working
-- [ ] Log viewer enhancements working
-- [ ] All 5 demo scenarios validated
-- [ ] User guide complete
-- [ ] Technical documentation complete
-- [ ] Main README updated
-- [ ] Changelog entry added
-- [ ] Code quality checks passed
-- [ ] Performance profiling clean
-- [ ] E2E tests passing
-- [ ] Regression tests passing
-- [ ] No TODOs left in code
-- [ ] All docstrings complete
-- [ ] Migration guide (if needed) written
-
-**Congratulations! The money system implementation is complete. 🎉**
+- `money_SSOT_implementation_plan.md` §6
+- `money_phase2_checklist.md` (prerequisite)
+- `money_telemetry_schema.md` (lambda_updates table)
 

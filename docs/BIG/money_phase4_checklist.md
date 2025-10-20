@@ -1,653 +1,741 @@
-### Money Implementation — Phase 4: Mixed Regimes
+### Money Implementation — Phase 6: Polish and Documentation
 
 Author: VMT Assistant
 Date: 2025-10-19
+**Revised**: 2025-10-20 (moved ahead of Phases 3 & 5 to get demos working with quasilinear)
 
-**Prerequisite**: Phase 3 complete (KKT λ estimation working)
+**Prerequisite**: Phase 4 complete (mixed regimes working with quasilinear)
 
-**Goal**: Enable `mixed` exchange regime where agents can trade both goods-for-money and goods-for-goods, with deterministic tie-breaking (money-first).
+**Goal**: Polish UI/UX, complete documentation, create demo scenarios, and prepare for release of quasilinear money system.
 
 **Success Criteria**:
-- `exchange_regime = "mixed"` allows all six exchange pairs
-- Tie-breaking policy (money-first) implemented and tested
-- Mode transitions (temporal × type control) work correctly
-- Test scenarios demonstrate regime interaction with mode_schedule
+- Renderer visualizes money transfers and mode overlays
+- Log viewer supports money queries and filters
+- Complete documentation for quasilinear money features
+- Demo scenarios showcase different regimes (barter_only/money_only/mixed)
+- Code review ready for quasilinear implementation
+- **Ready for production use with fixed λ**
+
+**Note**: This phase completes the quasilinear money system (Phases 2, 4, 6). Phases 3 (KKT) and 5 (liquidity gating) are advanced features deferred for later.
 
 ---
 
-## Pre-Phase 4 Verification
+## Pre-Phase 6 Verification
 
-- [ ] **Verify Phase 3 complete**
+- [ ] **Verify Phase 4 complete**
   ```bash
-  pytest tests/test_kkt_*.py -v
-  python main.py scenarios/money_test_kkt.yaml --seed 42
-  # Verify λ converges
+  pytest tests/test_mixed_regime*.py -v
+  python main.py scenarios/money_test_mixed.yaml --seed 42
+  # Verify mixed regime works with quasilinear
   ```
 
-- [ ] **Create Phase 4 branch**
+- [ ] **Create Phase 6 branch**
   ```bash
-  git checkout -b feature/money-phase4-mixed-regimes
-  ```
-
-- [ ] **Create mixed regime test scenarios**
-  ```bash
-  # Create scenarios/money_test_mixed.yaml
-  # Create scenarios/money_test_mode_interaction.yaml
-  ```
-
----
-
-## Part 1: Test Scenario Creation
-
-### 1.1) Create mixed regime scenario
-
-**File**: `scenarios/money_test_mixed.yaml` (create new)
-
-- [ ] **Write mixed regime scenario**
-  ```yaml
-  schema_version: 1
-  name: "Mixed Exchange Regime Test"
-  N: 12
-  agents: 8
-  
-  initial_inventories:
-    A: [10, 8, 6, 4, 2, 0, 5, 7]
-    B: [0, 2, 4, 6, 8, 10, 3, 5]
-    M: [50, 100, 150, 50, 100, 150, 75, 125]
-  
-  utilities:
-    mix:
-      - type: ces
-        weight: 1.0
-        params:
-          rho: 0.5
-          wA: 0.55
-          wB: 0.45
-  
-  params:
-    spread: 0.1
-    vision_radius: 12
-    interaction_radius: 1
-    move_budget_per_tick: 1
-    dA_max: 4
-    forage_rate: 1
-    
-    # Mixed regime params
-    exchange_regime: mixed
-    money_mode: quasilinear
-    money_scale: 1
-    lambda_money: 1.0
-  
-  resource_seed:
-    density: 0.2
-    amount: 4
-  ```
-
-### 1.2) Create mode × regime interaction scenario
-
-**File**: `scenarios/money_test_mode_interaction.yaml` (create new)
-
-- [ ] **Write mode interaction scenario**
-  ```yaml
-  schema_version: 1
-  name: "Mode Schedule × Exchange Regime Interaction"
-  N: 15
-  agents: 6
-  
-  # Scenario with mode_schedule (temporal control)
-  mode_schedule:
-    type: global_cycle
-    forage_ticks: 10
-    trade_ticks: 15
-    start_mode: forage
-  
-  initial_inventories:
-    A: [10, 5, 0, 8, 3, 2]
-    B: [0, 5, 10, 2, 7, 8]
-    M: [100, 100, 100, 100, 100, 100]
-  
-  utilities:
-    mix:
-      - type: ces
-        weight: 1.0
-        params:
-          rho: 0.3
-          wA: 0.6
-          wB: 0.4
-  
-  params:
-    spread: 0.05
-    vision_radius: 15
-    interaction_radius: 1
-    move_budget_per_tick: 2
-    dA_max: 3
-    forage_rate: 2
-    
-    # Mixed regime with mode schedule
-    exchange_regime: mixed
-    money_mode: kkt_lambda
-    money_scale: 1
-    lambda_money: 1.0
-    lambda_update_rate: 0.15
-    lambda_bounds:
-      lambda_min: 0.00001
-      lambda_max: 100000.0
-  
-  resource_seed:
-    density: 0.25
-    amount: 5
+  git checkout -b feature/money-phase6-polish
   ```
 
 ---
 
-## Part 2: Trade Pair Enumeration and Ranking
+## Part 1: Renderer Enhancements
 
-### 2.1) Implement full pair enumeration for mixed mode
+### 1.1) Money inventory visualization
 
-**File**: `src/vmt_engine/systems/trading.py`
+**File**: `src/vmt_pygame/renderer.py`
 
-- [ ] **Update `_get_allowed_pairs()` for mixed regime**
+- [ ] **Add money display to agent rendering**
   ```python
-  def _get_allowed_pairs(self, regime: str) -> list[tuple[str, str]]:
-      """
-      Get allowed (good_sold, good_paid) pairs based on regime.
+  def _draw_agent(self, agent: Agent, screen):
+      # Existing: draw agent circle, inventory bars
       
-      Returns list of tuples: (good agent gives up, good agent receives)
-      From buyer perspective: receives good_sold, pays good_paid
-      """
-      if regime == "barter_only":
-          return [("A", "B"), ("B", "A")]
-      elif regime == "money_only":
-          return [("A", "M"), ("B", "M")]
+      # NEW: Draw money indicator
+      if agent.inventory.M > 0:
+          # Draw small coin icon or "M" label
+          font_small = pygame.font.Font(None, 16)
+          money_text = font_small.render(f"${agent.inventory.M}", True, (255, 215, 0))
+          screen.blit(money_text, (agent.pos[0] * CELL_SIZE + 5, 
+                                   agent.pos[1] * CELL_SIZE + 25))
+  ```
+
+- [ ] **Add money transfer animation**
+  ```python
+  def _animate_trade(self, trade_info: dict, screen):
+      """Animate completed trade with money flow."""
+      # Existing: draw line between traders
+      
+      # NEW: If dM > 0, show gold sparkles/flow
+      if trade_info.get('dM', 0) > 0:
+          # Draw gold particles flowing from buyer to seller
+          self._draw_money_flow(
+              trade_info['buyer_pos'], 
+              trade_info['seller_pos'],
+              trade_info['dM']
+          )
+  
+  def _draw_money_flow(self, from_pos, to_pos, amount):
+      """Draw animated money transfer."""
+      # Golden sparkle effect
+      for i in range(5):
+          # Interpolate positions
+          t = (pygame.time.get_ticks() % 1000) / 1000.0
+          x = from_pos[0] + (to_pos[0] - from_pos[0]) * t
+          y = from_pos[1] + (to_pos[1] - from_pos[1]) * t
+          
+          pygame.draw.circle(screen, (255, 215, 0), (int(x), int(y)), 3)
+  ```
+
+### 1.2) Mode overlay visualization
+
+- [ ] **Add mode/regime overlay to top-left corner**
+  ```python
+  def _draw_mode_overlay(self, sim: Simulation, screen):
+      """Display current mode and exchange regime."""
+      font = pygame.font.Font(None, 24)
+      
+      # Get mode and regime
+      mode = sim.current_mode
+      regime = sim.params['exchange_regime']
+      active_pairs = sim._get_active_exchange_pairs()
+      
+      # Choose color based on regime
+      if regime == "money_only":
+          color = (255, 215, 0)  # Gold
+          regime_text = "Monetary Only"
+      elif regime == "barter_only":
+          color = (0, 255, 0)  # Green
+          regime_text = "Barter Only"
       elif regime in ["mixed", "mixed_liquidity_gated"]:
-          # All six permutations
-          return [
-              ("A", "M"),  # Buy A with money
-              ("B", "M"),  # Buy B with money
-              ("A", "B"),  # Buy A with B (barter)
-              ("B", "A"),  # Buy B with A (barter)
-              # Note: We don't typically have agents "buying" money
-              # but the pair ("M", "A") would mean: give money, get A
-              # which is the seller's perspective of ("A", "M")
-              # So we keep pairs from buyer perspective only
-          ]
+          color = (100, 149, 237)  # Cornflower blue
+          regime_text = "Mixed" if regime == "mixed" else "Gated Mixed"
       else:
-          return []
+          color = (128, 128, 128)
+          regime_text = regime
+      
+      # Display mode
+      mode_text = font.render(f"Mode: {mode.upper()}", True, (255, 255, 255))
+      screen.blit(mode_text, (10, 10))
+      
+      # Display regime
+      regime_text_render = font.render(f"Regime: {regime_text}", True, color)
+      screen.blit(regime_text_render, (10, 35))
+      
+      # Display active pairs
+      if active_pairs:
+          pairs_str = ", ".join(active_pairs)
+          pairs_text = font.render(f"Active: [{pairs_str}]", True, (200, 200, 200))
+          screen.blit(pairs_text, (10, 60))
   ```
 
-### 2.2) Implement money-first tie-breaking
-
-- [ ] **Add tie-breaking logic to trade ranking**
+- [ ] **Call overlay in main render loop**
   ```python
-  def _rank_trade_candidates(self, candidates: list[TradeCandidate]) -> list[TradeCandidate]:
-      """
-      Rank trade candidates by total surplus, with tie-breaking.
+  def render(self, sim: Simulation):
+      # ... existing rendering ...
       
-      Tie-break order (money-first):
-      1. Total surplus (descending)
-      2. Pair type priority: A↔M < B↔M < A↔B
-      3. Agent pair (min_id, max_id) lexicographic
+      # Add mode overlay
+      self._draw_mode_overlay(sim, self.screen)
       
-      TradeCandidate should include:
-          - buyer_id, seller_id
-          - good_sold, good_paid
-          - dX, dY
-          - buyer_surplus, seller_surplus
-          - total_surplus
-      """
-      # Define pair type priority (lower number = higher priority)
-      PAIR_PRIORITY = {
-          ("A", "M"): 0,
-          ("B", "M"): 1,
-          ("M", "A"): 2,  # Seller perspective of A<->M
-          ("M", "B"): 3,  # Seller perspective of B<->M
-          ("A", "B"): 4,
-          ("B", "A"): 5,
-      }
-      
-      def sort_key(candidate):
-          total_surplus = candidate.buyer_surplus + candidate.seller_surplus
-          pair_type = (candidate.good_sold, candidate.good_paid)
-          pair_priority = PAIR_PRIORITY.get(pair_type, 99)
-          agent_pair = (min(candidate.buyer_id, candidate.seller_id),
-                       max(candidate.buyer_id, candidate.seller_id))
-          
-          # Return tuple for sorting:
-          # - Negate surplus for descending order
-          # - pair_priority ascending (lower = better)
-          # - agent_pair ascending
-          return (-total_surplus, pair_priority, agent_pair)
-      
-      return sorted(candidates, key=sort_key)
+      pygame.display.flip()
   ```
 
-- [ ] **Test tie-breaking**
+### 1.3) Lambda heatmap (optional)
+
+- [ ] **Add lambda visualization toggle**
   ```python
-  # In tests/test_mixed_regime_tie_breaking.py (create new)
-  def test_money_first_tie_breaking():
-      """Verify money-first tie-breaking when surplus equal."""
-      from dataclasses import dataclass
-      
-      @dataclass
-      class TradeCandidate:
-          buyer_id: int
-          seller_id: int
-          good_sold: str
-          good_paid: str
-          dX: int
-          dY: int
-          buyer_surplus: float
-          seller_surplus: float
-      
-      # Create three candidates with equal total surplus
-      candidate_money = TradeCandidate(
-          buyer_id=0, seller_id=1,
-          good_sold="A", good_paid="M",
-          dX=2, dY=10,
-          buyer_surplus=5.0, seller_surplus=5.0
-      )
-      
-      candidate_barter = TradeCandidate(
-          buyer_id=0, seller_id=1,
-          good_sold="A", good_paid="B",
-          dX=2, dY=3,
-          buyer_surplus=5.0, seller_surplus=5.0
-      )
-      
-      candidates = [candidate_barter, candidate_money]
-      ranked = _rank_trade_candidates(candidates)
-      
-      # Money trade should be first (higher priority)
-      assert ranked[0].good_paid == "M"
-      assert ranked[1].good_paid == "B"
-  ```
-
----
-
-## Part 3: TradeSystem Enhancements
-
-### 3.1) Implement multi-pair candidate generation
-
-**File**: `src/vmt_engine/systems/trading.py`
-
-- [ ] **Extend matching logic to try all permissible pairs**
-  ```python
-  class TradeSystem:
-      def execute(self, sim: "Simulation") -> None:
-          # Check temporal mode
-          if sim.current_mode not in ["trade", "both"]:
-              return
-          
-          # Get permissible pairs based on exchange_regime
-          allowed_pairs = self._get_allowed_pairs(sim.params['exchange_regime'])
-          
-          # Build list of all potential trades
-          candidates = []
-          
-          # Find all agent pairs within interaction radius
-          for buyer in sim.agents:
-              neighbor_ids = sim.spatial_index.query_radius(
-                  buyer.pos, sim.params['interaction_radius']
-              )
-              
-              for seller_id in neighbor_ids:
-                  if seller_id == buyer.id:
-                      continue
-                  
-                  seller = sim.agent_by_id[seller_id]
-                  
-                  # Check cooldown
-                  if self._in_cooldown(buyer, seller, sim.tick):
-                      continue
-                  
-                  # Try each allowed pair type
-                  for good_sold, good_paid in allowed_pairs:
-                      # Get quotes
-                      price = self._get_price(buyer, seller, good_sold, good_paid)
-                      if price is None:
-                          continue
-                      
-                      # Search for feasible trade
-                      result = find_compensating_block_generic(
-                          buyer, seller, good_sold, good_paid, 
-                          price, sim.params['dA_max'], sim.params['epsilon']
-                      )
-                      
-                      if result is not None:
-                          dX, dY, buyer_surplus, seller_surplus = result
-                          candidates.append(TradeCandidate(
-                              buyer_id=buyer.id,
-                              seller_id=seller.id,
-                              good_sold=good_sold,
-                              good_paid=good_paid,
-                              dX=dX, dY=dY,
-                              buyer_surplus=buyer_surplus,
-                              seller_surplus=seller_surplus
-                          ))
-          
-          # Rank candidates
-          ranked = self._rank_trade_candidates(candidates)
-          
-          # Execute trades (one per agent pair per tick)
-          executed_pairs = set()
-          for candidate in ranked:
-              pair_key = (min(candidate.buyer_id, candidate.seller_id),
-                         max(candidate.buyer_id, candidate.seller_id))
-              
-              if pair_key not in executed_pairs:
-                  self._execute_trade(candidate, sim)
-                  executed_pairs.add(pair_key)
-  ```
-
-### 3.2) Add pair-type selection logging
-
-- [ ] **Log which pair type was chosen**
-  ```python
-  # In _execute_trade():
-  if sim.telemetry:
-      sim.telemetry.log_trade(
-          # ... existing params ...
-          exchange_pair_type=f"{candidate.good_sold}<->{candidate.good_paid}",
-          # ...
-      )
-  ```
-
----
-
-## Part 4: Mode × Regime Interaction
-
-### 4.1) Verify two-layer control architecture
-
-**File**: `src/vmt_engine/simulation.py`
-
-- [ ] **Ensure `_get_active_exchange_pairs()` respects mode**
-  ```python
-  def _get_active_exchange_pairs(self) -> list[str]:
-      """
-      Determine which exchange pairs are currently active.
-      Combines temporal (mode_schedule) and type (exchange_regime) control.
-      """
-      # Temporal control: if not in trade mode, no pairs active
-      if self.current_mode == "forage":
-          return []
-      
-      # Type control: which pairs are permissible
-      regime = self.params['exchange_regime']
-      
-      if regime == "barter_only":
-          return ["A<->B"]
-      elif regime == "money_only":
-          return ["A<->M", "B<->M"]
-      elif regime in ["mixed", "mixed_liquidity_gated"]:
-          return ["A<->M", "B<->M", "A<->B"]
-      else:
-          return []
-  ```
-
-- [ ] **Test mode × regime interaction**
-  ```python
-  # In tests/test_mode_regime_interaction.py (create new)
-  def test_forage_mode_blocks_all_trades():
-      """Verify forage mode blocks all trades regardless of regime."""
-      # Load scenario with mode_schedule and mixed regime
-      # At tick in forage mode
-      # Verify: no trades execute (even if agents adjacent)
-      # Verify: active_pairs = []
-      pass
-  
-  def test_trade_mode_respects_regime():
-      """Verify trade mode uses correct pairs per regime."""
-      # Load mixed regime scenario
-      # At tick in trade mode
-      # Verify: active_pairs includes both money and barter
-      # Verify: trades of both types can occur
-      pass
-  ```
-
----
-
-## Part 5: Telemetry Enhancements
-
-### 5.1) Log pair type distribution
-
-- [ ] **Add query for pair type counts**
-  ```python
-  # In scripts/analyze_trade_distribution.py (create new)
-  import sqlite3
-  
-  def analyze_pair_distribution(db_path: str, run_id: int):
-      conn = sqlite3.connect(db_path)
-      cursor = conn.execute("""
-          SELECT exchange_pair_type, COUNT(*) as count
-          FROM trades
-          WHERE run_id = ?
-          GROUP BY exchange_pair_type
-          ORDER BY count DESC
-      """, (run_id,))
-      
-      print(f"Trade pair distribution for run {run_id}:")
-      for pair_type, count in cursor:
-          print(f"  {pair_type}: {count}")
-      
-      conn.close()
-  
-  if __name__ == '__main__':
-      import sys
-      analyze_pair_distribution(sys.argv[1], int(sys.argv[2]))
-  ```
-
-### 5.2) Visualize mode transitions
-
-- [ ] **Create mode timeline visualization**
-  ```python
-  # In scripts/plot_mode_timeline.py (create new)
-  import sqlite3
-  import matplotlib.pyplot as plt
-  import matplotlib.patches as mpatches
-  
-  def plot_mode_timeline(db_path: str, run_id: int):
-      conn = sqlite3.connect(db_path)
-      cursor = conn.execute("""
-          SELECT tick, current_mode, exchange_regime 
-          FROM tick_states 
-          WHERE run_id = ?
-          ORDER BY tick
-      """, (run_id,))
-      
-      data = list(cursor)
-      conn.close()
-      
-      if not data:
-          print("No tick_states data found")
+  def _draw_lambda_heatmap(self, sim: Simulation, screen):
+      """Draw heatmap of lambda values across agents."""
+      if not self.show_lambda:
           return
       
-      ticks = [row[0] for row in data]
-      modes = [row[1] for row in data]
+      # Get lambda range
+      lambdas = [a.lambda_money for a in sim.agents]
+      min_lambda = min(lambdas)
+      max_lambda = max(lambdas)
       
-      # Color code modes
-      mode_colors = {'forage': 'green', 'trade': 'blue', 'both': 'purple'}
-      colors = [mode_colors.get(m, 'gray') for m in modes]
+      for agent in sim.agents:
+          # Normalize lambda to color
+          if max_lambda > min_lambda:
+              normalized = (agent.lambda_money - min_lambda) / (max_lambda - min_lambda)
+          else:
+              normalized = 0.5
+          
+          # Color: blue (low λ) to red (high λ)
+          color = self._lambda_to_color(normalized)
+          
+          # Draw circle at agent position
+          pos_px = (agent.pos[0] * CELL_SIZE, agent.pos[1] * CELL_SIZE)
+          pygame.draw.circle(screen, color, pos_px, CELL_SIZE // 3, 2)
+  ```
+
+---
+
+## Part 2: Log Viewer Enhancements
+
+### 2.1) Money trade filter
+
+**File**: `src/vmt_log_viewer/queries.py` (or wherever queries are defined)
+
+- [ ] **Add money trade query**
+  ```python
+  def get_money_trades(db_path: str, run_id: int) -> list:
+      """Get all trades involving money."""
+      conn = sqlite3.connect(db_path)
+      cursor = conn.execute("""
+          SELECT tick, buyer_id, seller_id, 
+                 dA, dB, dM, price, exchange_pair_type,
+                 buyer_surplus, seller_surplus
+          FROM trades
+          WHERE run_id = ? AND dM != 0
+          ORDER BY tick
+      """, (run_id,))
+      result = cursor.fetchall()
+      conn.close()
+      return result
+  ```
+
+### 2.2) Lambda trajectory view
+
+**File**: `src/vmt_log_viewer/` (UI components)
+
+- [ ] **Add lambda plot tab**
+  ```python
+  class LambdaTrajectoryView(QWidget):
+      """Widget for plotting lambda trajectories."""
       
-      plt.figure(figsize=(12, 3))
-      plt.scatter(ticks, [0]*len(ticks), c=colors, marker='|', s=500)
-      plt.yticks([])
-      plt.xlabel('Tick')
-      plt.title('Mode Timeline')
+      def __init__(self, db_path: str, run_id: int):
+          super().__init__()
+          self.db_path = db_path
+          self.run_id = run_id
+          self.init_ui()
       
-      # Legend
-      patches = [mpatches.Patch(color=c, label=m) for m, c in mode_colors.items()]
-      plt.legend(handles=patches)
+      def init_ui(self):
+          layout = QVBoxLayout()
+          
+          # Agent selector
+          self.agent_selector = QComboBox()
+          self.agent_selector.addItem("All Agents")
+          # Populate with agent IDs from database
+          layout.addWidget(QLabel("Select Agent:"))
+          layout.addWidget(self.agent_selector)
+          
+          # Plot canvas
+          self.canvas = MatplotlibCanvas()
+          layout.addWidget(self.canvas)
+          
+          # Update button
+          update_btn = QPushButton("Update Plot")
+          update_btn.clicked.connect(self.update_plot)
+          layout.addWidget(update_btn)
+          
+          self.setLayout(layout)
       
-      plt.tight_layout()
-      plt.show()
+      def update_plot(self):
+          """Query database and update plot."""
+          # Query lambda values
+          # Plot on canvas
+          pass
+  ```
+
+### 2.3) Mode timeline view
+
+- [ ] **Add mode timeline visualization**
+  ```python
+  class ModeTimelineView(QWidget):
+      """Widget for visualizing mode transitions."""
+      
+      def __init__(self, db_path: str, run_id: int):
+          super().__init__()
+          # Query tick_states table
+          # Display timeline with color-coded modes
+          # Show exchange regime changes
+          pass
+  ```
+
+### 2.4) CSV export enhancements
+
+- [ ] **Include money columns in CSV export**
+  ```python
+  def export_to_csv(db_path: str, run_id: int, output_path: str):
+      """Export run data to CSV including money columns."""
+      conn = sqlite3.connect(db_path)
+      
+      # Export trades with money columns
+      df_trades = pd.read_sql_query("""
+          SELECT tick, buyer_id, seller_id,
+                 dA, dB, dM, price, exchange_pair_type,
+                 buyer_surplus, seller_surplus,
+                 buyer_lambda, seller_lambda
+          FROM trades
+          WHERE run_id = ?
+      """, conn, params=(run_id,))
+      
+      df_trades.to_csv(f"{output_path}_trades.csv", index=False)
+      
+      # Export agent snapshots with money
+      df_agents = pd.read_sql_query("""
+          SELECT tick, agent_id, x, y,
+                 inventory_A, inventory_B, inventory_M,
+                 lambda_money, utility,
+                 ask_A_in_M, bid_A_in_M, ask_B_in_M, bid_B_in_M
+          FROM agent_snapshots
+          WHERE run_id = ?
+      """, conn, params=(run_id,))
+      
+      df_agents.to_csv(f"{output_path}_agents.csv", index=False)
+      
+      conn.close()
+  ```
+
+---
+
+## Part 3: Demo Scenarios
+
+### 3.1) Create showcase scenarios
+
+**Files**: Create in `scenarios/demos/` directory
+
+- [ ] **Demo 1: Simple monetary exchange**
+  ```yaml
+  # scenarios/demos/demo_01_simple_money.yaml
+  # 3 agents, clear complementary needs, money enables exchange
+  # Pedagogical: "Why money?"
+  ```
+
+- [ ] **Demo 2: KKT convergence**
+  ```yaml
+  # scenarios/demos/demo_02_kkt_convergence.yaml
+  # Show λ converging to equilibrium
+  # Pedagogical: "How do agents learn prices?"
+  ```
+
+- [ ] **Demo 3: Mixed regime dynamics**
+  ```yaml
+  # scenarios/demos/demo_03_mixed_regime.yaml
+  # Both money and barter coexist
+  # Pedagogical: "When is barter efficient?"
+  ```
+
+- [ ] **Demo 4: Liquidity emergence**
+  ```yaml
+  # scenarios/demos/demo_04_liquidity_zones.yaml
+  # Spatial variation in liquidity
+  # Pedagogical: "Market thickness and exchange types"
+  ```
+
+- [ ] **Demo 5: Mode interaction**
+  ```yaml
+  # scenarios/demos/demo_05_mode_schedule_money.yaml
+  # Alternating forage/trade with money
+  # Pedagogical: "Time constraints with monetary exchange"
+  ```
+
+### 3.2) Create demo runner script
+
+**File**: `scripts/run_demos.py` (create new)
+
+- [ ] **Automated demo runner**
+  ```python
+  import subprocess
+  import sys
+  from pathlib import Path
+  
+  DEMOS = [
+      ("demo_01_simple_money.yaml", "Simple Monetary Exchange", 50),
+      ("demo_02_kkt_convergence.yaml", "KKT Lambda Convergence", 100),
+      ("demo_03_mixed_regime.yaml", "Mixed Regime Dynamics", 80),
+      ("demo_04_liquidity_zones.yaml", "Liquidity Zones", 100),
+      ("demo_05_mode_schedule_money.yaml", "Mode Schedule + Money", 150),
+  ]
+  
+  def run_demo(scenario_file: str, title: str, ticks: int):
+      """Run a single demo scenario."""
+      print(f"\n{'='*60}")
+      print(f"Demo: {title}")
+      print(f"Scenario: {scenario_file}")
+      print(f"Running for {ticks} ticks...")
+      print(f"{'='*60}\n")
+      
+      result = subprocess.run([
+          sys.executable, "main.py",
+          f"scenarios/demos/{scenario_file}",
+          "--seed", "42"
+      ])
+      
+      if result.returncode != 0:
+          print(f"✗ Demo failed: {title}")
+          return False
+      else:
+          print(f"✓ Demo completed: {title}")
+          return True
+  
+  def main():
+      print("Running all money demo scenarios...")
+      
+      results = []
+      for scenario, title, ticks in DEMOS:
+          success = run_demo(scenario, title, ticks)
+          results.append((title, success))
+      
+      print(f"\n{'='*60}")
+      print("Demo Summary:")
+      print(f"{'='*60}")
+      for title, success in results:
+          status = "✓ PASS" if success else "✗ FAIL"
+          print(f"{status}: {title}")
+      
+      all_passed = all(success for _, success in results)
+      sys.exit(0 if all_passed else 1)
   
   if __name__ == '__main__':
-      import sys
-      plot_mode_timeline(sys.argv[1], int(sys.argv[2]))
+      main()
   ```
 
 ---
 
-## Part 6: Testing
+## Part 4: Documentation Completion
 
-### 6.1) Unit tests
+### 4.1) User documentation
 
-**File**: `tests/test_mixed_regime.py` (create new)
+**File**: `docs/user_guide_money.md` (create new)
 
-- [ ] **Test pair enumeration**
-  ```python
-  def test_mixed_regime_pair_enumeration():
-      """Verify mixed regime returns all pair types."""
-      pairs = _get_allowed_pairs("mixed")
-      assert ("A", "M") in pairs
-      assert ("B", "M") in pairs
-      assert ("A", "B") in pairs
-      # Should have at least these 3 types (maybe 4 with reverse)
+- [ ] **Write comprehensive user guide**
+  ```markdown
+  # VMT Money System User Guide
   
-  def test_barter_only_excludes_money():
-      """Verify barter_only excludes money pairs."""
-      pairs = _get_allowed_pairs("barter_only")
-      assert all("M" not in pair for pair in pairs)
+  ## Introduction
+  - What is the money system?
+  - Why was it added?
+  - Pedagogical goals
   
-  def test_money_only_excludes_barter():
-      """Verify money_only excludes goods-for-goods."""
-      pairs = _get_allowed_pairs("money_only")
-      # Should only have pairs involving M
-      assert all("M" in pair for pair in pairs)
+  ## Quick Start
+  - Simplest money scenario
+  - Running your first money simulation
+  - Interpreting results
+  
+  ## Configuration Reference
+  - money_mode: quasilinear vs kkt_lambda
+  - exchange_regime: barter_only, money_only, mixed, mixed_liquidity_gated
+  - lambda_money and lambda_bounds
+  - liquidity_gate parameters
+  
+  ## Scenarios
+  - Example configurations
+  - When to use each regime
+  - Classroom exercises
+  
+  ## Interpreting Results
+  - Understanding λ values
+  - Trade type distributions
+  - Liquidity depth metrics
+  
+  ## Troubleshooting
+  - Common issues
+  - Performance tips
+  - FAQ
   ```
 
-- [ ] **Test tie-breaking determinism**
-  ```python
-  def test_tie_breaking_deterministic():
-      """Verify same candidates ranked identically across runs."""
-      # Create candidate list
-      # Rank twice
-      # Verify identical order
-      pass
+### 4.2) Technical documentation
+
+**File**: `docs/technical/money_implementation.md` (create new)
+
+- [ ] **Write technical reference**
+  ```markdown
+  # Money System Technical Reference
+  
+  ## Architecture Overview
+  - Two-layer control (mode_schedule × exchange_regime)
+  - Quote system extensions
+  - Trading mechanism generalization
+  
+  ## Algorithms
+  - KKT λ estimation (median-lower aggregation)
+  - Liquidity depth calculation
+  - Tie-breaking policy
+  
+  ## Data Structures
+  - Inventory.M field
+  - Agent lambda state
+  - Quote extensions
+  
+  ## Telemetry Schema
+  - Reference to money_telemetry_schema.md
+  
+  ## Performance Considerations
+  - Complexity analysis
+  - Optimization techniques
+  
+  ## Testing Strategy
+  - Unit test coverage
+  - Integration test scenarios
+  - Determinism guarantees
   ```
 
-### 6.2) Integration tests
+### 4.3) Update main README
 
-**File**: `tests/test_mixed_regime_integration.py` (create new)
+**File**: `docs/README.md`
 
-- [ ] **Test mixed regime scenario**
-  ```python
-  def test_mixed_regime_scenario_runs():
-      """Run mixed regime scenario and verify both trade types occur."""
-      from vmt_engine.simulation import Simulation
-      from scenarios.loader import load_scenario
-      from telemetry.config import LogConfig
-      import sqlite3
-      import tempfile
-      
-      with tempfile.TemporaryDirectory() as tmpdir:
-          db_path = f"{tmpdir}/test.db"
-          config = load_scenario("scenarios/money_test_mixed.yaml")
-          log_cfg = LogConfig(use_database=True, db_path=db_path)
-          
-          sim = Simulation(config, seed=42, log_config=log_cfg)
-          sim.run(max_ticks=100)
-          sim.close()
-          
-          # Query for different pair types
-          conn = sqlite3.connect(db_path)
-          cursor = conn.execute("""
-              SELECT DISTINCT exchange_pair_type FROM trades 
-              WHERE run_id=1
-          """)
-          pair_types = {row[0] for row in cursor}
-          conn.close()
-          
-          # Should see both money and barter trades
-          has_money = any("M" in p for p in pair_types)
-          has_barter = any("B" in p and "A" in p and "M" not in p for p in pair_types)
-          
-          # At least one type should occur
-          # (may not have both if agents don't encounter right opportunities)
-          assert len(pair_types) > 0
+- [ ] **Add money system section**
+  ```markdown
+  ## Money System
+  
+  VMT now includes a comprehensive money system for teaching monetary economics:
+  
+  - **Multiple modes**: Quasi-linear utility or endogenous λ estimation (KKT)
+  - **Flexible regimes**: Barter-only, money-only, mixed, or liquidity-gated
+  - **Full observability**: Track λ convergence, trade types, liquidity depth
+  - **Pedagogical scenarios**: Pre-built demos for classroom use
+  
+  See [Money User Guide](user_guide_money.md) for details.
   ```
 
-- [ ] **Test mode × regime interaction**
-  ```python
-  def test_mode_regime_interaction():
-      """Verify mode_schedule and exchange_regime interact correctly."""
-      # Load money_test_mode_interaction.yaml
-      # Run simulation
-      # Query tick_states
-      # Verify: forage mode has empty active_pairs
-      # Verify: trade mode has active_pairs from regime
-      pass
-  ```
+### 4.4) API documentation
 
-### 6.3) Comparative test
-
-- [ ] **Compare regime outcomes**
-  ```python
-  def test_compare_regimes():
-      """Compare outcomes under different regimes with same initial conditions."""
-      # Run same base scenario with:
-      # 1. barter_only
-      # 2. money_only
-      # 3. mixed
-      
-      # Compare:
-      # - Total trades
-      # - Average surplus
-      # - Final utility distribution
-      
-      # Document in test output for pedagogical value
-      pass
+- [ ] **Generate docstrings for all money-related functions**
+- [ ] **Run docstring coverage check**
+  ```bash
+  interrogate src/vmt_engine src/scenarios src/telemetry --verbose
   ```
 
 ---
 
-## Part 7: Documentation
+## Part 5: Code Quality and Polish
 
-### 7.1) Update user docs
+### 5.1) Code review prep
 
-- [ ] **Document mixed regime in README**
-  - Explain when to use mixed vs. single-type regimes
-  - Show example scenario configuration
-  - Explain tie-breaking policy and rationale
+- [ ] **Self-review checklist**
+  - [ ] All functions have docstrings
+  - [ ] Type hints consistent
+  - [ ] No TODO comments left in code
+  - [ ] Magic numbers replaced with named constants
+  - [ ] No dead code
+  - [ ] Error messages clear and helpful
 
-- [ ] **Add regime comparison guide**
-  - Create docs/regime_comparison.md
-  - Discuss emergence of money vs. barter
-  - Pedagogical examples
+- [ ] **Run linters**
+  ```bash
+  flake8 src/vmt_engine src/scenarios src/telemetry
+  black --check src/
+  mypy src/vmt_engine src/scenarios src/telemetry
+  ```
 
-### 7.2) Update technical docs
+- [ ] **Fix all linter warnings**
 
-- [ ] **Document tie-breaking in typing overview**
-- [ ] **Update SSOT with any refinements learned during implementation**
-- [ ] **Add examples to mode_schedule documentation showing regime interaction**
+### 5.2) Performance profiling
+
+- [ ] **Profile large money scenario**
+  ```bash
+  python -m cProfile -o money_profile.prof main.py scenarios/large_money_scenario.yaml --seed 42
+  python -m pstats money_profile.prof
+  # Check: no unexpected O(N²) hotspots
+  ```
+
+- [ ] **Memory profiling**
+  ```bash
+  python -m memory_profiler main.py scenarios/large_money_scenario.yaml
+  # Verify: no memory leaks with money features
+  ```
+
+### 5.3) Error handling audit
+
+- [ ] **Check all money-related error paths**
+  - [ ] Invalid money_mode value → clear error
+  - [ ] Missing M in money_only regime → helpful error
+  - [ ] Negative M value → caught early
+  - [ ] Lambda bounds validation → clear message
+
+---
+
+## Part 6: Testing and Validation
+
+### 6.1) End-to-end test suite
+
+**File**: `tests/test_money_e2e.py` (create new)
+
+- [ ] **Comprehensive E2E tests**
+  ```python
+  def test_e2e_all_regimes():
+      """Run simulation through all regimes."""
+      regimes = ["barter_only", "money_only", "mixed", "mixed_liquidity_gated"]
+      for regime in regimes:
+          # Run scenario with each regime
+          # Verify: completes without errors
+          # Verify: telemetry logs correctly
+          pass
+  
+  def test_e2e_both_money_modes():
+      """Run with both quasilinear and kkt_lambda."""
+      for mode in ["quasilinear", "kkt_lambda"]:
+          # Run scenario
+          # Verify: mode-specific behavior
+          pass
+  
+  def test_e2e_mode_schedule_interaction():
+      """Run with mode_schedule × exchange_regime."""
+      # Run scenario with both controls
+      # Verify: correct interaction
+      pass
+  ```
+
+### 6.2) Regression test suite
+
+- [ ] **Run full regression suite**
+  ```bash
+  pytest tests/ -v --tb=short
+  ```
+
+- [ ] **Verify all phases still pass**
+  ```bash
+  for phase in {1..5}; do
+      echo "Testing Phase $phase..."
+      pytest tests/test_money_phase${phase}*.py -v
+  done
+  ```
+
+### 6.3) Demo validation
+
+- [ ] **Run all demo scenarios**
+  ```bash
+  python scripts/run_demos.py
+  ```
+
+- [ ] **Verify demos in GUI**
+  ```bash
+  python launcher.py
+  # Manually run each demo from GUI
+  # Verify: renderer shows money features
+  # Verify: no crashes or visual glitches
+  ```
+
+---
+
+## Part 7: Release Preparation
+
+### 7.1) Changelog
+
+**File**: `CHANGELOG.md` (update)
+
+- [ ] **Add money system entry**
+  ```markdown
+  ## 2025-10-19 — Money System Implementation
+  
+  ### Added
+  - Money as integer inventory (M field)
+  - Quasi-linear utility mode
+  - KKT λ estimation mode with endogenous price discovery
+  - Four exchange regimes: barter_only, money_only, mixed, mixed_liquidity_gated
+  - Money-first tie-breaking in mixed regimes
+  - Liquidity depth metric and gating logic
+  - Comprehensive telemetry for money trades and λ trajectories
+  - Renderer enhancements: money visualization, mode overlays, λ heatmap
+  - Log viewer: money trade filters, λ plots, mode timeline
+  - Five demo scenarios showcasing money features
+  - Complete documentation (user guide + technical reference)
+  
+  ### Changed
+  - Extended Inventory dataclass with M field
+  - Generalized trading system for goods-for-goods and goods-for-money
+  - Enhanced telemetry schema (9 new columns, 2 new tables)
+  
+  ### Backward Compatibility
+  - All changes backward compatible with defaults
+  - Legacy scenarios run identically
+  - exchange_regime defaults to "barter_only"
+  ```
+
+### 7.2) Migration guide (if needed)
+
+**File**: `docs/migration_money.md` (create if needed)
+
+- [ ] **Write migration guide for existing users**
+  ```markdown
+  # Migrating to Money System
+  
+  ## For Existing Scenarios
+  - No changes required
+  - Add `exchange_regime: money_only` to enable money
+  - Add `M` to initial_inventories
+  
+  ## For Custom Extensions
+  - Check if custom code accesses Inventory
+  - Update to handle M field
+  
+  ## For Database Queries
+  - New columns available in agent_snapshots and trades
+  - See money_telemetry_schema.md for details
+  ```
+
+### 7.3) Contributor guide
+
+**File**: `docs/CONTRIBUTING.md` (update)
+
+- [ ] **Add money system development notes**
+  - How to add new money modes
+  - How to extend exchange regimes
+  - Testing requirements for money features
 
 ---
 
 ## Completion Criteria
 
-**Phase 4 is complete when**:
+**Phase 6 is complete when**:
 
-✅ `exchange_regime = "mixed"` allows all six exchange pair types
-✅ Money-first tie-breaking implemented and tested
-✅ Mode × regime interaction works correctly (temporal × type control)
-✅ Test scenarios demonstrate mixed trades
-✅ Pair type distribution analysis works
-✅ Mode timeline visualization works
-✅ All Phase 3 tests still pass
-✅ Documentation updated with regime comparison
+✅ Renderer visualizes money transfers, mode overlays, optional λ heatmap
+✅ Log viewer has money filters, λ plots, mode timeline
+✅ All 5 demo scenarios work and are pedagogically sound
+✅ User guide complete and tested
+✅ Technical documentation complete
+✅ Code passes all linters with no warnings
+✅ Performance profiling shows no regressions
+✅ All E2E tests pass
+✅ Changelog and migration guide written
+✅ Demos validated in GUI
 
-**Ready for Phase 5 when**:
-- Can run mixed regime scenarios with both trade types
-- Can verify tie-breaking in logs
-- Can demonstrate mode_schedule + exchange_regime interaction
-- Telemetry shows correct active_pairs per tick
+**Ready for Merge/Release when**:
+- Code review approved by maintainer
+- All tests pass on CI (if configured)
+- Documentation reviewed for accuracy and completeness
+- Demo scenarios tested in classroom setting (if possible)
 
 ---
 
-**Estimated effort**: 8-10 hours
+## Post-Release
+
+### Future enhancements (not in Phase 6)
+
+- [ ] Agent-specific exchange regimes (per §14.1 of SSOT)
+- [ ] Spatial zones for regimes (per §14.1)
+- [ ] Endogenous money acquisition via labor/production (per §14.2)
+- [ ] Credit and debt (negative M) (per §14.3)
+- [ ] Multiple currencies (per §14.4)
+- [ ] Dynamic regime switching (per §14.5)
+
+---
+
+**Estimated effort**: 10-14 hours
 
 See also:
-- `money_SSOT_implementation_plan.md` §7-8
-- `money_phase3_checklist.md` (prerequisite)
-- `money_telemetry_schema.md` (tick_states table)
+- `money_SSOT_implementation_plan.md` (complete reference)
+- `money_phase1_checklist.md` through `money_phase5_checklist.md` (prerequisites)
+- `money_telemetry_schema.md` (database reference)
+
+---
+
+## Final Checklist
+
+Before declaring Phase 6 complete:
+
+- [ ] All previous phases (1-5) tests passing
+- [ ] Renderer enhancements working
+- [ ] Log viewer enhancements working
+- [ ] All 5 demo scenarios validated
+- [ ] User guide complete
+- [ ] Technical documentation complete
+- [ ] Main README updated
+- [ ] Changelog entry added
+- [ ] Code quality checks passed
+- [ ] Performance profiling clean
+- [ ] E2E tests passing
+- [ ] Regression tests passing
+- [ ] No TODOs left in code
+- [ ] All docstrings complete
+- [ ] Migration guide (if needed) written
+
+**Congratulations! The money system implementation is complete. 🎉**
 

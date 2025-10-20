@@ -1,27 +1,31 @@
-### Money Implementation — Phase 5: Liquidity Gating
+### Money Implementation — Phase 5: Liquidity Gating (ADVANCED)
 
 Author: VMT Assistant
 Date: 2025-10-19
+**Revised**: 2025-10-20 (deferred to after Phase 3 - advanced feature)
 
-**Prerequisite**: Phase 4 complete (mixed regime working)
+**Prerequisite**: Phase 3 complete (KKT λ estimation working)
 
-**Goal**: Implement `mixed_liquidity_gated` regime where barter is conditionally enabled based on perceived money market depth.
+**Goal**: Implement `mixed_liquidity_gated` regime where barter is conditionally enabled based on perceived money market depth. This is an **advanced feature** that builds on both quasilinear mixed regimes and KKT adaptive behavior.
 
 **Success Criteria**:
 - Liquidity depth metric implemented deterministically
 - Barter enabled/disabled per agent based on money market depth
 - Agents fall back to barter when money markets thin
 - Heterogeneous money holdings create interesting dynamics
+- **Works with both quasilinear and KKT modes**
+
+**Note**: This phase implements conditional regime switching based on market thickness. Simpler fixed regimes (barter_only, money_only, mixed) are already working from earlier phases.
 
 ---
 
 ## Pre-Phase 5 Verification
 
-- [ ] **Verify Phase 4 complete**
+- [ ] **Verify Phase 3 complete**
   ```bash
-  pytest tests/test_mixed_regime*.py -v
-  python main.py scenarios/money_test_mixed.yaml --seed 42
-  # Verify mixed trades work
+  pytest tests/test_kkt*.py -v
+  python main.py scenarios/money_test_kkt.yaml --seed 42
+  # Verify KKT λ estimation works
   ```
 
 - [ ] **Create Phase 5 branch**

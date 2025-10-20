@@ -1,520 +1,543 @@
-### Money Implementation — Phase 3: KKT λ Estimation
+### Money Implementation — Phase 3: Mixed Regimes
 
 Author: VMT Assistant
 Date: 2025-10-19
+**Revised**: 2025-10-20 (moved ahead of Phase 3 to validate quasilinear first)
 
-**Prerequisite**: Phase 2 complete (quasi-linear money trades working)
+**Prerequisite**: Phase 2 complete (quasilinear money trades working)
 
-**Goal**: Implement KKT λ estimation mode where agents endogenously estimate marginal utility of money from observed prices.
+**Goal**: Enable `mixed` exchange regime where agents can trade both goods-for-money and goods-for-goods, with deterministic tie-breaking (money-first).
 
 **Success Criteria**:
-- λ updates based on neighbor price aggregation
-- Median-lower aggregation deterministic and stable
-- λ converges within bounds
-- Smoothing parameter (alpha) works correctly
-- No O(N²) performance paths
+- `exchange_regime = "mixed"` allows all six exchange pairs
+- Tie-breaking policy (money-first) implemented and tested
+- Mode transitions (temporal × type control) work correctly
+- Test scenarios demonstrate regime interaction with mode_schedule
+- **All working with quasilinear utility (fixed λ)**
+
+**Note**: This phase uses `money_mode: quasilinear` with fixed λ. Phase 3 (KKT adaptive λ) is deferred to validate simple case first.
 
 ---
 
-## Pre-Phase 3 Verification
+## Pre-Phase 4 Verification
 
 - [ ] **Verify Phase 2 complete**
   ```bash
-  pytest tests/test_money_phase2.py -v
+  pytest tests/test_money_phase2*.py -v
   python main.py scenarios/money_test_basic.yaml --seed 42
-  # Verify money trades occur
+  # Verify money trades occur (money_only regime)
   ```
 
-- [ ] **Create Phase 3 branch**
+- [ ] **Create Phase 4 branch**
   ```bash
-  git checkout -b feature/money-phase3-kkt-lambda
+  git checkout -b feature/money-phase4-mixed-regimes
   ```
 
-- [ ] **Create KKT test scenario**
+- [ ] **Create mixed regime test scenarios**
   ```bash
-  # Create scenarios/money_test_kkt.yaml (see Part 1.1)
+  # Create scenarios/money_test_mixed.yaml
+  # Create scenarios/money_test_mode_interaction.yaml
   ```
 
 ---
 
 ## Part 1: Test Scenario Creation
 
-### 1.1) Create KKT test scenario
+### 1.1) Create mixed regime scenario
 
-**File**: `scenarios/money_test_kkt.yaml` (create new)
+**File**: `scenarios/money_test_mixed.yaml` (create new)
 
-- [ ] **Write KKT scenario**
+- [ ] **Write mixed regime scenario**
   ```yaml
   schema_version: 1
-  name: "KKT Lambda Estimation Test"
-  N: 15
-  agents: 10
+  name: "Mixed Exchange Regime Test"
+  N: 12
+  agents: 8
   
   initial_inventories:
-    A: [10, 8, 6, 4, 2, 0, 0, 2, 4, 6]
-    B: [0, 2, 4, 6, 8, 10, 8, 6, 4, 2]
-    M: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
+    A: [10, 8, 6, 4, 2, 0, 5, 7]
+    B: [0, 2, 4, 6, 8, 10, 3, 5]
+    M: [50, 100, 150, 50, 100, 150, 75, 125]
   
   utilities:
     mix:
       - type: ces
-        weight: 0.7
+        weight: 1.0
         params:
           rho: 0.5
+          wA: 0.55
+          wB: 0.45
+  
+  params:
+    spread: 0.1
+    vision_radius: 12
+    interaction_radius: 1
+    move_budget_per_tick: 1
+    dA_max: 4
+    forage_rate: 1
+    
+    # Mixed regime params
+    exchange_regime: mixed
+    money_mode: quasilinear
+    money_scale: 1
+    lambda_money: 1.0
+  
+  resource_seed:
+    density: 0.2
+    amount: 4
+  ```
+
+### 1.2) Create mode × regime interaction scenario
+
+**File**: `scenarios/money_test_mode_interaction.yaml` (create new)
+
+- [ ] **Write mode interaction scenario**
+  ```yaml
+  schema_version: 1
+  name: "Mode Schedule × Exchange Regime Interaction"
+  N: 15
+  agents: 6
+  
+  # Scenario with mode_schedule (temporal control)
+  mode_schedule:
+    type: global_cycle
+    forage_ticks: 10
+    trade_ticks: 15
+    start_mode: forage
+  
+  initial_inventories:
+    A: [10, 5, 0, 8, 3, 2]
+    B: [0, 5, 10, 2, 7, 8]
+    M: [100, 100, 100, 100, 100, 100]
+  
+  utilities:
+    mix:
+      - type: ces
+        weight: 1.0
+        params:
+          rho: 0.3
           wA: 0.6
           wB: 0.4
-      - type: ces
-        weight: 0.3
-        params:
-          rho: -0.5
-          wA: 0.5
-          wB: 0.5
   
   params:
     spread: 0.05
-    vision_radius: 8
+    vision_radius: 15
     interaction_radius: 1
-    move_budget_per_tick: 1
+    move_budget_per_tick: 2
     dA_max: 3
-    forage_rate: 1
+    forage_rate: 2
     
-    # KKT mode params
-    exchange_regime: money_only
+    # Mixed regime with mode schedule
+    exchange_regime: mixed
     money_mode: kkt_lambda
     money_scale: 1
-    lambda_money: 1.0           # Initial λ
-    lambda_update_rate: 0.2     # Smoothing alpha
+    lambda_money: 1.0
+    lambda_update_rate: 0.15
     lambda_bounds:
-      lambda_min: 0.000001
-      lambda_max: 1000000.0
+      lambda_min: 0.00001
+      lambda_max: 100000.0
   
   resource_seed:
-    density: 0.15
+    density: 0.25
     amount: 5
   ```
 
-- [ ] **Verify scenario loads**
-  ```bash
-  python -c "from scenarios.loader import load_scenario; cfg = load_scenario('scenarios/money_test_kkt.yaml'); print(f'KKT mode: {cfg.params.money_mode}')"
+---
+
+## Part 2: Trade Pair Enumeration and Ranking
+
+### 2.1) Implement full pair enumeration for mixed mode
+
+**File**: `src/vmt_engine/systems/trading.py`
+
+- [ ] **Update `_get_allowed_pairs()` for mixed regime**
+  ```python
+  def _get_allowed_pairs(self, regime: str) -> list[tuple[str, str]]:
+      """
+      Get allowed (good_sold, good_paid) pairs based on regime.
+      
+      Returns list of tuples: (good agent gives up, good agent receives)
+      From buyer perspective: receives good_sold, pays good_paid
+      """
+      if regime == "barter_only":
+          return [("A", "B"), ("B", "A")]
+      elif regime == "money_only":
+          return [("A", "M"), ("B", "M")]
+      elif regime in ["mixed", "mixed_liquidity_gated"]:
+          # All six permutations
+          return [
+              ("A", "M"),  # Buy A with money
+              ("B", "M"),  # Buy B with money
+              ("A", "B"),  # Buy A with B (barter)
+              ("B", "A"),  # Buy B with A (barter)
+              # Note: We don't typically have agents "buying" money
+              # but the pair ("M", "A") would mean: give money, get A
+              # which is the seller's perspective of ("A", "M")
+              # So we keep pairs from buyer perspective only
+          ]
+      else:
+          return []
+  ```
+
+### 2.2) Implement money-first tie-breaking
+
+- [ ] **Add tie-breaking logic to trade ranking**
+  ```python
+  def _rank_trade_candidates(self, candidates: list[TradeCandidate]) -> list[TradeCandidate]:
+      """
+      Rank trade candidates by total surplus, with tie-breaking.
+      
+      Tie-break order (money-first):
+      1. Total surplus (descending)
+      2. Pair type priority: A↔M < B↔M < A↔B
+      3. Agent pair (min_id, max_id) lexicographic
+      
+      TradeCandidate should include:
+          - buyer_id, seller_id
+          - good_sold, good_paid
+          - dX, dY
+          - buyer_surplus, seller_surplus
+          - total_surplus
+      """
+      # Define pair type priority (lower number = higher priority)
+      PAIR_PRIORITY = {
+          ("A", "M"): 0,
+          ("B", "M"): 1,
+          ("M", "A"): 2,  # Seller perspective of A<->M
+          ("M", "B"): 3,  # Seller perspective of B<->M
+          ("A", "B"): 4,
+          ("B", "A"): 5,
+      }
+      
+      def sort_key(candidate):
+          total_surplus = candidate.buyer_surplus + candidate.seller_surplus
+          pair_type = (candidate.good_sold, candidate.good_paid)
+          pair_priority = PAIR_PRIORITY.get(pair_type, 99)
+          agent_pair = (min(candidate.buyer_id, candidate.seller_id),
+                       max(candidate.buyer_id, candidate.seller_id))
+          
+          # Return tuple for sorting:
+          # - Negate surplus for descending order
+          # - pair_priority ascending (lower = better)
+          # - agent_pair ascending
+          return (-total_surplus, pair_priority, agent_pair)
+      
+      return sorted(candidates, key=sort_key)
+  ```
+
+- [ ] **Test tie-breaking**
+  ```python
+  # In tests/test_mixed_regime_tie_breaking.py (create new)
+  def test_money_first_tie_breaking():
+      """Verify money-first tie-breaking when surplus equal."""
+      from dataclasses import dataclass
+      
+      @dataclass
+      class TradeCandidate:
+          buyer_id: int
+          seller_id: int
+          good_sold: str
+          good_paid: str
+          dX: int
+          dY: int
+          buyer_surplus: float
+          seller_surplus: float
+      
+      # Create three candidates with equal total surplus
+      candidate_money = TradeCandidate(
+          buyer_id=0, seller_id=1,
+          good_sold="A", good_paid="M",
+          dX=2, dY=10,
+          buyer_surplus=5.0, seller_surplus=5.0
+      )
+      
+      candidate_barter = TradeCandidate(
+          buyer_id=0, seller_id=1,
+          good_sold="A", good_paid="B",
+          dX=2, dY=3,
+          buyer_surplus=5.0, seller_surplus=5.0
+      )
+      
+      candidates = [candidate_barter, candidate_money]
+      ranked = _rank_trade_candidates(candidates)
+      
+      # Money trade should be first (higher priority)
+      assert ranked[0].good_paid == "M"
+      assert ranked[1].good_paid == "B"
   ```
 
 ---
 
-## Part 2: Price Aggregation System
+## Part 3: TradeSystem Enhancements
 
-### 2.1) Implement neighbor price collection
+### 3.1) Implement multi-pair candidate generation
 
-**File**: `src/vmt_engine/systems/housekeeping.py`
+**File**: `src/vmt_engine/systems/trading.py`
 
-- [ ] **Add `_collect_neighbor_prices()` helper**
+- [ ] **Extend matching logic to try all permissible pairs**
   ```python
-  def _collect_neighbor_prices(agent: Agent, neighbors: list[Agent], 
-                                good: str, epsilon: float) -> list[tuple[float, int]]:
-      """
-      Collect neighbor ask prices for a good in money.
-      
-      Args:
-          agent: Agent collecting prices
-          neighbors: List of neighbors within vision_radius
-          good: "A" or "B"
-          epsilon: Small constant for safety
-          
-      Returns:
-          List of (price, seller_id) tuples, sorted for determinism
-      """
-      prices = []
-      
-      # Include self price
-      if good == "A" and 'ask_A_in_M' in agent.quotes:
-          prices.append((agent.quotes['ask_A_in_M'], agent.id))
-      elif good == "B" and 'ask_B_in_M' in agent.quotes:
-          prices.append((agent.quotes['ask_B_in_M'], agent.id))
-      
-      # Collect neighbor prices
-      for neighbor in neighbors:
-          if good == "A" and 'ask_A_in_M' in neighbor.quotes:
-              prices.append((neighbor.quotes['ask_A_in_M'], neighbor.id))
-          elif good == "B" and 'ask_B_in_M' in neighbor.quotes:
-              prices.append((neighbor.quotes['ask_B_in_M'], neighbor.id))
-      
-      # Sort deterministically: (price, seller_id)
-      prices.sort(key=lambda x: (x[0], x[1]))
-      
-      return prices
-  ```
-
-### 2.2) Implement median-lower aggregation
-
-- [ ] **Add `_aggregate_prices_median_lower()` helper**
-  ```python
-  def _aggregate_prices_median_lower(prices: list[tuple[float, int]]) -> float | None:
-      """
-      Aggregate prices using median-lower rule.
-      
-      For even-length lists, take the lower of the two middle values.
-      For odd-length lists, take the exact median.
-      
-      Args:
-          prices: Sorted list of (price, seller_id) tuples
-          
-      Returns:
-          Aggregated price, or None if prices is empty
-      """
-      if not prices:
-          return None
-      
-      n = len(prices)
-      if n % 2 == 1:
-          # Odd: take exact median
-          return prices[n // 2][0]
-      else:
-          # Even: take lower of two middle values
-          return prices[(n // 2) - 1][0]
-  ```
-
-- [ ] **Test price aggregation**
-  ```python
-  # In tests/test_kkt_price_aggregation.py (create new)
-  def test_median_lower_odd():
-      prices = [(1.0, 0), (2.0, 1), (3.0, 2)]
-      result = _aggregate_prices_median_lower(prices)
-      assert result == 2.0
-  
-  def test_median_lower_even():
-      prices = [(1.0, 0), (2.0, 1), (3.0, 2), (4.0, 3)]
-      result = _aggregate_prices_median_lower(prices)
-      assert result == 2.0  # Lower of [2.0, 3.0]
-  
-  def test_median_lower_deterministic():
-      # Same prices, different seller IDs
-      prices1 = [(2.0, 0), (2.0, 1), (2.0, 2)]
-      prices2 = [(2.0, 2), (2.0, 1), (2.0, 0)]
-      # After sorting by (price, id):
-      prices2.sort(key=lambda x: (x[0], x[1]))
-      
-      r1 = _aggregate_prices_median_lower(prices1)
-      r2 = _aggregate_prices_median_lower(prices2)
-      assert r1 == r2
-  ```
-
-### 2.3) Implement cross-quote inference fallback
-
-- [ ] **Add `_infer_price_from_cross_quotes()` helper**
-  ```python
-  def _infer_price_from_cross_quotes(agent: Agent, good: str, 
-                                      p_other: float | None, 
-                                      neighbors: list[Agent],
-                                      epsilon: float) -> float | None:
-      """
-      Infer price of good A (or B) from prices of B (or A) using cross quotes.
-      
-      If no direct A-in-M quotes are available, but B-in-M quotes are,
-      use p_A ≈ p_B * (B_in_A cross quote).
-      
-      Args:
-          agent: Agent inferring price
-          good: "A" or "B"
-          p_other: Aggregated price of the other good (can be None)
-          neighbors: Neighbors for collecting cross quotes
-          epsilon: Small constant
-          
-      Returns:
-          Inferred price or None
-      """
-      if p_other is None:
-          return None
-      
-      # Collect cross quotes (A<->B)
-      if good == "A":
-          # Need p_B and bid_A_in_B (how much B per A)
-          # p_A ≈ p_B / bid_A_in_B
-          if 'bid_A_in_B' in agent.quotes:
-              return p_other / max(agent.quotes['bid_A_in_B'], epsilon)
-      else:
-          # Need p_A and bid_B_in_A
-          if 'bid_B_in_A' in agent.quotes:
-              return p_other / max(agent.quotes['bid_B_in_A'], epsilon)
-      
-      return None
-  ```
-
----
-
-## Part 3: λ Update Logic
-
-### 3.1) Implement λ estimation in HousekeepingSystem
-
-**File**: `src/vmt_engine/systems/housekeeping.py`
-
-- [ ] **Add `_update_lambda_kkt()` method to HousekeepingSystem**
-  ```python
-  def _update_lambda_kkt(self, agent: Agent, sim: "Simulation") -> None:
-      """
-      Update agent's lambda using KKT estimation.
-      
-      Steps:
-      1. Collect neighbor prices for A and B in money
-      2. Aggregate using median-lower
-      3. Compute λ_hat_A = MU_A / p_A, λ_hat_B = MU_B / p_B
-      4. Set λ_hat = min(λ_hat_A, λ_hat_B)
-      5. Smooth: λ_new = (1-α)*λ_old + α*λ_hat
-      6. Clamp to bounds
-      """
-      epsilon = sim.params['epsilon']
-      alpha = sim.params['lambda_update_rate']
-      bounds = sim.params['lambda_bounds']
-      lambda_min = bounds['lambda_min']
-      lambda_max = bounds['lambda_max']
-      
-      # Get neighbors within vision radius
-      neighbor_ids = sim.spatial_index.query_radius(agent.pos, agent.vision_radius)
-      neighbors = [sim.agent_by_id[nid] for nid in neighbor_ids if nid != agent.id]
-      
-      # Collect and aggregate prices
-      prices_A = self._collect_neighbor_prices(agent, neighbors, "A", epsilon)
-      prices_B = self._collect_neighbor_prices(agent, neighbors, "B", epsilon)
-      
-      p_hat_A = self._aggregate_prices_median_lower(prices_A)
-      p_hat_B = self._aggregate_prices_median_lower(prices_B)
-      
-      # Fallback: infer missing prices from cross quotes
-      if p_hat_A is None and p_hat_B is not None:
-          p_hat_A = self._infer_price_from_cross_quotes(agent, "A", p_hat_B, neighbors, epsilon)
-      if p_hat_B is None and p_hat_A is not None:
-          p_hat_B = self._infer_price_from_cross_quotes(agent, "B", p_hat_A, neighbors, epsilon)
-      
-      # If still no prices, keep current λ
-      if p_hat_A is None and p_hat_B is None:
-          return
-      
-      # Compute marginal utilities
-      mu_A = agent.utility.mu_A(agent.inventory.A, agent.inventory.B, epsilon)
-      mu_B = agent.utility.mu_B(agent.inventory.A, agent.inventory.B, epsilon)
-      
-      # Compute λ estimates
-      lambda_hat_A = mu_A / max(p_hat_A, epsilon) if p_hat_A is not None else None
-      lambda_hat_B = mu_B / max(p_hat_B, epsilon) if p_hat_B is not None else None
-      
-      # Take minimum (most binding constraint)
-      if lambda_hat_A is not None and lambda_hat_B is not None:
-          lambda_hat = min(lambda_hat_A, lambda_hat_B)
-      elif lambda_hat_A is not None:
-          lambda_hat = lambda_hat_A
-      else:
-          lambda_hat = lambda_hat_B
-      
-      # Smooth
-      lambda_old = agent.lambda_money
-      lambda_new = (1 - alpha) * lambda_old + alpha * lambda_hat
-      
-      # Clamp to bounds
-      clamped = False
-      clamp_type = None
-      if lambda_new < lambda_min:
-          lambda_new = lambda_min
-          clamped = True
-          clamp_type = "lower"
-      elif lambda_new > lambda_max:
-          lambda_new = lambda_max
-          clamped = True
-          clamp_type = "upper"
-      
-      # Update agent
-      agent.lambda_money = lambda_new
-      
-      # Set flag if change is significant
-      tolerance = 1e-9
-      if abs(lambda_new - lambda_old) > tolerance:
-          agent.lambda_changed = True
-      
-      # Log lambda update for diagnostics
-      if sim.telemetry and abs(lambda_new - lambda_old) > tolerance:
-          sim.telemetry.log_lambda_update(
-              tick=sim.tick,
-              agent_id=agent.id,
-              lambda_old=lambda_old,
-              lambda_new=lambda_new,
-              lambda_hat_A=lambda_hat_A if lambda_hat_A else 0.0,
-              lambda_hat_B=lambda_hat_B if lambda_hat_B else 0.0,
-              lambda_hat=lambda_hat,
-              clamped=clamped,
-              clamp_type=clamp_type
-          )
-  ```
-
-### 3.2) Integrate λ updates into HousekeepingSystem
-
-- [ ] **Call `_update_lambda_kkt()` in `execute()`**
-  ```python
-  class HousekeepingSystem:
+  class TradeSystem:
       def execute(self, sim: "Simulation") -> None:
-          for agent in sorted(sim.agents, key=lambda a: a.id):
-              # Existing: update quotes if inventory changed
-              if agent.inventory_changed:
-                  agent.quotes = compute_quotes(agent, sim.params['spread'], sim.params['epsilon'])
-                  agent.inventory_changed = False
+          # Check temporal mode
+          if sim.current_mode not in ["trade", "both"]:
+              return
+          
+          # Get permissible pairs based on exchange_regime
+          allowed_pairs = self._get_allowed_pairs(sim.params['exchange_regime'])
+          
+          # Build list of all potential trades
+          candidates = []
+          
+          # Find all agent pairs within interaction radius
+          for buyer in sim.agents:
+              neighbor_ids = sim.spatial_index.query_radius(
+                  buyer.pos, sim.params['interaction_radius']
+              )
               
-              # NEW: update lambda in KKT mode
-              if sim.params['money_mode'] == 'kkt_lambda':
-                  self._update_lambda_kkt(agent, sim)
+              for seller_id in neighbor_ids:
+                  if seller_id == buyer.id:
+                      continue
                   
-                  # If lambda changed, recompute quotes
-                  if agent.lambda_changed:
-                      agent.quotes = compute_quotes(agent, sim.params['spread'], sim.params['epsilon'])
-                      agent.lambda_changed = False
+                  seller = sim.agent_by_id[seller_id]
+                  
+                  # Check cooldown
+                  if self._in_cooldown(buyer, seller, sim.tick):
+                      continue
+                  
+                  # Try each allowed pair type
+                  for good_sold, good_paid in allowed_pairs:
+                      # Get quotes
+                      price = self._get_price(buyer, seller, good_sold, good_paid)
+                      if price is None:
+                          continue
+                      
+                      # Search for feasible trade
+                      result = find_compensating_block_generic(
+                          buyer, seller, good_sold, good_paid, 
+                          price, sim.params['dA_max'], sim.params['epsilon']
+                      )
+                      
+                      if result is not None:
+                          dX, dY, buyer_surplus, seller_surplus = result
+                          candidates.append(TradeCandidate(
+                              buyer_id=buyer.id,
+                              seller_id=seller.id,
+                              good_sold=good_sold,
+                              good_paid=good_paid,
+                              dX=dX, dY=dY,
+                              buyer_surplus=buyer_surplus,
+                              seller_surplus=seller_surplus
+                          ))
+          
+          # Rank candidates
+          ranked = self._rank_trade_candidates(candidates)
+          
+          # Execute trades (one per agent pair per tick)
+          executed_pairs = set()
+          for candidate in ranked:
+              pair_key = (min(candidate.buyer_id, candidate.seller_id),
+                         max(candidate.buyer_id, candidate.seller_id))
               
-              # Existing: cooldown management, etc.
-              # ...
+              if pair_key not in executed_pairs:
+                  self._execute_trade(candidate, sim)
+                  executed_pairs.add(pair_key)
+  ```
+
+### 3.2) Add pair-type selection logging
+
+- [ ] **Log which pair type was chosen**
+  ```python
+  # In _execute_trade():
+  if sim.telemetry:
+      sim.telemetry.log_trade(
+          # ... existing params ...
+          exchange_pair_type=f"{candidate.good_sold}<->{candidate.good_paid}",
+          # ...
+      )
   ```
 
 ---
 
-## Part 4: Telemetry Integration
+## Part 4: Mode × Regime Interaction
 
-### 4.1) Implement `log_lambda_update()`
+### 4.1) Verify two-layer control architecture
 
-**File**: `src/telemetry/db_loggers.py`
+**File**: `src/vmt_engine/simulation.py`
 
-- [ ] **Complete `log_lambda_update()` implementation**
+- [ ] **Ensure `_get_active_exchange_pairs()` respects mode**
   ```python
-  def log_lambda_update(self, tick: int, agent_id: int,
-                       lambda_old: float, lambda_new: float,
-                       lambda_hat_A: float, lambda_hat_B: float, 
-                       lambda_hat: float,
-                       clamped: bool, clamp_type: str = None):
-      """Log KKT lambda update."""
-      if not self.config.use_database or self.db is None:
+  def _get_active_exchange_pairs(self) -> list[str]:
+      """
+      Determine which exchange pairs are currently active.
+      Combines temporal (mode_schedule) and type (exchange_regime) control.
+      """
+      # Temporal control: if not in trade mode, no pairs active
+      if self.current_mode == "forage":
+          return []
+      
+      # Type control: which pairs are permissible
+      regime = self.params['exchange_regime']
+      
+      if regime == "barter_only":
+          return ["A<->B"]
+      elif regime == "money_only":
+          return ["A<->M", "B<->M"]
+      elif regime in ["mixed", "mixed_liquidity_gated"]:
+          return ["A<->M", "B<->M", "A<->B"]
+      else:
+          return []
+  ```
+
+- [ ] **Test mode × regime interaction**
+  ```python
+  # In tests/test_mode_regime_interaction.py (create new)
+  def test_forage_mode_blocks_all_trades():
+      """Verify forage mode blocks all trades regardless of regime."""
+      # Load scenario with mode_schedule and mixed regime
+      # At tick in forage mode
+      # Verify: no trades execute (even if agents adjacent)
+      # Verify: active_pairs = []
+      pass
+  
+  def test_trade_mode_respects_regime():
+      """Verify trade mode uses correct pairs per regime."""
+      # Load mixed regime scenario
+      # At tick in trade mode
+      # Verify: active_pairs includes both money and barter
+      # Verify: trades of both types can occur
+      pass
+  ```
+
+---
+
+## Part 5: Telemetry Enhancements
+
+### 5.1) Log pair type distribution
+
+- [ ] **Add query for pair type counts**
+  ```python
+  # In scripts/analyze_trade_distribution.py (create new)
+  import sqlite3
+  
+  def analyze_pair_distribution(db_path: str, run_id: int):
+      conn = sqlite3.connect(db_path)
+      cursor = conn.execute("""
+          SELECT exchange_pair_type, COUNT(*) as count
+          FROM trades
+          WHERE run_id = ?
+          GROUP BY exchange_pair_type
+          ORDER BY count DESC
+      """, (run_id,))
+      
+      print(f"Trade pair distribution for run {run_id}:")
+      for pair_type, count in cursor:
+          print(f"  {pair_type}: {count}")
+      
+      conn.close()
+  
+  if __name__ == '__main__':
+      import sys
+      analyze_pair_distribution(sys.argv[1], int(sys.argv[2]))
+  ```
+
+### 5.2) Visualize mode transitions
+
+- [ ] **Create mode timeline visualization**
+  ```python
+  # In scripts/plot_mode_timeline.py (create new)
+  import sqlite3
+  import matplotlib.pyplot as plt
+  import matplotlib.patches as mpatches
+  
+  def plot_mode_timeline(db_path: str, run_id: int):
+      conn = sqlite3.connect(db_path)
+      cursor = conn.execute("""
+          SELECT tick, current_mode, exchange_regime 
+          FROM tick_states 
+          WHERE run_id = ?
+          ORDER BY tick
+      """, (run_id,))
+      
+      data = list(cursor)
+      conn.close()
+      
+      if not data:
+          print("No tick_states data found")
           return
       
-      self.db.execute("""
-          INSERT INTO lambda_updates 
-          (run_id, tick, agent_id, lambda_old, lambda_new,
-           lambda_hat_A, lambda_hat_B, lambda_hat, clamped, clamp_type)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      """, (self.run_id, tick, agent_id, lambda_old, lambda_new,
-            lambda_hat_A, lambda_hat_B, lambda_hat, 
-            int(clamped), clamp_type))
+      ticks = [row[0] for row in data]
+      modes = [row[1] for row in data]
       
-      if self.tick % self.batch_size == 0:
-          self.db.commit()
-  ```
-
-### 4.2) Update agent snapshot logging
-
-- [ ] **Include perceived prices in snapshots**
-  ```python
-  # In HousekeepingSystem or wherever agent snapshots are logged:
-  # Store p_hat_A and p_hat_B in agent for logging
-  agent._perceived_price_A = p_hat_A  # Temporary storage for telemetry
-  agent._perceived_price_B = p_hat_B
+      # Color code modes
+      mode_colors = {'forage': 'green', 'trade': 'blue', 'both': 'purple'}
+      colors = [mode_colors.get(m, 'gray') for m in modes]
+      
+      plt.figure(figsize=(12, 3))
+      plt.scatter(ticks, [0]*len(ticks), c=colors, marker='|', s=500)
+      plt.yticks([])
+      plt.xlabel('Tick')
+      plt.title('Mode Timeline')
+      
+      # Legend
+      patches = [mpatches.Patch(color=c, label=m) for m, c in mode_colors.items()]
+      plt.legend(handles=patches)
+      
+      plt.tight_layout()
+      plt.show()
   
-  # Then in log_agent_snapshot(), include these:
-  # perceived_price_A, perceived_price_B
-  ```
-
----
-
-## Part 5: Performance Optimization
-
-### 5.1) Verify O(N) complexity
-
-- [ ] **Profile price collection**
-  ```python
-  # In tests/test_kkt_performance.py (create new)
-  def test_lambda_update_complexity():
-      """Verify λ updates don't introduce O(N²) paths."""
-      import time
-      from vmt_engine.simulation import Simulation
-      from scenarios.loader import load_scenario
-      from telemetry.config import LogConfig
-      
-      # Run with increasing agent counts
-      times = []
-      agent_counts = [10, 20, 40, 80]
-      
-      for n_agents in agent_counts:
-          # Modify scenario to have n_agents
-          # Run for fixed ticks
-          start = time.time()
-          # ... run simulation ...
-          elapsed = time.time() - start
-          times.append(elapsed)
-      
-      # Check that time grows roughly linearly with N
-      # (allowing for some overhead)
-      ratio_1 = times[1] / times[0]
-      ratio_2 = times[2] / times[1]
-      
-      # Should be roughly 2x (linear), not 4x (quadratic)
-      assert ratio_1 < 3.0
-      assert ratio_2 < 3.0
-  ```
-
-### 5.2) Optimize neighbor queries
-
-- [ ] **Ensure spatial index used**
-  ```python
-  # Verify that neighbor collection uses spatial_index.query_radius()
-  # Not a manual distance check over all agents
+  if __name__ == '__main__':
+      import sys
+      plot_mode_timeline(sys.argv[1], int(sys.argv[2]))
   ```
 
 ---
 
 ## Part 6: Testing
 
-### 6.1) Unit tests for λ estimation
+### 6.1) Unit tests
 
-**File**: `tests/test_kkt_lambda_estimation.py` (create new)
+**File**: `tests/test_mixed_regime.py` (create new)
 
-- [ ] **Test λ computation**
+- [ ] **Test pair enumeration**
   ```python
-  def test_lambda_hat_computation():
-      """Test basic λ estimation from prices."""
-      # Given MU_A=2.0, p_A=4.0
-      # λ_hat_A = 2.0 / 4.0 = 0.5
-      assert abs(_compute_lambda_hat(mu=2.0, price=4.0) - 0.5) < 1e-9
+  def test_mixed_regime_pair_enumeration():
+      """Verify mixed regime returns all pair types."""
+      pairs = _get_allowed_pairs("mixed")
+      assert ("A", "M") in pairs
+      assert ("B", "M") in pairs
+      assert ("A", "B") in pairs
+      # Should have at least these 3 types (maybe 4 with reverse)
   
-  def test_lambda_min_constraint():
-      """Test λ_hat_A vs λ_hat_B minimum."""
-      lambda_hat_A = 1.0
-      lambda_hat_B = 0.5
-      lambda_hat = min(lambda_hat_A, lambda_hat_B)
-      assert lambda_hat == 0.5
+  def test_barter_only_excludes_money():
+      """Verify barter_only excludes money pairs."""
+      pairs = _get_allowed_pairs("barter_only")
+      assert all("M" not in pair for pair in pairs)
+  
+  def test_money_only_excludes_barter():
+      """Verify money_only excludes goods-for-goods."""
+      pairs = _get_allowed_pairs("money_only")
+      # Should only have pairs involving M
+      assert all("M" in pair for pair in pairs)
   ```
 
-- [ ] **Test smoothing**
+- [ ] **Test tie-breaking determinism**
   ```python
-  def test_lambda_smoothing():
-      """Test exponential smoothing of λ."""
-      lambda_old = 1.0
-      lambda_hat = 0.5
-      alpha = 0.2
-      
-      lambda_new = (1 - alpha) * lambda_old + alpha * lambda_hat
-      expected = 0.8 * 1.0 + 0.2 * 0.5  # = 0.9
-      
-      assert abs(lambda_new - expected) < 1e-9
-  ```
-
-- [ ] **Test clamping**
-  ```python
-  def test_lambda_clamping():
-      """Test λ stays within bounds."""
-      lambda_hat = 1e10  # Way above bound
-      lambda_max = 1e6
-      
-      lambda_new = min(lambda_hat, lambda_max)
-      assert lambda_new == lambda_max
+  def test_tie_breaking_deterministic():
+      """Verify same candidates ranked identically across runs."""
+      # Create candidate list
+      # Rank twice
+      # Verify identical order
+      pass
   ```
 
 ### 6.2) Integration tests
 
-**File**: `tests/test_kkt_integration.py` (create new)
+**File**: `tests/test_mixed_regime_integration.py` (create new)
 
-- [ ] **Test KKT convergence**
+- [ ] **Test mixed regime scenario**
   ```python
-  def test_kkt_lambda_converges():
-      """Verify λ values stabilize over time."""
+  def test_mixed_regime_scenario_runs():
+      """Run mixed regime scenario and verify both trade types occur."""
       from vmt_engine.simulation import Simulation
       from scenarios.loader import load_scenario
       from telemetry.config import LogConfig
@@ -523,176 +546,112 @@ Date: 2025-10-19
       
       with tempfile.TemporaryDirectory() as tmpdir:
           db_path = f"{tmpdir}/test.db"
-          config = load_scenario("scenarios/money_test_kkt.yaml")
+          config = load_scenario("scenarios/money_test_mixed.yaml")
           log_cfg = LogConfig(use_database=True, db_path=db_path)
           
           sim = Simulation(config, seed=42, log_config=log_cfg)
           sim.run(max_ticks=100)
           sim.close()
           
-          # Query lambda trajectory for agent 0
+          # Query for different pair types
           conn = sqlite3.connect(db_path)
           cursor = conn.execute("""
-              SELECT tick, lambda_money FROM agent_snapshots 
-              WHERE run_id=1 AND agent_id=0 AND tick IN (10, 50, 90)
-              ORDER BY tick
+              SELECT DISTINCT exchange_pair_type FROM trades 
+              WHERE run_id=1
           """)
-          lambdas = [row[1] for row in cursor.fetchall()]
+          pair_types = {row[0] for row in cursor}
           conn.close()
           
-          # Check that λ changes less over time (converging)
-          change_early = abs(lambdas[1] - lambdas[0])
-          change_late = abs(lambdas[2] - lambdas[1])
+          # Should see both money and barter trades
+          has_money = any("M" in p for p in pair_types)
+          has_barter = any("B" in p and "A" in p and "M" not in p for p in pair_types)
           
-          # Later changes should be smaller (or at least not much larger)
-          assert change_late <= change_early * 1.5
+          # At least one type should occur
+          # (may not have both if agents don't encounter right opportunities)
+          assert len(pair_types) > 0
   ```
 
-- [ ] **Test determinism with KKT**
+- [ ] **Test mode × regime interaction**
   ```python
-  def test_kkt_deterministic():
-      """Verify KKT mode is deterministic."""
-      # Run same scenario twice with same seed
-      # Compare lambda trajectories
-      # Should be identical
+  def test_mode_regime_interaction():
+      """Verify mode_schedule and exchange_regime interact correctly."""
+      # Load money_test_mode_interaction.yaml
+      # Run simulation
+      # Query tick_states
+      # Verify: forage mode has empty active_pairs
+      # Verify: trade mode has active_pairs from regime
       pass
   ```
 
-### 6.3) Stress tests
+### 6.3) Comparative test
 
-- [ ] **Test λ with extreme initial values**
+- [ ] **Compare regime outcomes**
   ```python
-  def test_lambda_from_extreme_initial():
-      """Test λ converges even from extreme initial values."""
-      # Set initial λ = 1e-10 (very low)
-      # Run KKT estimation
-      # Verify λ moves toward reasonable range
-      pass
-  ```
-
-- [ ] **Test with no neighbors**
-  ```python
-  def test_lambda_no_neighbors():
-      """Test λ update when agent has no neighbors in vision."""
-      # Place agent alone on grid
-      # Run tick
-      # Verify: λ doesn't change (or handles gracefully)
+  def test_compare_regimes():
+      """Compare outcomes under different regimes with same initial conditions."""
+      # Run same base scenario with:
+      # 1. barter_only
+      # 2. money_only
+      # 3. mixed
+      
+      # Compare:
+      # - Total trades
+      # - Average surplus
+      # - Final utility distribution
+      
+      # Document in test output for pedagogical value
       pass
   ```
 
 ---
 
-## Part 7: Validation and Debugging
+## Part 7: Documentation
 
-### 7.1) Add diagnostic logging
+### 7.1) Update user docs
 
-- [ ] **Add verbose logging for λ updates (debug mode)**
-  ```python
-  # In HousekeepingSystem, add optional debug prints:
-  if sim.params.get('debug_lambda', False):
-      print(f"Agent {agent.id}: λ {lambda_old:.4f} → {lambda_new:.4f} "
-            f"(p̂_A={p_hat_A:.2f}, p̂_B={p_hat_B:.2f})")
-  ```
+- [ ] **Document mixed regime in README**
+  - Explain when to use mixed vs. single-type regimes
+  - Show example scenario configuration
+  - Explain tie-breaking policy and rationale
 
-### 7.2) Create visualization script
+- [ ] **Add regime comparison guide**
+  - Create docs/regime_comparison.md
+  - Discuss emergence of money vs. barter
+  - Pedagogical examples
 
-**File**: `scripts/plot_lambda_trajectories.py` (create new)
+### 7.2) Update technical docs
 
-- [ ] **Script to plot λ over time**
-  ```python
-  import sqlite3
-  import matplotlib.pyplot as plt
-  
-  def plot_lambda_trajectories(db_path: str, run_id: int):
-      conn = sqlite3.connect(db_path)
-      cursor = conn.execute("""
-          SELECT tick, agent_id, lambda_money 
-          FROM agent_snapshots 
-          WHERE run_id=? 
-          ORDER BY agent_id, tick
-      """, (run_id,))
-      
-      data = {}
-      for tick, agent_id, lambda_val in cursor:
-          if agent_id not in data:
-              data[agent_id] = {'ticks': [], 'lambdas': []}
-          data[agent_id]['ticks'].append(tick)
-          data[agent_id]['lambdas'].append(lambda_val)
-      
-      conn.close()
-      
-      for agent_id, values in data.items():
-          plt.plot(values['ticks'], values['lambdas'], label=f'Agent {agent_id}')
-      
-      plt.xlabel('Tick')
-      plt.ylabel('λ (Marginal Utility of Money)')
-      plt.title('KKT λ Convergence')
-      plt.legend()
-      plt.grid(True)
-      plt.show()
-  
-  if __name__ == '__main__':
-      import sys
-      plot_lambda_trajectories(sys.argv[1], int(sys.argv[2]))
-  ```
-
-- [ ] **Test visualization**
-  ```bash
-  python scripts/plot_lambda_trajectories.py logs/telemetry.db 1
-  # Visually verify: λ values converge or stabilize
-  ```
-
----
-
-## Part 8: Documentation
-
-### 8.1) Document KKT mode
-
-- [ ] **Add section to README**
-  - Explain quasi-linear vs KKT mode
-  - When to use each
-  - Interpretation of λ in KKT mode
-
-- [ ] **Update typing overview**
-  - Document `lambda_update_rate` parameter
-  - Document `lambda_bounds` structure
-  - Document `lambda_changed` flag semantics
-
-### 8.2) Add inline documentation
-
-- [ ] **Document median-lower rule**
-- [ ] **Document cross-quote inference logic**
-- [ ] **Document smoothing rationale**
+- [ ] **Document tie-breaking in typing overview**
+- [ ] **Update SSOT with any refinements learned during implementation**
+- [ ] **Add examples to mode_schedule documentation showing regime interaction**
 
 ---
 
 ## Completion Criteria
 
-**Phase 3 is complete when**:
+**Phase 4 is complete when**:
 
-✅ KKT λ estimation implemented in HousekeepingSystem
-✅ Median-lower price aggregation tested and deterministic
-✅ λ smoothing with alpha parameter works correctly
-✅ λ clamping to bounds enforced
-✅ Cross-quote inference fallback implemented
-✅ λ updates logged to telemetry
-✅ Performance verified (no O(N²) paths)
-✅ λ convergence demonstrated in test scenarios
-✅ Visualization script works
-✅ All Phase 2 tests still pass
+✅ `exchange_regime = "mixed"` allows all six exchange pair types
+✅ Money-first tie-breaking implemented and tested
+✅ Mode × regime interaction works correctly (temporal × type control)
+✅ Test scenarios demonstrate mixed trades
+✅ Pair type distribution analysis works
+✅ Mode timeline visualization works
+✅ All Phase 3 tests still pass
+✅ Documentation updated with regime comparison
 
-**Ready for Phase 4 when**:
-- Can run KKT scenario and observe λ values stabilizing
-- Can plot λ trajectories showing convergence
-- Can verify determinism across multiple runs
-- Performance benchmarks show linear scaling
+**Ready for Phase 5 when**:
+- Can run mixed regime scenarios with both trade types
+- Can verify tie-breaking in logs
+- Can demonstrate mode_schedule + exchange_regime interaction
+- Telemetry shows correct active_pairs per tick
 
 ---
 
-**Estimated effort**: 10-14 hours
+**Estimated effort**: 8-10 hours
 
 See also:
-- `money_SSOT_implementation_plan.md` §6
-- `money_phase2_checklist.md` (prerequisite)
-- `money_telemetry_schema.md` (lambda_updates table)
+- `money_SSOT_implementation_plan.md` §7-8
+- `money_phase3_checklist.md` (prerequisite)
+- `money_telemetry_schema.md` (tick_states table)
 

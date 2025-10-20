@@ -66,31 +66,40 @@ When total surplus ties, apply money-first lexicographic ordering:
 - Created test scenario `money_test_basic.yaml`
 - **Success**: 152 tests passing (57 new money tests); E2E monetary trades working; conservation laws enforced
 
-### Phase 3: KKT λ Estimation
+## Revised Phase Sequence (October 20, 2025)
+
+**Core Quasilinear Track** (production-ready fixed λ):
+
+### Phase 3: Mixed Regimes (NEXT)
+- Enable all six exchange pairs in `mixed` regime
+- Implement money-first tie-breaking
+- Verify mode × regime interaction (temporal × type control)
+- **Uses quasilinear mode** (fixed λ) to validate on simple case first
+- **Success**: Both money and barter trades occur with correct priorities
+
+### Phase 4: Polish and Documentation
+- Enhance renderer: money visualization, mode overlays
+- Extend log viewer: money filters, mode timeline
+- Create demo scenarios showcasing different regimes (barter_only/money_only/mixed)
+- Complete user guide and technical documentation for quasilinear
+- **Success**: Production-ready quasilinear system with full observability
+
+**Advanced Features Track** (adaptive behavior, deferred):
+
+### Phase 6: KKT λ Estimation (ADVANCED)
 - Implement neighbor price collection and median-lower aggregation
 - Compute `λ_hat = min(MU_A/p̂_A, MU_B/p̂_B)`
 - Smooth: `λ_{t+1} = (1−α)·λ_t + α·λ̂` with bounds clamping
 - Add cross-quote inference fallback
+- Test with all three regimes
 - **Success**: λ converges deterministically, no O(N²) paths
 
-### Phase 4: Mixed Regimes
-- Enable all six exchange pairs in `mixed` regime
-- Implement money-first tie-breaking
-- Verify mode × regime interaction (temporal × type control)
-- **Success**: Both money and barter trades occur with correct priorities
-
-### Phase 5: Liquidity Gating
+### Phase 5: Liquidity Gating (ADVANCED)
 - Compute depth = count of distinct neighbor money quotes
 - Enable barter when depth < `min_quotes` threshold
 - Implement per-agent pair filtering based on local liquidity
+- Works with both quasilinear and KKT modes
 - **Success**: Agents fall back to barter in thin markets
-
-### Phase 6: Polish and Documentation
-- Enhance renderer: money visualization, mode overlays, λ heatmap
-- Extend log viewer: money filters, λ plots, mode timeline
-- Create 5 demo scenarios showcasing different regimes
-- Complete user guide and technical documentation
-- **Success**: Production-ready with full observability
 
 ## Critical Invariants
 
