@@ -100,7 +100,34 @@ This section provides a concrete, step-by-step implementation plan for the next 
 
 ---
 
-### **Milestone 4: Phase C — Prototype Posted-Price Market (The Payoff)**
+### **Milestone 4: Visualization Enhancements**
+
+**Goal**: Improve visual clarity and user experience in Pygame renderer.
+
+**Completed:**
+- [x] **Smart Co-location Rendering** (2025-10-19):
+    - Implemented geometric layouts for co-located agents (diagonal, triangle, corners, circle pack)
+    - Added proportional sprite scaling based on agent count
+    - Organized inventory label display for readability
+    - Pure visualization enhancement - simulation state unchanged
+    - 8 new tests in `tests/test_renderer_colocation.py`
+    - Demo scenario: `scenarios/visual_clarity_demo.yaml`
+
+**Future Enhancements:**
+- [ ] **Hover Tooltips** (Roadmap):
+    - **Action:** Add mouse hover detection to renderer
+    - **Details:** When hovering over co-located agents, display popup with full agent details (IDs, inventories, utilities)
+    - **Use Case:** Improves accessibility for cells with 4+ agents showing summary labels
+- [ ] **Trade Indicators**:
+    - **Action:** Draw animated lines between recently traded agents
+    - **Details:** Visual feedback showing which agents just completed trades
+- [ ] **Configurable Layouts**:
+    - **Action:** Add UI toggle for classic vs smart co-location rendering
+    - **Details:** Allow users to switch visualization styles in real-time
+
+---
+
+### **Milestone 5: Phase C — Prototype Posted-Price Market (The Payoff)**
 
 **Goal**: Implement a "Local Posted-Price Auction" mechanism as the first true market in VMT.
 

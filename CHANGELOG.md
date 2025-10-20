@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Smart Co-location Rendering** (2025-10-19): Enhanced Pygame renderer to intelligently handle multiple agents on the same grid cell
+  - When agents co-locate, sprites automatically scale down proportionally (2 agents = 75% size, 3 = 60%, 4 = 50%, etc.)
+  - Uses non-overlapping geometric layouts: diagonal (2 agents), triangle (3 agents), corners (4 agents), circle pack (5+ agents)
+  - Inventory labels organize automatically: single label for 1 agent, stacked labels for 2-3 agents, summary label for 4+ agents
+  - Pure visualization enhancement - simulation positions remain accurate in telemetry database
+  - Deterministic rendering: agents sorted by ID within each co-located group
+  - New test suite: `tests/test_renderer_colocation.py` with 8 tests covering geometric layouts and scaling
+  - Demo scenario: `scenarios/visual_clarity_demo.yaml` demonstrating the feature
+  - See: `docs/tmp/renderer_decolocation.md` for full design documentation
+
 ### Removed - BREAKING CHANGE
 - **Summary Logging Level Removed** (2025-10-19): Removed `LogLevel.SUMMARY` and `LogConfig.summary()` from telemetry system based on performance benchmark evidence showing minimal benefit (<3% in exchange scenarios) while removing valuable decision data.
   - **Breaking**: Code using `LogConfig.summary()` will raise `AttributeError`

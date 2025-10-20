@@ -3,10 +3,12 @@ Pygame visualization for VMT simulation.
 """
 
 import pygame
+import math
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from vmt_engine.simulation import Simulation
+    from vmt_engine.core import Agent
 
 
 class VMTRenderer:
@@ -200,56 +202,266 @@ class VMTRenderer:
                 )
                 self.screen.blit(label, (screen_x + 2, screen_y + 2))
     
-    def draw_agents(self):
-        """Draw agents as circles with camera offset and viewport culling."""
+    def group_agents_by_position(self) -> dict[tuple[int, int], list['Agent']]:
+        """
+        Group agents by their grid position for smart co-location rendering.
+        
+        Returns:
+            Dictionary mapping (x, y) position to list of agents at that position,
+            sorted by agent ID for deterministic rendering.
+        """
+        position_groups = {}
+        
         for agent in self.sim.agents:
-            x, y = agent.pos
+            pos = agent.pos
+            if pos not in position_groups:
+                position_groups[pos] = []
+            position_groups[pos].append(agent)
+        
+        # Sort agents within each group by ID for deterministic rendering
+        for pos in position_groups:
+            position_groups[pos].sort(key=lambda a: a.id)
+        
+        return position_groups
+    
+    def calculate_agent_radius(self, cell_size: int, agent_count: int) -> int:
+        """
+        Calculate optimal agent radius based on co-location count.
+        
+        Strategy:
+        - 1 agent: cell_size // 3 (current behavior)
+        - 2 agents: cell_size // 4 (75% scale)
+        - 3 agents: cell_size // 5 (60% scale)
+        - 4+ agents: cell_size // (count + 2) with floor of 2px
+        
+        Args:
+            cell_size: Size of grid cell in pixels
+            agent_count: Number of co-located agents
+            
+        Returns:
+            Radius in pixels (minimum 2px for visibility)
+        """
+        if agent_count == 1:
+            return max(2, cell_size // 3)
+        elif agent_count == 2:
+            return max(2, cell_size // 4)
+        elif agent_count == 3:
+            return max(2, cell_size // 5)
+        else:
+            return max(2, cell_size // (agent_count + 2))
+    
+    def calculate_agent_display_position(
+        self,
+        agent_index: int,
+        total_agents: int,
+        cell_center_x: int,
+        cell_center_y: int
+    ) -> tuple[int, int]:
+        """
+        Calculate display position for agent within a co-located group.
+        
+        Uses geometric layouts to minimize overlap:
+        - 1 agent: center (current behavior)
+        - 2 agents: diagonal opposite corners
+        - 3 agents: triangle pattern (one top, two bottom)
+        - 4 agents: one per corner
+        - 5+ agents: circle pack around center
+        
+        Args:
+            agent_index: Index of agent in sorted group (0 to total_agents-1)
+            total_agents: Total number of agents at this position
+            cell_center_x: Center x coordinate of cell in screen pixels
+            cell_center_y: Center y coordinate of cell in screen pixels
+            
+        Returns:
+            (px, py) display coordinates for this agent
+        """
+        if total_agents == 1:
+            # Single agent - use center (current behavior)
+            return (cell_center_x, cell_center_y)
+        
+        elif total_agents == 2:
+            # Two agents - opposite corners (diagonal)
+            # Agent 0: upper-left, Agent 1: lower-right
+            offset = self.cell_size // 4
+            if agent_index == 0:
+                return (cell_center_x - offset, cell_center_y - offset)
+            else:
+                return (cell_center_x + offset, cell_center_y + offset)
+        
+        elif total_agents == 3:
+            # Three agents - triangle pattern
+            # Angles: 90° (top), 210° (bottom-left), 330° (bottom-right)
+            offset = self.cell_size // 4
+            angles = [90, 210, 330]
+            angle_rad = math.radians(angles[agent_index])
+            px = cell_center_x + int(offset * math.cos(angle_rad))
+            py = cell_center_y - int(offset * math.sin(angle_rad))  # Negative because y increases downward
+            return (px, py)
+        
+        elif total_agents == 4:
+            # Four agents - one per corner
+            offset = self.cell_size // 4
+            corners = [
+                (-offset, -offset),  # Upper-left
+                (offset, -offset),   # Upper-right
+                (-offset, offset),   # Lower-left
+                (offset, offset),    # Lower-right
+            ]
+            dx, dy = corners[agent_index]
+            return (cell_center_x + dx, cell_center_y + dy)
+        
+        else:
+            # 5+ agents - circle pack around center
+            offset = self.cell_size // 3
+            angle_step = 360 / total_agents
+            angle_rad = math.radians(agent_index * angle_step)
+            px = cell_center_x + int(offset * math.cos(angle_rad))
+            py = cell_center_y - int(offset * math.sin(angle_rad))
+            return (px, py)
+    
+    def get_agent_color(self, agent: 'Agent') -> tuple[int, int, int]:
+        """
+        Get display color for agent based on utility type.
+        
+        Args:
+            agent: The agent to get color for
+            
+        Returns:
+            RGB color tuple
+        """
+        if agent.utility:
+            utility_type = agent.utility.__class__.__name__
+            if utility_type == "UCES":
+                return self.COLOR_GREEN
+            elif utility_type == "ULinear":
+                return self.COLOR_PURPLE
+            else:
+                return self.COLOR_YELLOW
+        return self.COLOR_BLACK
+    
+    def draw_group_inventory_labels(
+        self,
+        agents: list['Agent'],
+        screen_x: int,
+        screen_y: int,
+        agent_count: int
+    ):
+        """
+        Draw inventory labels for a group of co-located agents.
+        
+        Strategy:
+        - 1 agent: Label below agent (current behavior)
+        - 2-3 agents: Stack labels vertically below cell
+        - 4+ agents: Show "N agents" summary instead of individual inventories
+        
+        Args:
+            agents: List of co-located agents (sorted by ID)
+            screen_x: Screen x coordinate of cell top-left
+            screen_y: Screen y coordinate of cell top-left
+            agent_count: Number of agents in group
+        """
+        has_money = (
+            any(a.inventory.M > 0 for a in agents) or 
+            self.sim.params.get('exchange_regime') in ('money_only', 'mixed')
+        )
+        
+        cell_center_x = screen_x + self.cell_size // 2
+        cell_bottom_y = screen_y + self.cell_size
+        
+        if agent_count == 1:
+            # Single agent - draw inventory below (current behavior)
+            agent = agents[0]
+            if has_money:
+                inv_text = f"A:{agent.inventory.A} B:{agent.inventory.B} M:{agent.inventory.M}"
+            else:
+                inv_text = f"A:{agent.inventory.A} B:{agent.inventory.B}"
+            
+            inv_label = self.small_font.render(inv_text, True, self.COLOR_BLACK)
+            inv_width = inv_label.get_width()
+            self.screen.blit(inv_label, (cell_center_x - inv_width // 2, cell_bottom_y + 2))
+        
+        elif agent_count <= 3:
+            # 2-3 agents - stack labels vertically
+            for idx, agent in enumerate(agents):
+                if has_money:
+                    inv_text = f"[{agent.id}] A:{agent.inventory.A} B:{agent.inventory.B} M:{agent.inventory.M}"
+                else:
+                    inv_text = f"[{agent.id}] A:{agent.inventory.A} B:{agent.inventory.B}"
+                
+                inv_label = self.small_font.render(inv_text, True, self.COLOR_BLACK)
+                inv_width = inv_label.get_width()
+                y_offset = cell_bottom_y + 2 + (idx * 12)  # 12px spacing between labels
+                
+                # Check if label would go off screen
+                if y_offset + 12 <= self.height:
+                    self.screen.blit(inv_label, (cell_center_x - inv_width // 2, y_offset))
+        
+        else:
+            # 4+ agents - show summary only
+            summary_text = f"{agent_count} agents at ({agents[0].pos[0]}, {agents[0].pos[1]})"
+            summary_label = self.small_font.render(summary_text, True, self.COLOR_BLACK)
+            summary_width = summary_label.get_width()
+            self.screen.blit(summary_label, (cell_center_x - summary_width // 2, cell_bottom_y + 2))
+    
+    def draw_agents(self):
+        """
+        Draw agents with smart co-location handling.
+        
+        When multiple agents occupy the same cell, they are rendered with:
+        - Scaled-down size (proportional to agent count)
+        - Non-overlapping geometric layouts (diagonal, triangle, corners, circle pack)
+        - Organized inventory labels
+        
+        This is a pure visualization enhancement - simulation positions remain unchanged.
+        """
+        # Group agents by position
+        position_groups = self.group_agents_by_position()
+        
+        for pos, agents in position_groups.items():
+            x, y = pos
             screen_x, screen_y = self.to_screen_coords(x, y)
             
             # Skip if not visible
             if not self.is_visible(screen_x, screen_y):
                 continue
             
-            # Calculate center position
-            px = screen_x + self.cell_size // 2
-            py = screen_y + self.cell_size // 2
+            # Calculate cell center
+            cell_center_x = screen_x + self.cell_size // 2
+            cell_center_y = screen_y + self.cell_size // 2
             
-            # Color based on utility type
-            if agent.utility:
-                utility_type = agent.utility.__class__.__name__
-                if utility_type == "UCES":
-                    color = self.COLOR_GREEN
-                elif utility_type == "ULinear":
-                    color = self.COLOR_PURPLE
-                else:
-                    color = self.COLOR_YELLOW
-            else:
-                color = self.COLOR_BLACK
+            # Calculate optimal radius for this group size
+            agent_count = len(agents)
+            radius = self.calculate_agent_radius(self.cell_size, agent_count)
             
-            # Draw agent circle
-            radius = max(3, self.cell_size // 3)  # Minimum radius of 3px
-            pygame.draw.circle(self.screen, color, (px, py), radius)
-            pygame.draw.circle(self.screen, self.COLOR_BLACK, (px, py), radius, max(1, radius // 5))
+            # Draw each agent in the group
+            for idx, agent in enumerate(agents):
+                # Get display position for this agent
+                px, py = self.calculate_agent_display_position(
+                    idx, agent_count, cell_center_x, cell_center_y
+                )
+                
+                # Get agent color
+                color = self.get_agent_color(agent)
+                
+                # Draw agent circle
+                pygame.draw.circle(self.screen, color, (px, py), radius)
+                pygame.draw.circle(
+                    self.screen, self.COLOR_BLACK, (px, py), radius, 
+                    max(1, radius // 5)
+                )
+                
+                # Draw agent ID (if space permits)
+                if radius >= 5 and self.cell_size >= 15:
+                    id_label = self.small_font.render(str(agent.id), True, self.COLOR_BLACK)
+                    id_rect = id_label.get_rect(center=(px, py))
+                    self.screen.blit(id_label, id_rect)
             
-            # Draw agent ID (only if cell size is large enough)
-            if self.cell_size >= 15:
-                id_label = self.small_font.render(str(agent.id), True, self.COLOR_BLACK)
-                id_rect = id_label.get_rect(center=(px, py))
-                self.screen.blit(id_label, id_rect)
-            
-            # Draw inventory below agent (only if cell size is large enough)
+            # Draw inventory labels below the entire group
             if self.cell_size >= 20:
-                # Check if money system is active
-                has_money = agent.inventory.M > 0 or self.sim.params.get('exchange_regime') in ('money_only', 'mixed')
-                
-                if has_money:
-                    inv_text = f"A:{agent.inventory.A} B:{agent.inventory.B} M:{agent.inventory.M}"
-                else:
-                    inv_text = f"A:{agent.inventory.A} B:{agent.inventory.B}"
-                
-                inv_label = self.small_font.render(inv_text, True, self.COLOR_BLACK)
-                inv_width = inv_label.get_width()
-                self.screen.blit(inv_label, (px - inv_width // 2, py + radius + 2))
+                self.draw_group_inventory_labels(
+                    agents, screen_x, screen_y, agent_count
+                )
     
     def draw_trade_indicators(self):
         """Draw indicators for recent trades."""

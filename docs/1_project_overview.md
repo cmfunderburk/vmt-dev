@@ -88,12 +88,22 @@ python main.py scenarios/single_agent_forage.yaml 123
 
 ### Technical Excellence
 - **🔬 55 Passing Tests** - Comprehensive coverage including performance benchmarks
-- **🎮 Pygame Visualization** - Interactive real-time rendering
+- **🎮 Pygame Visualization** - Interactive real-time rendering with smart co-location handling
 - **🖥️ GUI Launcher** - Browse scenarios and create custom ones through forms
 - **📊 SQLite Telemetry** - High-performance database logging with an interactive viewer
 - **🎯 Deterministic** - Same seed → identical results every time
 - **⚙️ YAML Configuration** - Easy scenario customization
 - **⚡ Performance Optimized** - O(N) agent interactions via spatial indexing
+
+### Visualization Features
+- **👥 Smart Co-location Rendering** - When multiple agents occupy the same cell, they are automatically rendered with:
+  - Scaled-down sprites proportional to agent count (2 agents = 75% size, 3 = 60%, etc.)
+  - Non-overlapping geometric layouts (diagonal for 2, triangle for 3, corners for 4, circle pack for 5+)
+  - Organized inventory labels that remain readable
+  - Pure visualization enhancement - simulation positions remain accurate for telemetry
+- **📍 Visual Clarity** - Co-located agents are always distinguishable, making trades and resource competition easy to observe
+- **🎨 Color-Coded Agents** - Green for CES utility, Purple for Linear utility
+- **📊 Real-Time HUD** - Displays tick counter, agent count, total inventory, and recent trades
 
 ---
 

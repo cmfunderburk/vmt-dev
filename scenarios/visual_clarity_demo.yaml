@@ -1,0 +1,57 @@
+# Visual Clarity Demo - Smart Co-location Rendering
+#
+# This scenario demonstrates the renderer's smart co-location handling.
+# Due to the small grid size and multiple agents, co-location naturally occurs
+# during trading and foraging, showing how the visualization handles overlapping agents.
+#
+# Expected behavior:
+# - Agents that meet on the same cell render with scaled-down sprites
+# - Agents use non-overlapping geometric layouts (diagonal, triangle, corners)
+# - Inventory labels are organized and readable
+#
+# This is a pure visualization feature - simulation positions remain accurate.
+
+schema_version: 1
+name: "Visual Clarity Demo"
+N: 12  # Small grid to encourage co-location
+agents: 9  # Multiple agents to create trading opportunities
+
+# Diverse initial inventories to encourage trading
+initial_inventories:
+  A: [10, 2, 8, 3, 7, 4, 6, 5, 5]
+  B: [2, 10, 3, 8, 4, 7, 6, 5, 5]
+
+# Mix of utility types (CES and Linear) for visual variety
+utilities:
+  mix:
+    - {type: ces, weight: 0.7, params: {rho: 0.5, wA: 0.6, wB: 0.4}}
+    - {type: ces, weight: 0.2, params: {rho: 0.0, wA: 0.5, wB: 0.5}}  # Cobb-Douglas
+    - {type: linear, weight: 0.1, params: {vA: 1.0, vB: 1.0}}
+
+params:
+  spread: 0.1
+  vision_radius: 6
+  interaction_radius: 1
+  move_budget_per_tick: 1
+  dA_max: 5
+  forage_rate: 1
+  epsilon: 0.0001
+  beta: 0.95
+  # Resource regeneration
+  resource_growth_rate: 1
+  resource_max_amount: 8
+  resource_regen_cooldown: 10
+  trade_cooldown_ticks: 5
+
+# Light resource seeding to encourage both trading and foraging
+resource_seed:
+  density: 0.08
+  amount: 3
+
+# Instructions:
+# 1. Load this scenario in the launcher
+# 2. Run simulation and observe agents trading and foraging
+# 3. Notice when agents co-locate on same cell (after trades, at resources)
+# 4. Observe how co-located agents render distinctly with smart layouts
+# 5. Compare agent sizes and positions when alone vs. co-located
+
