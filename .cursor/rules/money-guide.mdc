@@ -49,12 +49,14 @@ The VMT money system is being implemented in 6 carefully planned phases to intro
 
 ### Phase Checklists
 Located in [docs/BIG/](mdc:docs/BIG/):
-- `money_phase1_checklist.md` - Infrastructure (no behavioral changes) ✅ COMPLETE
-- `money_phase2_checklist.md` - Monetary exchange basics (atomic approach: 2a, 2b, 2c)
 - `money_phase3_checklist.md` - KKT λ estimation
 - `money_phase4_checklist.md` - Mixed regimes
 - `money_phase5_checklist.md` - Liquidity gating
 - `money_phase6_checklist.md` - Polish and documentation
+
+### Completed Phases
+- **Phase 1**: Infrastructure (no behavioral changes) ✅ COMPLETE
+- **Phase 2**: Monetary exchange basics ✅ COMPLETE (committed Oct 19, 2025)
 
 ### Telemetry Schema
 **File**: [docs/BIG/money_telemetry_schema.md](mdc:docs/BIG/money_telemetry_schema.md)
@@ -187,13 +189,15 @@ Before requesting review:
 - **Tests failing**: Check determinism and sorting
 - **Performance regression**: Profile and check for O(N²) paths
 
-## Notes on Implementation Status
+## Implementation Status
 
-**As of 2025-10-19:**
+**As of October 20, 2025:**
 - **Phase 1**: ✅ COMPLETE - Infrastructure ready, no behavioral changes.
-- **Phase 2**: 🔄 REPLANNED - Now using atomic sub-phases (2a, 2b, 2c).
-- **Phases 3-6**: 📋 PLANNED - Awaiting Phase 2 completion.
-- **Testing**: All tests must pass
+- **Phase 2**: ✅ COMPLETE - Monetary exchange fully functional (A↔M, B↔M trades).
+  - Quasilinear money utility implemented
+  - Generic matching algorithm for all exchange pairs
+  - Regime-aware trading (barter_only/money_only/mixed)
+  - 152 tests passing (57 new money tests added)
+- **Phases 3-6**: 📋 PLANNED - Ready to begin Phase 3 (KKT λ estimation).
 
-See `docs/BIG/phase2_postmortem.md` for Phase 2 replanning rationale.
-Total estimated effort: 50-65 hours across all phases.
+Total estimated effort remaining: ~35-45 hours for phases 3-6.

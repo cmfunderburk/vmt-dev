@@ -51,34 +51,20 @@ When total surplus ties, apply money-first lexicographic ordering:
 ## Implementation Phases
 
 ### Phase 1: Infrastructure (No Behavioral Changes) ✅ COMPLETE
-- Add money fields with backward-compatible defaults ✅
-- Extend `Inventory` with `M: int = 0` ✅
-- Add `lambda_money`, `lambda_changed` to Agent state ✅
-- Extend telemetry schema (new columns, `tick_states` and `lambda_updates` tables) ✅
-- **Success**: All legacy scenarios run identically ✅
-- **Status**: Complete; all tests must pass
+- Money fields with backward-compatible defaults
+- Extended `Inventory` with `M: int = 0`
+- Added `lambda_money`, `lambda_changed` to Agent state
+- Extended telemetry schema (new columns, `tick_states` and `lambda_updates` tables)
+- **Success**: All legacy scenarios run identically
 
-### Phase 2: Monetary Exchange Basics (Atomic Sub-phases) 🔄 REPLANNED
-Phase 2 has been restructured into three atomic sub-phases after initial attempt:
-
-#### Phase 2a: Data Structures (No Behavior Change)
-- Add `u_goods`, `mu_A`, `mu_B` methods; `u_total` function
-- Change `Agent.quotes` to `dict[str, float]`
-- Implement `compute_quotes` returning all barter + money pairs
-- Add `filter_quotes_by_regime` helper
-- **Gate**: All 78 legacy tests still pass
-
-#### Phase 2b: Generic Matching (Isolated)
-- Implement `find_compensating_block_generic`
-- Create `find_best_trade` for surplus maximization
-- Add `execute_trade` with inventory updates
-- **Gate**: Unit tests with mock agents pass
-
-#### Phase 2c: Integration
-- Integrate generic matching into `TradeSystem`
-- Decouple `DecisionSystem` (targeting only)
-- Create `scenarios/money_test_basic.yaml`
-- **Gate**: E2E tests verify monetary trades, conservation
+### Phase 2: Monetary Exchange Basics ✅ COMPLETE
+- Implemented quasilinear money utility: U = U_goods(A,B) + λ*M
+- Added money-aware utility API: `u_goods()`, `mu_A()`, `mu_B()`, `u_total()`
+- Changed `Agent.quotes` from dataclass to `dict[str, float]` with 8+ keys
+- Implemented generic matching: `find_compensating_block_generic()` for A↔M, B↔M, A↔B
+- Added regime-aware trading (barter_only/money_only/mixed)
+- Created test scenario `money_test_basic.yaml`
+- **Success**: 152 tests passing (57 new money tests); E2E monetary trades working; conservation laws enforced
 
 ### Phase 3: KKT λ Estimation
 - Implement neighbor price collection and median-lower aggregation

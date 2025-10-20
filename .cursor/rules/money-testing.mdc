@@ -14,8 +14,8 @@ description: Testing requirements and validation strategies for money implementa
 - Backward compatibility: legacy scenarios unchanged unless explicitly authorized
 
 ## Phase Gates
-- Phase 1: No behavioral changes to legacy scenarios (complete)
-- Phase 2: Basic money trades working (2a/2b/2c sub‑phases)
+- Phase 1: No behavioral changes to legacy scenarios ✅ COMPLETE
+- Phase 2: Basic money trades working ✅ COMPLETE (152 tests passing)
 - Phase 3: λ convergence demonstrated (deterministic)
 - Phase 4: Mixed regime trade types verified; tie‑breaking
 - Phase 5: Liquidity gating validated in heterogeneous density
