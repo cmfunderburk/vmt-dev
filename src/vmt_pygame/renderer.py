@@ -458,10 +458,11 @@ class VMTRenderer:
                     self.screen.blit(id_label, id_rect)
             
             # Draw inventory labels below the entire group
-            if self.cell_size >= 20:
-                self.draw_group_inventory_labels(
-                    agents, screen_x, screen_y, agent_count
-                )
+            # Disabled to reduce visual clutter - inventory inspection feature coming soon
+            # if self.cell_size >= 20:
+            #     self.draw_group_inventory_labels(
+            #         agents, screen_x, screen_y, agent_count
+            #     )
     
     def draw_trade_indicators(self):
         """Draw indicators for recent trades."""
