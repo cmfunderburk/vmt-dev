@@ -2,9 +2,18 @@
 
 Author: VMT Assistant
 Date: 2025-10-19
-Last Updated: 2025-10-19
+Last Updated: 2025-10-20
 
 This SSOT specifies the authoritative implementation plan for introducing money into the VMT engine in alignment with approved decisions. It supersedes prior exploratory notes. No code changes should be made outside this plan without updating this document first.
+
+**Implementation Status (as of 2025-10-20):**
+- ✅ **Phase 1 Complete** — Money infrastructure (schema, state, telemetry) with zero behavioral impact
+- ✅ **Phase 2 Complete** — Bilateral monetary exchange (quasilinear utility, generic matching, A↔M/B↔M trades)
+- ⏳ **Phase 3 Planned** — KKT adaptive lambda (neighbor price aggregation, λ smoothing)
+- ⏳ **Phase 4 Planned** — Market maker and centralized clearing
+- ⏳ **Phase 5-6 Planned** — Advanced features (liquidity gates, labor markets, cross-mode dynamics)
+
+See `PHASE1_COMPLETION_SUMMARY.md` and `PHASE2_PR_DESCRIPTION.md` for detailed completion reports.
 
 ---
 

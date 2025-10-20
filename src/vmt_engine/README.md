@@ -12,9 +12,13 @@ Seven-phase tick (fixed order)
    - Uses SpatialIndex.query_radius for O(N) average proximity checks.
 
 2) Decision
-   - Prefer trade when there is positive surplus; otherwise select a forage target.
-   - Partner choice: choose best surplus among visible neighbors, breaking ties by lowest partner id; skip partners in cooldown.
-   - Records target position (peer to trade with, or resource to forage) for the movement phase.
+   - Three-pass pairing algorithm:
+     - Pass 1: Build ranked preference lists (distance-discounted surplus = surplus × β^distance)
+     - Pass 2: Establish mutual consent pairings (both agents prefer each other)
+     - Pass 3: Surplus-based greedy fallback (highest-surplus unmatched pairs)
+   - Resource claiming: agents claim forage targets to reduce clustering; stale claims cleared at tick start
+   - Paired agents maintain exclusive commitment; unpaired agents select best available target
+   - Records target position and pairing state for movement phase
 
 3) Movement
    - Manhattan steps up to move_budget_per_tick toward target.
@@ -23,35 +27,48 @@ Seven-phase tick (fixed order)
    - Updates the SpatialIndex after movement.
 
 4) Trade
-   - Construct candidate pairs within interaction_radius using SpatialIndex.query_pairs_within_radius.
-   - Sort pairs by (min_id, max_id) and attempt at most one trade per pair per tick.
-   - Price search is discrete and compensating: scan ΔA ∈ [1..dA_max]; for each ΔA, try candidate prices in [ask, bid] that are likely to yield integer ΔB.
-   - Map price to quantity with round-half-up: ΔB = floor(price*ΔA + 0.5).
-   - If no feasible block, set mutual cooldown until tick + trade_cooldown_ticks.
+   - Only paired agents within interaction_radius attempt trades (commitment model)
+   - Generic money-aware matching: selects best exchange pair (A↔B, A↔M, or B↔M) based on exchange_regime
+     - "barter_only": Only A↔B trades (default, backward compatible)
+     - "money_only": Only A↔M and B↔M trades
+     - "mixed": All exchange pairs allowed
+   - Price search is discrete and compensating: scan ΔA ∈ [1..dA_max]; for each ΔA, try candidate prices in [ask, bid]
+   - Map price to quantity with round-half-up: ΔB = floor(price*ΔA + 0.5)
+   - First-acceptable-trade principle: accept first (ΔA, ΔB, price) with ΔU > 0 for both
+   - Successful trades maintain pairing; failed trades unpair and set cooldown until tick + trade_cooldown_ticks
 
 5) Forage
-   - If no trade target, agents harvest up to forage_rate units from their current cell when resources are available.
+   - Paired agents skip foraging (exclusive commitment to trading partner)
+   - Unpaired agents harvest up to forage_rate units from their current cell when resources are available
+   - Single-harvester enforcement: first agent (by ID order) at a cell claims the harvest for that tick
 
 6) Resource Regeneration
    - Regenerate resources per cell using resource_growth_rate, resource_max_amount, and resource_regen_cooldown.
 
 7) Housekeeping
-   - Refresh quotes only for agents whose inventory_changed flag is set.
-   - Batch telemetry: agent snapshots and resource snapshots according to LogConfig.
+   - Refresh quotes only for agents whose inventory_changed or lambda_changed flags are set
+   - Pairing integrity checks: detect and repair asymmetric pairings
+   - Lambda updates (KKT mode, Phase 3+): adaptive marginal utility estimation from neighbor prices
+   - Batch telemetry: agent snapshots, resource snapshots, tick states according to LogConfig
 
 Determinism rules (must hold everywhere)
-- Always process agents sorted by agent.id.
-- Always process trade pairs sorted by (min_id, max_id).
-- Do not mutate quotes mid-tick; quotes refresh in Housekeeping only.
-- Exactly one trade attempt per pair per tick; failed attempts set mutual cooldown.
-- Use SpatialIndex for proximity queries; avoid O(N^2) scans.
-- When mapping prices to integer quantities, use round-half-up: floor(x + 0.5).
+- Always process agents sorted by agent.id
+- Always process trade pairs sorted by (min_id, max_id)
+- Do not mutate quotes mid-tick; quotes refresh in Housekeeping only
+- Pairing establishes exclusive commitment until unpair event
+- Successful trades maintain pairing; failed trades unpair and set mutual cooldown
+- Use SpatialIndex for proximity queries; avoid O(N^2) scans
+- When mapping prices to integer quantities, use round-half-up: floor(x + 0.5)
+- Preference ranking uses distance-discounted surplus: surplus × β^distance
+- Fallback pairing uses surplus-based greedy matching for welfare maximization
 
 Type and invariant contracts
-- Inventories, resources, positions, ΔA and ΔB are integers.
-- Spatial parameters (vision_radius, interaction_radius, move_budget_per_tick) are integers.
-- Utility values and prices are floats.
-- Quote constraints: ask_A_in_B ≥ p_min and bid_A_in_B ≤ p_max.
+- Inventories (A, B, M), resources, positions, ΔA, ΔB, ΔM are integers
+- Money holdings (M) stored in minor units (e.g., cents); money_scale parameter for conversion
+- Spatial parameters (vision_radius, interaction_radius, move_budget_per_tick) are integers
+- Utility values, prices, lambda_money are floats
+- Quote constraints: ask ≥ p_min and bid ≤ p_max for all exchange pairs
+- Agent.quotes is dict[str, float] with keys for active exchange pairs (e.g., "ask_A_in_B", "bid_A_in_M")
 
 Data flow
 - YAML scenario → scenarios/loader.py → Simulation(...)
@@ -71,9 +88,13 @@ Quickstart
   sim.run(max_ticks=100)
 
 Implementation tips
-- Keep loops deterministically ordered; avoid nondeterministic dict iteration for side effects.
-- Set agent.inventory_changed = True when inventories mutate; quotes are recomputed in Housekeeping only.
-- Use SpatialIndex for all proximity and pair constructions.
-- Be strict about integer math for goods, positions, and discrete trade quantities.
+- Keep loops deterministically ordered; avoid nondeterministic dict iteration for side effects
+- Set agent.inventory_changed = True when inventories mutate; quotes are recomputed in Housekeeping only
+- Set agent.lambda_changed = True when lambda updates occur (KKT mode)
+- Use SpatialIndex for all proximity and pair constructions
+- Be strict about integer math for goods, positions, and discrete trade quantities
+- Pairing state (paired_with_id) persists across ticks until unpair event
+- Preference lists (_preference_list) are cleared each tick after logging
+- Money-aware code should check exchange_regime to determine allowed exchange pairs
 
 

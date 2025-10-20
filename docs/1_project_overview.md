@@ -1,12 +1,12 @@
 # VMT - Visualizing Microeconomic Theory
 
-[![Tests](https://img.shields.io/badge/tests-54%2B%2F54%2B%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-75%2B%2F75%2B%20passing-brightgreen)]()
 [![Python](https://img.shields.io/badge/python-3.11-blue)]()
 [![GUI](https://img.shields.io/badge/GUI-PyQt5-green)]()
 
 **A spatial agent-based simulation for teaching and researching microeconomic behavior through visualization.**
 
-Agents with heterogeneous preferences forage for resources on a grid and engage in bilateral barter trade using reservation-price-based negotiation. The system successfully demonstrates complex economic phenomena including price discovery, gains from trade, and sustainable resource management.
+Agents with heterogeneous preferences forage for resources on a grid and engage in bilateral trade (barter or monetary exchange) using reservation-price-based negotiation. The system demonstrates complex economic phenomena including price discovery, gains from trade, pairing dynamics, and sustainable resource management.
 
 <p align="center">
   <img src="https://img.shields.io/badge/🎯-Agents%20Successfully%20Trading-success" />
@@ -67,6 +67,7 @@ python main.py scenarios/single_agent_forage.yaml 123
 | **S** | Single step (when paused) |
 | **R** | Reset simulation |
 | **+/-** | Adjust speed |
+| **T** | Toggle target arrows (show agent targets and pairings) |
 | **Q/ESC** | Quit |
 
 ---
@@ -76,26 +77,35 @@ python main.py scenarios/single_agent_forage.yaml 123
 ### Economic Systems
 - **🎲 CES Utility Functions** - Constant elasticity of substitution (including Cobb-Douglas)
 - **📏 Linear Utility Functions** - Perfect substitutes
+- **💱 Generic Matching Algorithm** - Supports barter (A↔B) and monetary exchange (A↔M, B↔M)
+- **💰 Money System (Phases 1-2)** - Quasilinear utility with configurable exchange regimes
+- **🤝 Trade Pairing** - Three-pass algorithm with mutual consent and surplus-based fallback
 - **💱 Price Search Algorithm** - Finds mutually beneficial prices despite integer rounding
-- **🤝 Bilateral Barter** - One-on-one negotiation with compensating multi-lot rounding
-- **📈 Reservation Pricing** - True economic reservation prices (zero bid-ask spread)
+- **📈 Reservation Pricing** - True economic reservation prices (zero bid-ask spread default)
 
 ### Behavioral Systems
 - **🌾 Foraging** - Distance-discounted utility-seeking movement
+- **🏷️ Resource Claiming** - Agents claim forage targets to reduce clustering (enabled by default)
 - **♻️ Resource Regeneration** - Sustainable resource management with cooldowns
+- **🤝 Trade Pairing** - Agents form committed bilateral partnerships until opportunities exhausted
 - **⏰ Trade Cooldown** - Prevents futile re-targeting when trades impossible
-- **🎯 Partner Selection** - Surplus-based matching with mutual improvement checks
+- **🎯 Partner Selection** - Distance-discounted surplus ranking with three-pass pairing algorithm
 
 ### Technical Excellence
-- **🔬 55 Passing Tests** - Comprehensive coverage including performance benchmarks
-- **🎮 Pygame Visualization** - Interactive real-time rendering with smart co-location handling
+- **🔬 75+ Passing Tests** - Comprehensive coverage including pairing, money, and performance benchmarks
+- **🎮 Pygame Visualization** - Interactive real-time rendering with smart co-location and target arrows
 - **🖥️ GUI Launcher** - Browse scenarios and create custom ones through forms
-- **📊 SQLite Telemetry** - High-performance database logging with an interactive viewer
+- **📊 SQLite Telemetry** - High-performance database logging with interactive PyQt5 viewer
 - **🎯 Deterministic** - Same seed → identical results every time
 - **⚙️ YAML Configuration** - Easy scenario customization
-- **⚡ Performance Optimized** - O(N) agent interactions via spatial indexing
+- **⚡ Performance Optimized** - O(N) agent interactions via spatial indexing and trade pairing
 
 ### Visualization Features
+- **🎯 Target Arrows** - Press **T** to toggle visualization of agent targets and pairings:
+  - Shows which agents are targeting each other for trade
+  - Highlights paired agents with distinct arrow colors
+  - Displays forage targets with resource-colored arrows
+  - Helps understand decision-making and commitment dynamics
 - **👥 Smart Co-location Rendering** - When multiple agents occupy the same cell, they are automatically rendered with:
   - Scaled-down sprites proportional to agent count (2 agents = 75% size, 3 = 60%, etc.)
   - Non-overlapping geometric layouts (diagonal for 2, triangle for 3, corners for 4, circle pack for 5+)
@@ -109,7 +119,19 @@ python main.py scenarios/single_agent_forage.yaml 123
 
 ## 📊 Telemetry & Analysis
 
-As of v1.1, VMT uses a high-performance **SQLite database** for all logging, replacing the legacy CSV system. This results in a ~99% reduction in log file size and enables sub-second data queries.
+VMT uses a high-performance **SQLite database** (`./logs/telemetry.db`) for all logging. This results in a ~99% reduction in log file size compared to legacy CSV systems and enables sub-second data queries.
+
+### Database Schema
+
+The telemetry database includes comprehensive tables:
+- **`simulation_runs`** — Run metadata with exchange_regime, money_mode
+- **`agent_snapshots`** — Per-tick agent state (position, inventory, utility, quotes, lambda)
+- **`trades`** — Successful trades with exchange pair type, money transfers, surplus decomposition
+- **`decisions`** — Agent decision outcomes with pairing status
+- **`pairings`** — Pairing/unpairing events with reason codes
+- **`preferences`** — Agent preference rankings (top 3 by default)
+- **`tick_states`** — Per-tick mode and regime state
+- **`resource_snapshots`** — Grid resource state over time
 
 ### Interactive Log Viewer
 
@@ -120,10 +142,11 @@ python view_logs.py
 ```
 
 The viewer allows you to:
-- Scrub through the simulation timeline tick-by-tick.
-- Analyze individual agent states, trajectories, and trade histories.
-- Visualize trade attempts and statistics.
-- Export data to CSV for external analysis.
+- Scrub through the simulation timeline tick-by-tick
+- Analyze individual agent states, trajectories, and trade histories
+- Visualize trade attempts and statistics with full money/pairing context
+- Filter by exchange regime, pairing status, and trade type
+- Export data to CSV for external analysis
 
 ### Python API
 
@@ -207,6 +230,68 @@ resource_seed:
   density: 0.15                  # Fraction of cells with resources
   amount: 3                      # Initial resource amount
 ```
+
+---
+
+## 🏷️ Resource Claiming
+
+**Enabled by default** (`enable_resource_claiming: true`), the resource claiming system coordinates agent foraging to reduce inefficient clustering:
+
+- **Claiming Mechanism**: During the Decision phase, agents **claim** forage targets by recording `resource_claims[position] = agent_id`
+- **Claim Filtering**: Other agents see claimed resources as unavailable and select alternatives
+- **Deterministic**: Lower-ID agents claim resources first (processed in ID order)
+- **Stale Clearing**: Claims expire when agents reach the resource or change targets
+- **Single-Harvester**: Only the first agent (by ID) at a cell harvests per tick (`enforce_single_harvester: true`)
+- **Benefits**: Reduces clustering; increases spatial distribution; improves resource utilization
+
+See [Technical Manual](./2_technical_manual.md#resource-claiming-system) for implementation details.
+
+---
+
+## 💰 Money System (Phases 1-2)
+
+VMT implements a money system with **quasilinear utility** and configurable **exchange regimes**:
+
+### Exchange Regimes
+
+The `exchange_regime` parameter controls allowed exchange types:
+- **`"barter_only"`** (default) — Only A↔B trades; backward compatible with legacy scenarios
+- **`"money_only"`** — Only A↔M and B↔M trades (goods for money)
+- **`"mixed"`** — All exchange pairs allowed; generic matching selects highest-surplus pair
+
+### Quasilinear Utility
+
+U_total = U_goods(A, B) + λ·M
+
+Where:
+- **U_goods** — Utility from goods (CES or Linear)
+- **λ** (`lambda_money`) — Marginal utility of money (default: 1.0)
+- **M** — Money holdings in minor units (e.g., cents)
+
+### Configuration Example
+
+```yaml
+initial_inventories:
+  A: { uniform_int: [5, 15] }
+  B: { uniform_int: [5, 15] }
+  M: 100  # Give each agent 100 units of money
+
+params:
+  exchange_regime: "mixed"         # Allow all exchange types
+  money_mode: "quasilinear"        # Fixed lambda (Phases 1-2)
+  money_scale: 1                   # Minor units scale
+  lambda_money: 1.0                # Marginal utility of money
+```
+
+### Telemetry
+
+Money trades are logged with full context:
+- **`trades.dM`** — Money transfer amount
+- **`trades.exchange_pair_type`** — "A<->B", "A<->M", "B<->M"
+- **`trades.buyer_lambda`**, **`trades.seller_lambda`** — Lambda values at trade time
+- **`tick_states.active_pairs`** — JSON array of active exchange pairs per tick
+
+See [Technical Manual](./2_technical_manual.md#money-system-phases-1-2) and [Type Specification](./4_typing_overview.md#7-money--market-contracts) for complete details.
 
 ---
 
