@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Target Arrow Visualization** (2025-10-20): Implemented visual indicators for agent movement intentions in Pygame renderer
+  - Color-coded arrows show agent targets: green for trade targets (agent pursuing another agent), orange for forage targets (agent pursuing resources)
+  - Red borders highlight idle agents (no target)
+  - Keyboard toggle controls: T (trade arrows), F (forage arrows), A (all on), O (all off)
+  - HUD status display shows current arrow mode: "Arrows: OFF", "Arrows: Trade", "Arrows: Forage", or "Arrows: Trade+Forage"
+  - Performance: O(N) rendering with viewport culling for large grids
+  - Default state: arrows disabled for clean initial view
+  - Arrow rendering methods: `draw_arrow()`, `draw_target_arrows()`, `draw_idle_agent_borders()`
+  - Helps visualize agent decision-making and coordination dynamics
+  - Implementation: `src/vmt_pygame/renderer.py` (arrow rendering), `main.py` (keyboard controls)
+  - See: `docs/tmp/target_arrows_brainstorm.md` for design exploration, `docs/tmp/target_arrows_implementation.md` for implementation summary
+
 - **Resource Claiming System** (2025-10-20): Implemented resource claiming mechanism to reduce inefficient agent clustering at resource cells
   - Agents claim resources during Decision phase (Phase 2), preventing other agents from targeting the same resource
   - Claims expire when agent reaches resource or changes target
@@ -53,6 +65,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Nothing yet
+
+---
+
+### Summary of Recent Enhancements (2025-10-19 to 2025-10-20)
+
+This release period introduced three major visualization and coordination features:
+1. **Target Arrow Visualization**: Shows agent movement intentions with color-coded arrows
+2. **Resource Claiming System**: Reduces agent clustering through coordination mechanism
+3. **Smart Co-location Rendering**: Intelligently displays multiple agents on same cell
+
+**Test Status**: 169/169 passing (up from 152, +17 new tests)  
+**Performance**: No regressions detected, all features maintain O(N) complexity  
+**Backward Compatibility**: All features either opt-in or automatic enhancements
+
+See `docs/IMPLEMENTATION_REVIEW_2025-10-20.md` for comprehensive review.
 
 ---
 

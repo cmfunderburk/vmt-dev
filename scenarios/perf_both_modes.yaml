@@ -139,7 +139,7 @@ utilities:
 
 params:
   # Economic
-  spread: 0.05
+  spread: 0.00
   dA_max: 5
   epsilon: 0.001
   
