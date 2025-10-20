@@ -353,10 +353,20 @@ def trade_pair(agent_i: 'Agent', agent_j: 'Agent', params: dict[str, Any],
     )
     
     if block is None:
-        # Trade failed - set cooldown for both agents
+        # Trade failed - UNPAIR and set cooldown
+        # This means trade opportunities are exhausted
+        agent_i.paired_with_id = None
+        agent_j.paired_with_id = None
+        
         cooldown_until = tick + params['trade_cooldown_ticks']
         agent_i.trade_cooldowns[agent_j.id] = cooldown_until
         agent_j.trade_cooldowns[agent_i.id] = cooldown_until
+        
+        # Log unpair event
+        telemetry.log_pairing_event(
+            tick, agent_i.id, agent_j.id, "unpair", "trade_failed"
+        )
+        
         return False  # No feasible block
     
     dA, dB, actual_price = block  # Returns the price that worked
@@ -374,6 +384,9 @@ def trade_pair(agent_i: 'Agent', agent_j: 'Agent', params: dict[str, Any],
     # Mark that inventories changed (quotes will be refreshed in housekeeping)
     agent_i.inventory_changed = True
     agent_j.inventory_changed = True
+    
+    # REMAIN PAIRED - agents will attempt another trade next tick
+    # This is critical for O(N) performance
     
     return True
 

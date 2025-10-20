@@ -1,0 +1,151 @@
+---
+alwaysApply: true
+---
+
+# Trade Pairing Critical Invariants
+
+**Active during trade pairing implementation.**
+
+## 🚨 NEVER Break These Rules
+
+### 1. Pairing Persistence
+**Agents MUST remain paired after successful trade.**
+
+```python
+# ✅ CORRECT in trade_pair()
+if result is None:
+    # Unpair only when opportunities exhausted
+    agent_i.paired_with_id = None
+    agent_j.paired_with_id = None
+else:
+    execute_trade(agent_i, agent_j, result)
+    # NO UNPAIR - they remain paired for next tick
+
+# ❌ WRONG - destroys O(N) performance
+if result is None:
+    agent_i.paired_with_id = None  # unpair on failure
+else:
+    execute_trade(agent_i, agent_j, result)
+    agent_i.paired_with_id = None  # ❌ NEVER DO THIS
+    agent_j.paired_with_id = None  # ❌ NEVER DO THIS
+```
+
+### 2. Intra-Tick Mutual Consent
+**Pass 2 must use current-tick data (set in Pass 1).**
+
+```python
+# ✅ CORRECT - Pass 1 sets target_agent_id, Pass 2 reads it same tick
+# Pass 1:
+agent.target_agent_id = partner_id  # Sets during target selection
+
+# Pass 2:
+if partner.target_agent_id == agent.id:  # Reads current-tick value
+    # Establish pairing
+
+# ❌ WRONG - reading stale data from previous tick
+if partner.target_agent_id == agent.id:  # Before Pass 1 runs
+    # One-tick lag problem!
+```
+
+### 3. Both Surpluses in Telemetry
+**Pairing events must log both agents' surpluses.**
+
+```python
+# ✅ CORRECT
+surplus_i = compute_surplus(agent, partner)
+surplus_j = compute_surplus(partner, agent)
+log_pairing_event(tick, agent.id, partner.id, "pair", reason, surplus_i, surplus_j)
+
+# ❌ WRONG - ambiguous for mutual pairings
+log_pairing_event(tick, agent.id, partner.id, "pair", reason, surplus)  # Which agent's surplus?
+```
+
+### 4. Agent Loop Ordering
+**All agent iterations must use ID order.**
+
+```python
+# ✅ CORRECT
+for agent in sorted(sim.agents, key=lambda a: a.id):
+    # Process agent
+
+# ❌ WRONG - breaks determinism
+for agent in sim.agents:  # Iteration order undefined
+    # Process agent
+```
+
+### 5. Preference List Structure
+**Must include all four values for proper ranking and logging.**
+
+```python
+# ✅ CORRECT
+candidates.append((neighbor_id, surplus, discounted_surplus, distance))
+
+# ❌ WRONG - missing data for telemetry
+candidates.append((neighbor_id, surplus))
+```
+
+---
+
+## Implementation Phase Checklist
+
+When modifying [DecisionSystem](mdc:src/vmt_engine/systems/decision.py):
+- [ ] Three passes execute in order (target selection → mutual consent → fallback)
+- [ ] Pass 1 clears `_preference_list` at start
+- [ ] Pass 1 sets `target_agent_id` for all unpaired agents
+- [ ] Pass 2 reads `target_agent_id` from current tick (not stale)
+- [ ] Pass 3 sorts by `(-discounted_surplus, agent_id, partner_id)`
+- [ ] Pass 4 logs to both `decisions` and `preferences` tables
+
+When modifying [TradeSystem](mdc:src/vmt_engine/systems/trading.py):
+- [ ] Only process agents where `paired_with_id is not None`
+- [ ] Unpair ONLY when `find_compensating_block()` returns None
+- [ ] Remain paired after successful trade execution
+- [ ] Log unpair event with reason "trade_failed" when opportunities exhausted
+
+When modifying [MovementSystem](mdc:src/vmt_engine/systems/movement.py):
+- [ ] Paired agents target `partner.pos`, not `agent.target_pos`
+
+When modifying [ForageSystem](mdc:src/vmt_engine/systems/foraging.py):
+- [ ] Skip agents where `paired_with_id is not None`
+
+When modifying telemetry ([db_loggers.py](mdc:src/telemetry/db_loggers.py)):
+- [ ] `pairings` table has `surplus_i` and `surplus_j` columns
+- [ ] `preferences` table logs top 3 by default (configurable)
+- [ ] `decisions` table has `is_paired` column
+
+---
+
+## Database Migration Required
+
+⚠️ **After schema changes, delete logs/telemetry.db:**
+```bash
+rm logs/telemetry.db
+```
+
+VMT does not auto-migrate schemas. Missing columns cause runtime errors.
+
+---
+
+## Quick Verification
+
+**Check pairing persistence:**
+```python
+# Run test scenario with adjacent agents A-B
+# Tick 1: Pair establishes
+# Tick 2: Trade succeeds → BOTH MUST REMAIN PAIRED
+# Tick 3: Trade succeeds → BOTH MUST REMAIN PAIRED
+# Tick N: Trade fails → UNPAIR and set cooldown
+```
+
+**Check determinism:**
+```python
+# Run same scenario with same seed 10 times
+# All pairing events, preferences, trades must be identical
+```
+
+**Check performance:**
+```python
+# Baseline: O(N²) pair checks
+# With pairing: O(N) decision + O(P) trade where P ≈ N/2
+# Expected: 5-8× speedup minimum
+```

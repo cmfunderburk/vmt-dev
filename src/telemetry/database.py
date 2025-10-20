@@ -136,6 +136,7 @@ class TelemetryDatabase:
                 alternatives TEXT,
                 mode TEXT,
                 claimed_resource_pos TEXT DEFAULT NULL,
+                is_paired INTEGER DEFAULT 0,
                 FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id)
             )
         """)
@@ -282,6 +283,58 @@ class TelemetryDatabase:
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_lambda_updates_run_agent 
             ON lambda_updates(run_id, agent_id, tick)
+        """)
+        
+        # Trade pairing tables
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS pairings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id INTEGER NOT NULL,
+                tick INTEGER NOT NULL,
+                agent_i INTEGER NOT NULL,
+                agent_j INTEGER NOT NULL,
+                event TEXT NOT NULL,
+                reason TEXT NOT NULL,
+                surplus_i REAL,
+                surplus_j REAL,
+                FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id)
+            )
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_pairings_run_tick 
+            ON pairings(run_id, tick)
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_pairings_agents 
+            ON pairings(run_id, agent_i, agent_j)
+        """)
+        
+        # Preference rankings (top 3 by default, or all if log_full_preferences=True)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS preferences (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id INTEGER NOT NULL,
+                tick INTEGER NOT NULL,
+                agent_id INTEGER NOT NULL,
+                partner_id INTEGER NOT NULL,
+                rank INTEGER NOT NULL,
+                surplus REAL NOT NULL,
+                discounted_surplus REAL NOT NULL,
+                distance INTEGER NOT NULL,
+                FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id)
+            )
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_preferences_run_tick 
+            ON preferences(run_id, tick)
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_preferences_agent 
+            ON preferences(run_id, agent_id, tick)
         """)
 
         self.conn.commit()

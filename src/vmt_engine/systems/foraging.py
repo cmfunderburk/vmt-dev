@@ -18,6 +18,10 @@ class ForageSystem:
         
         # Process agents in ID order (deterministic)
         for agent in sorted(sim.agents, key=lambda a: a.id):
+            # Skip paired agents (exclusive commitment to trading)
+            if agent.paired_with_id is not None:
+                continue
+            
             pos = agent.pos
             
             # Skip if this resource was already harvested this tick

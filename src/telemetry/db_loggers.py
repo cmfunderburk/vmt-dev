@@ -45,6 +45,8 @@ class TelemetryManager:
         self._decision_buffer: list = []
         self._trade_buffer: list = []
         self._trade_attempt_buffer: list = []
+        self._pairing_buffer: list = []
+        self._preference_buffer: list = []
         
         # For renderer compatibility
         self.recent_trades_for_renderer: list = []
@@ -170,7 +172,8 @@ class TelemetryManager:
                      surplus_with_partner: Optional[float], target_type: str,
                      target_x: Optional[int], target_y: Optional[int],
                      num_neighbors: int, alternatives: str = "", mode: str = "both",
-                     claimed_resource_pos: Optional[tuple[int, int]] = None):
+                     claimed_resource_pos: Optional[tuple[int, int]] = None,
+                     is_paired: bool = False):
         """
         Log an agent's decision.
         
@@ -186,6 +189,7 @@ class TelemetryManager:
             alternatives: String representation of alternatives
             mode: Current simulation mode
             claimed_resource_pos: Position of claimed resource (x, y) or None
+            is_paired: Whether agent is currently paired with a trade partner
         """
         if not self.config.log_decisions or self.db is None or self.run_id is None:
             return
@@ -201,7 +205,8 @@ class TelemetryManager:
             target_type, 
             target_x if target_x is None else int(target_x),  # Convert numpy int to Python int
             target_y if target_y is None else int(target_y),  # Convert numpy int to Python int
-            num_neighbors, alternatives, mode, claimed_pos_str
+            num_neighbors, alternatives, mode, claimed_pos_str,
+            1 if is_paired else 0
         ))
         
         # Flush buffer if needed
@@ -349,6 +354,61 @@ class TelemetryManager:
         """, (self.run_id, tick, current_mode, exchange_regime, active_pairs_json))
         self.db.commit()
     
+    def log_pairing_event(self, tick: int, agent_i: int, agent_j: int, 
+                          event: str, reason: str,
+                          surplus_i: Optional[float] = None, 
+                          surplus_j: Optional[float] = None):
+        """
+        Log a pairing or unpairing event.
+        
+        Args:
+            tick: Current simulation tick
+            agent_i: First agent ID
+            agent_j: Second agent ID
+            event: "pair" or "unpair"
+            reason: Reason for event (e.g., "mutual_consent", "fallback_rank_0", "trade_failed")
+            surplus_i: Agent i's surplus with agent j (None for unpair events)
+            surplus_j: Agent j's surplus with agent i (None for unpair events)
+        """
+        if not self.config.log_decisions or self.db is None or self.run_id is None:
+            return
+        
+        self._pairing_buffer.append((
+            self.run_id, tick, agent_i, agent_j, event, reason,
+            surplus_i, surplus_j
+        ))
+        
+        # Flush buffer if needed
+        if len(self._pairing_buffer) >= self.config.batch_size:
+            self._flush_pairings()
+    
+    def log_preference(self, tick: int, agent_id: int, partner_id: int,
+                       rank: int, surplus: float, discounted_surplus: float,
+                       distance: int):
+        """
+        Log an agent's preference ranking for a potential partner.
+        
+        Args:
+            tick: Current simulation tick
+            agent_id: ID of agent with the preference
+            partner_id: ID of potential partner
+            rank: Preference rank (0 = top choice, 1 = second, etc.)
+            surplus: Undiscounted surplus with this partner
+            discounted_surplus: Distance-discounted surplus (beta^distance * surplus)
+            distance: Manhattan distance to partner
+        """
+        if not self.config.log_decisions or self.db is None or self.run_id is None:
+            return
+        
+        self._preference_buffer.append((
+            self.run_id, tick, agent_id, partner_id, rank,
+            surplus, discounted_surplus, distance
+        ))
+        
+        # Flush buffer if needed
+        if len(self._preference_buffer) >= self.config.batch_size:
+            self._flush_preferences()
+    
     def _flush_agent_snapshots(self):
         """Flush agent snapshot buffer to database."""
         if not self._agent_snapshot_buffer or self.db is None:
@@ -385,8 +445,8 @@ class TelemetryManager:
         self.db.executemany("""
             INSERT INTO decisions
             (run_id, tick, agent_id, chosen_partner_id, surplus_with_partner,
-             target_type, target_x, target_y, num_neighbors, alternatives, mode, claimed_resource_pos)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             target_type, target_x, target_y, num_neighbors, alternatives, mode, claimed_resource_pos, is_paired)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, self._decision_buffer)
         self.db.commit()
         self._decision_buffer.clear()
@@ -424,6 +484,32 @@ class TelemetryManager:
         self.db.commit()
         self._trade_attempt_buffer.clear()
     
+    def _flush_pairings(self):
+        """Flush pairing buffer to database."""
+        if not self._pairing_buffer or self.db is None:
+            return
+        
+        self.db.executemany("""
+            INSERT INTO pairings
+            (run_id, tick, agent_i, agent_j, event, reason, surplus_i, surplus_j)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, self._pairing_buffer)
+        self.db.commit()
+        self._pairing_buffer.clear()
+    
+    def _flush_preferences(self):
+        """Flush preference buffer to database."""
+        if not self._preference_buffer or self.db is None:
+            return
+        
+        self.db.executemany("""
+            INSERT INTO preferences
+            (run_id, tick, agent_id, partner_id, rank, surplus, discounted_surplus, distance)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, self._preference_buffer)
+        self.db.commit()
+        self._preference_buffer.clear()
+    
     def _flush_all_buffers(self):
         """Flush all buffers to database."""
         self._flush_agent_snapshots()
@@ -431,6 +517,8 @@ class TelemetryManager:
         self._flush_decisions()
         self._flush_trades()
         self._flush_trade_attempts()
+        self._flush_pairings()
+        self._flush_preferences()
     
     def close(self):
         """Close the telemetry manager and database."""

@@ -22,7 +22,24 @@ class HousekeepingSystem:
                 money_scale=money_scale,
                 exchange_regime=exchange_regime
             )
+        
+        # Verify pairing integrity
+        self._verify_pairing_integrity(sim)
 
         # Log telemetry
         sim.telemetry.log_agent_snapshots(sim.tick, sim.agents)
         sim.telemetry.log_resource_snapshots(sim.tick, sim.grid)
+    
+    def _verify_pairing_integrity(self, sim: "Simulation") -> None:
+        """Defensive check: ensure all pairings are bidirectional."""
+        for agent in sim.agents:
+            if agent.paired_with_id is not None:
+                partner_id = agent.paired_with_id
+                partner = sim.agent_by_id.get(partner_id)
+                
+                if partner is None or partner.paired_with_id != agent.id:
+                    # Asymmetric pairing - repair
+                    sim.telemetry.log_pairing_event(
+                        sim.tick, agent.id, partner_id, "unpair", "integrity_repair"
+                    )
+                    agent.paired_with_id = None

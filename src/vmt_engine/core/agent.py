@@ -31,6 +31,13 @@ class Agent:
     perception_cache: dict = field(default_factory=dict, repr=False)
     inventory_changed: bool = field(default=True, repr=False)
     trade_cooldowns: dict[int, int] = field(default_factory=dict, repr=False)  # partner_id -> cooldown_until_tick
+    
+    # Pairing state (persists across ticks until unpaired)
+    paired_with_id: Optional[int] = field(default=None, repr=False)
+    
+    # Decision context (cleared each tick)
+    _preference_list: list[tuple[int, float, float, int]] = field(default_factory=list, repr=False)  # (partner_id, surplus, discounted_surplus, distance)
+    _decision_target_type: Optional[str] = field(default=None, repr=False)  # "trade", "forage", "idle", "trade_paired"
 
     # Money system state (Phase 1)
     lambda_money: float = 1.0  # Marginal utility of money

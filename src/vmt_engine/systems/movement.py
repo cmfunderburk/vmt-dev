@@ -16,7 +16,15 @@ class MovementSystem:
 
     def execute(self, sim: "Simulation") -> None:
         for agent in sim.agents:
-            if agent.target_pos is not None:
+            # Determine target position
+            if agent.paired_with_id is not None:
+                # Paired agents move toward their paired partner
+                partner = sim.agent_by_id[agent.paired_with_id]
+                target_pos = partner.pos
+            else:
+                target_pos = agent.target_pos
+            
+            if target_pos is not None:
                 # If targeting an agent, check if already in interaction range.
                 if agent.target_agent_id is not None:
                     target_agent = sim.agent_by_id.get(agent.target_agent_id)
@@ -43,7 +51,7 @@ class MovementSystem:
                                 continue  # Lower ID agent waits
 
                 new_pos = next_step_toward(
-                    agent.pos, agent.target_pos, sim.params["move_budget_per_tick"]
+                    agent.pos, target_pos, sim.params["move_budget_per_tick"]
                 )
                 agent.pos = new_pos
                 # Update spatial index with new position

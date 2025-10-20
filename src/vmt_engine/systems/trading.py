@@ -14,26 +14,35 @@ class TradeSystem:
         exchange_regime = sim.params.get("exchange_regime", "barter_only")
         use_generic_matching = exchange_regime in ("money_only", "mixed")
         
-        # Use spatial index to find agent pairs within interaction_radius efficiently
-        # O(N) instead of O(N²) by only checking agents in nearby spatial buckets
-        pairs = sim.spatial_index.query_pairs_within_radius(
-            sim.params["interaction_radius"]
-        )
-
-        # Sort pairs by (min_id, max_id) for deterministic processing
-        pairs.sort()
-
-        # Execute trades
-        for id_i, id_j in pairs:
-            agent_i = sim.agent_by_id[id_i]
-            agent_j = sim.agent_by_id[id_j]
-
-            if use_generic_matching:
-                # Phase 2+: Money-aware matching
-                self._trade_generic(agent_i, agent_j, sim)
-            else:
-                # Legacy: Barter-only matching
-                trade_pair(agent_i, agent_j, sim.params, sim.telemetry, sim.tick)
+        # Process ONLY paired agents (pairing replaces spatial matching)
+        processed_pairs = set()
+        
+        for agent in sorted(sim.agents, key=lambda a: a.id):
+            if agent.paired_with_id is None:
+                continue  # Skip unpaired agents
+            
+            partner_id = agent.paired_with_id
+            
+            # Skip if pair already processed
+            pair_key = tuple(sorted([agent.id, partner_id]))
+            if pair_key in processed_pairs:
+                continue
+            processed_pairs.add(pair_key)
+            
+            partner = sim.agent_by_id[partner_id]
+            
+            # Check distance
+            distance = abs(agent.pos[0] - partner.pos[0]) + abs(agent.pos[1] - partner.pos[1])
+            
+            if distance <= sim.params["interaction_radius"]:
+                # Within range: attempt trade
+                if use_generic_matching:
+                    # Phase 2+: Money-aware matching
+                    self._trade_generic(agent, partner, sim)
+                else:
+                    # Barter-only matching
+                    trade_pair(agent, partner, sim.params, sim.telemetry, sim.tick)
+            # else: Too far apart, stay paired and keep moving
     
     def _trade_generic(self, agent_i, agent_j, sim):
         """Execute money-aware trade using generic matching primitives."""
@@ -46,10 +55,19 @@ class TradeSystem:
         )
         
         if result is None:
-            # No mutually beneficial trade found - set cooldown
+            # No mutually beneficial trade found - UNPAIR and set cooldown
+            # This means trade opportunities are exhausted
+            agent_i.paired_with_id = None
+            agent_j.paired_with_id = None
+            
             cooldown_until = sim.tick + sim.params.get('trade_cooldown_ticks', 10)
             agent_i.trade_cooldowns[agent_j.id] = cooldown_until
             agent_j.trade_cooldowns[agent_i.id] = cooldown_until
+            
+            # Log unpair event
+            sim.telemetry.log_pairing_event(
+                sim.tick, agent_i.id, agent_j.id, "unpair", "trade_failed"
+            )
             return
         
         pair_name, trade = result
@@ -57,6 +75,9 @@ class TradeSystem:
         
         # Execute the trade
         execute_trade_generic(agent_i, agent_j, trade)
+        
+        # REMAIN PAIRED - agents will attempt another trade next tick
+        # This is critical for O(N) performance
         
         # Log to telemetry
         self._log_generic_trade(agent_i, agent_j, pair_name, trade, sim)

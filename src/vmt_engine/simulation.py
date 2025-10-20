@@ -279,8 +279,26 @@ class Simulation:
         if self.telemetry:
             self.telemetry.log_mode_change(self.tick, old_mode, new_mode)
         
-        # Placeholder for future mode-specific state cleanup
-        pass
+        # Clear all pairings when mode changes
+        self._clear_pairings_on_mode_switch(old_mode, new_mode)
+    
+    def _clear_pairings_on_mode_switch(self, old_mode: str, new_mode: str) -> None:
+        """Clear all pairings when mode changes."""
+        if old_mode == new_mode:
+            return
+        
+        # Log unpair events for all paired agents
+        for agent in self.agents:
+            if agent.paired_with_id is not None:
+                # Only log once per pair (lower ID does it)
+                if agent.id < agent.paired_with_id:
+                    self.telemetry.log_pairing_event(
+                        self.tick, agent.id, agent.paired_with_id,
+                        "unpair", f"mode_switch_{old_mode}_to_{new_mode}"
+                    )
+                agent.paired_with_id = None
+        
+        # No cooldowns on mode-switch unpairings (can re-pair immediately)
     
     def _get_active_exchange_pairs(self) -> list[str]:
         """
