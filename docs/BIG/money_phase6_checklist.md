@@ -1,4 +1,4 @@
-### Money Implementation — Phase 3: KKT λ Estimation (ADVANCED)
+### Money Implementation — Phase 6: KKT λ Estimation (ADVANCED)
 
 Author: VMT Assistant
 Date: 2025-10-19

@@ -1,4 +1,4 @@
-### Money Implementation — Phase 6: Polish and Documentation
+### Money Implementation — Phase 4: Polish and Documentation
 
 Author: VMT Assistant
 Date: 2025-10-19

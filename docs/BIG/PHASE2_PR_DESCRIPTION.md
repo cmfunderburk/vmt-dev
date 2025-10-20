@@ -17,7 +17,7 @@ This PR implements **Phase 2 of the VMT money system**, adding complete support 
 
 ## Implementation Approach: Atomic Sub-Phases
 
-Following the [Phase 2 Post-Mortem](docs/BIG/phase2_postmortem.md), implementation was split into three atomic sub-phases to minimize risk:
+Following the Phase 2 Post-Mortem, implementation was split into three atomic sub-phases to minimize risk:
 
 ### 🔹 Phase 2a - Data Structures (No Behavior Change)
 **Branch**: `2025-10-19-1430-phase2a-data-structures`

@@ -1,6 +1,5 @@
 ---
-alwaysApply: false
-description: "High-level overview of the VMT project architecture, entry points, and key algorithms."
+alwaysApply: true
 ---
 ## VMT Project Overview
 
