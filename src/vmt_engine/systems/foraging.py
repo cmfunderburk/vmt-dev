@@ -13,8 +13,23 @@ class ForageSystem:
     """Phase 5: Agents harvest resources."""
 
     def execute(self, sim: "Simulation") -> None:
-        for agent in sim.agents:
-            forage(agent, sim.grid, sim.params["forage_rate"], sim.tick)
+        # Track which resources have been harvested this tick
+        harvested_this_tick = set()
+        
+        # Process agents in ID order (deterministic)
+        for agent in sorted(sim.agents, key=lambda a: a.id):
+            pos = agent.pos
+            
+            # Skip if this resource was already harvested this tick
+            if sim.params.get("enforce_single_harvester", False):
+                if pos in harvested_this_tick:
+                    continue  # Another agent already harvested here
+            
+            # Attempt to forage
+            did_harvest = forage(agent, sim.grid, sim.params["forage_rate"], sim.tick)
+            
+            if did_harvest and sim.params.get("enforce_single_harvester", False):
+                harvested_this_tick.add(pos)
 
 
 class ResourceRegenerationSystem:

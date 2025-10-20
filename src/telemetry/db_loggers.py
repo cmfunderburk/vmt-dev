@@ -169,7 +169,8 @@ class TelemetryManager:
     def log_decision(self, tick: int, agent_id: int, chosen_partner_id: Optional[int],
                      surplus_with_partner: Optional[float], target_type: str,
                      target_x: Optional[int], target_y: Optional[int],
-                     num_neighbors: int, alternatives: str = "", mode: str = "both"):
+                     num_neighbors: int, alternatives: str = "", mode: str = "both",
+                     claimed_resource_pos: Optional[tuple[int, int]] = None):
         """
         Log an agent's decision.
         
@@ -183,9 +184,16 @@ class TelemetryManager:
             target_y: Y coordinate of target
             num_neighbors: Number of visible neighbors
             alternatives: String representation of alternatives
+            mode: Current simulation mode
+            claimed_resource_pos: Position of claimed resource (x, y) or None
         """
         if not self.config.log_decisions or self.db is None or self.run_id is None:
             return
+        
+        # Format claimed position as "x,y" string or None
+        claimed_pos_str = None
+        if claimed_resource_pos is not None:
+            claimed_pos_str = f"{claimed_resource_pos[0]},{claimed_resource_pos[1]}"
         
         self._decision_buffer.append((
             self.run_id, tick, agent_id,
@@ -193,7 +201,7 @@ class TelemetryManager:
             target_type, 
             target_x if target_x is None else int(target_x),  # Convert numpy int to Python int
             target_y if target_y is None else int(target_y),  # Convert numpy int to Python int
-            num_neighbors, alternatives, mode
+            num_neighbors, alternatives, mode, claimed_pos_str
         ))
         
         # Flush buffer if needed
@@ -377,8 +385,8 @@ class TelemetryManager:
         self.db.executemany("""
             INSERT INTO decisions
             (run_id, tick, agent_id, chosen_partner_id, surplus_with_partner,
-             target_type, target_x, target_y, num_neighbors, alternatives, mode)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             target_type, target_x, target_y, num_neighbors, alternatives, mode, claimed_resource_pos)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, self._decision_buffer)
         self.db.commit()
         self._decision_buffer.clear()

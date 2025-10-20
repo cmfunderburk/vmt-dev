@@ -80,6 +80,10 @@ class ScenarioParams:
     resource_max_amount: int = 5           # Maximum resource amount per cell
     resource_regen_cooldown: int = 5       # Ticks to wait after depletion before regen starts
     trade_cooldown_ticks: int = 5          # Ticks to wait after failed trade before re-attempting same partner
+    
+    # --- Resource claiming system parameters ---
+    enable_resource_claiming: bool = True  # Enable claim-based resource allocation
+    enforce_single_harvester: bool = True  # Only one agent per resource cell per tick
 
     # --- Money system parameters (Phase 1+) ---
     

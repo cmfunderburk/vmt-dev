@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Resource Claiming System** (2025-10-20): Implemented resource claiming mechanism to reduce inefficient agent clustering at resource cells
+  - Agents claim resources during Decision phase (Phase 2), preventing other agents from targeting the same resource
+  - Claims expire when agent reaches resource or changes target
+  - Single-harvester enforcement: only one agent per resource cell can harvest per tick (deterministic by agent ID)
+  - Both features enabled by default: `enable_resource_claiming: true` and `enforce_single_harvester: true`
+  - Telemetry integration: `claimed_resource_pos` column added to `decisions` table
+  - Performance: O(N*R) complexity - same as existing system, no asymptotic change
+  - Comprehensive test suite: `tests/test_resource_claiming.py` with 9 tests covering claiming, expiration, single-harvester, and clustering reduction
+  - Demo scenario: `scenarios/resource_claiming_demo.yaml` with 6 agents showcasing reduced clustering
+  - Configuration flags in `ScenarioParams`: agents can disable features for comparison studies
+  - Determinism preserved: claims processed in agent ID order, single-harvester by lowest ID
+
 - **Smart Co-location Rendering** (2025-10-19): Enhanced Pygame renderer to intelligently handle multiple agents on the same grid cell
   - When agents co-locate, sprites automatically scale down proportionally (2 agents = 75% size, 3 = 60%, 4 = 50%, etc.)
   - Uses non-overlapping geometric layouts: diagonal (2 agents), triangle (3 agents), corners (4 agents), circle pack (5+ agents)

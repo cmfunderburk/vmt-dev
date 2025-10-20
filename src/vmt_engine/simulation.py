@@ -51,6 +51,9 @@ class Simulation:
             'resource_max_amount': scenario_config.params.resource_max_amount,
             'resource_regen_cooldown': scenario_config.params.resource_regen_cooldown,
             'trade_cooldown_ticks': scenario_config.params.trade_cooldown_ticks,
+            # Resource claiming system parameters
+            'enable_resource_claiming': scenario_config.params.enable_resource_claiming,
+            'enforce_single_harvester': scenario_config.params.enforce_single_harvester,
             # Money system parameters (Phase 1)
             'exchange_regime': scenario_config.params.exchange_regime,
             'money_mode': scenario_config.params.money_mode,
@@ -103,6 +106,9 @@ class Simulation:
         self.spatial_index = SpatialIndex(self.config.N, bucket_size=max_radius)
         for agent in self.agents:
             self.spatial_index.add_agent(agent.id, agent.pos)
+        
+        # Resource claiming system
+        self.resource_claims: dict[tuple[int, int], int] = {}  # position -> claiming_agent_id
         
         # Telemetry
         if log_config is None:

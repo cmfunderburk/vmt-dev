@@ -30,10 +30,10 @@ vmt-dev/
 The simulation proceeds in discrete time steps called "ticks." Each tick, the engine executes 7 distinct phases in a fixed, deterministic order. This strict ordering is crucial for reproducibility and ensures that all agent actions are based on a consistent state of the world.
 
 1.  **Perception**: Each agent observes its local environment within its `vision_radius`. This includes the positions of other agents, their broadcasted trade quotes, and the location of resources. To prevent race conditions, this perception is a **frozen snapshot** of the world at the beginning of the tick.
-2.  **Decision**: Based on the perception snapshot, each agent decides on its action for the tick. This involves either selecting a trading partner based on the highest potential surplus or choosing a foraging target based on a distance-discounted utility calculation.
+2.  **Decision**: Based on the perception snapshot, each agent decides on its action for the tick. This involves either selecting a trading partner based on the highest potential surplus or choosing a foraging target based on a distance-discounted utility calculation. When an agent selects a foraging target, it **claims** that resource to prevent other agents from targeting it (if `enable_resource_claiming=True`).
 3.  **Movement**: Agents move towards their chosen targets (either another agent or a resource cell) according to their `move_budget_per_tick`. Movement is deterministic, following specific tie-breaking rules.
 4.  **Trade**: Agents who are within `interaction_radius` and have mutually agreed to trade execute their exchange. The engine uses a sophisticated price search algorithm to find mutually beneficial terms. At most **one trade per pair** is executed per tick.
-5.  **Foraging**: Agents located on a resource cell harvest that resource, increasing their inventory. The amount harvested is limited by the `forage_rate`.
+5.  **Foraging**: Agents located on a resource cell harvest that resource, increasing their inventory. The amount harvested is limited by the `forage_rate`. If `enforce_single_harvester=True`, only one agent per resource cell can harvest per tick (determined by lowest `agent.id`).
 6.  **Resource Regeneration**: Resource cells that have been harvested regenerate over time. A cell must wait `resource_regen_cooldown` ticks before it can begin regenerating at a rate of `resource_growth_rate` per tick.
 7.  **Housekeeping**: The tick concludes with cleanup and maintenance tasks. Agents refresh their trade quotes based on their new inventory levels, and the telemetry system logs all data for the tick to the database.
 
@@ -81,6 +81,19 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
     -   `β` (beta) is the agent's time discount factor (0 < β < 1).
     -   `dist` is the Manhattan distance to the cell.
 -   This scoring mechanism means agents intelligently balance the richness of a resource patch against the time it will take to reach it.
+
+#### Resource Claiming System
+-   **Motivation**: Without coordination, multiple agents often target the same high-value resource, leading to inefficient clustering. Only one agent can harvest per tick, so others wait idle.
+-   **Claiming Mechanism**: During Phase 2 (Decision), when an agent selects a forage target, it **claims** that resource by recording `resource_claims[position] = agent_id` in the simulation state. Other agents scanning for targets in the same tick see this resource as unavailable and choose alternatives.
+-   **Claim Expiration**: Claims are transient and expire under two conditions:
+    1. The agent reaches the resource cell (`agent.pos == claimed_pos`)
+    2. The agent changes its target (`agent.target_pos != claimed_pos`)
+-   **Stale Claim Clearing**: At the start of each tick's Decision phase, the engine clears all stale claims before agents make new decisions.
+-   **Determinism**: Agents are processed in `agent.id` order during the Decision phase. Lower-ID agents claim resources first, ensuring consistent behavior across runs with the same seed.
+-   **Configuration**: The system is controlled by two flags in `ScenarioParams`:
+    -   `enable_resource_claiming` (default: `True`): Enables claim-based filtering
+    -   `enforce_single_harvester` (default: `True`): During Phase 5 (Foraging), only the first agent (by ID) on a resource cell can harvest per tick
+-   **Performance**: Claiming adds O(C) overhead where C = active claims (typically C ≤ N). Total decision complexity remains O(N*R). Single-harvester enforcement adds O(N) set operations during foraging.
 
 ---
 

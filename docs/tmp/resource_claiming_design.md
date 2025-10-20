@@ -1,8 +1,10 @@
 # Resource Claiming System - Design Document
 
 **Date**: 2025-10-19  
-**Status**: Design Proposal  
+**Status**: ✅ IMPLEMENTED (2025-10-20)  
 **Problem**: Multiple agents targeting/harvesting same resource causes inefficient clustering
+
+**Implementation Summary**: Resource claiming system fully implemented with claiming during Decision phase, single-harvester enforcement during Foraging phase, telemetry integration, comprehensive test suite (9 tests, all passing), and demo scenario. Enabled by default with `enable_resource_claiming=True` and `enforce_single_harvester=True`.
 
 ---
 

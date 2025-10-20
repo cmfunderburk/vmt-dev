@@ -135,6 +135,7 @@ class TelemetryDatabase:
                 num_neighbors INTEGER NOT NULL,
                 alternatives TEXT,
                 mode TEXT,
+                claimed_resource_pos TEXT DEFAULT NULL,
                 FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id)
             )
         """)

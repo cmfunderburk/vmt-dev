@@ -1,0 +1,102 @@
+# Resource Claiming Demo Scenario
+#
+# This scenario demonstrates the resource claiming system, which prevents
+# inefficient agent clustering by allowing agents to "claim" resources during
+# the decision phase.
+#
+# Key features:
+# - enable_resource_claiming: Agents claim resources before moving toward them
+# - enforce_single_harvester: Only one agent per resource cell can harvest per tick
+#
+# Expected behavior:
+# - Agents spread across multiple resources instead of bunching
+# - Higher overall resource harvesting efficiency
+# - Reduced idle time from waiting for resources
+
+schema_version: 1
+name: "Resource Claiming Demo"
+N: 15
+agents: 6
+
+# Complementary utility pairing ensures heterogeneous preferences
+# This creates gains from trade when agents encounter each other
+utilities:
+  mix:
+    # Pair 1: Linear utilities (complementary)
+    - type: linear
+      weight: 0.1667
+      params:
+        vA: 0.7
+        vB: 0.3
+    - type: linear
+      weight: 0.1667
+      params:
+        vA: 0.3
+        vB: 0.7
+    
+    # Pair 2: CES utilities (complementary, different rho values)
+    - type: ces
+      weight: 0.1667
+      params:
+        rho: -0.5
+        wA: 0.8
+        wB: 0.2
+    - type: ces
+      weight: 0.1667
+      params:
+        rho: 0.3
+        wA: 0.2
+        wB: 0.8
+    
+    # Pair 3: Linear utilities (complementary)
+    - type: linear
+      weight: 0.1666
+      params:
+        vA: 0.6
+        vB: 0.4
+    - type: linear
+      weight: 0.1666
+      params:
+        vA: 0.4
+        vB: 0.6
+
+initial_inventories:
+  A: [10, 5, 12, 8, 15, 7]
+  B: [5, 10, 7, 14, 6, 13]
+
+params:
+  # Economic parameters
+  spread: 0.05
+  dA_max: 3
+  epsilon: 0.001
+  
+  # Spatial parameters
+  vision_radius: 8
+  interaction_radius: 1
+  move_budget_per_tick: 2
+  
+  # Foraging parameters
+  forage_rate: 1
+  beta: 0.9  # Distance discount for resource value
+  
+  # Resource regeneration
+  resource_growth_rate: 1
+  resource_max_amount: 8
+  resource_regen_cooldown: 10
+  
+  # Trading
+  trade_cooldown_ticks: 5
+  
+  # Resource claiming system (enabled by default)
+  enable_resource_claiming: true
+  enforce_single_harvester: true
+
+resource_seed:
+  density: 0.2
+  amount: 5
+
+# Optional: Compare behavior with/without claiming by setting params to false
+# params:
+#   enable_resource_claiming: false
+#   enforce_single_harvester: false
+
