@@ -30,12 +30,33 @@ vmt-dev/
 The simulation proceeds in discrete time steps called "ticks." Each tick, the engine executes 7 distinct phases in a fixed, deterministic order. This strict ordering is crucial for reproducibility and ensures that all agent actions are based on a consistent state of the world.
 
 1.  **Perception**: Each agent observes its local environment within its `vision_radius`. This includes the positions of other agents, their broadcasted trade quotes, and the location of resources. To prevent race conditions, this perception is a **frozen snapshot** of the world at the beginning of the tick.
-2.  **Decision**: Based on the perception snapshot, each agent decides on its action for the tick. This involves either selecting a trading partner based on the highest potential surplus or choosing a foraging target based on a distance-discounted utility calculation. When an agent selects a foraging target, it **claims** that resource to prevent other agents from targeting it (if `enable_resource_claiming=True`).
-3.  **Movement**: Agents move towards their chosen targets (either another agent or a resource cell) according to their `move_budget_per_tick`. Movement is deterministic, following specific tie-breaking rules.
-4.  **Trade**: Agents who are within `interaction_radius` and have mutually agreed to trade execute their exchange. The engine uses a sophisticated price search algorithm to find mutually beneficial terms. At most **one trade per pair** is executed per tick.
-5.  **Foraging**: Agents located on a resource cell harvest that resource, increasing their inventory. The amount harvested is limited by the `forage_rate`. If `enforce_single_harvester=True`, only one agent per resource cell can harvest per tick (determined by lowest `agent.id`).
+
+2.  **Decision**: Based on the perception snapshot, agents decide on actions and establish trade pairings using a **three-pass algorithm**:
+    *   **Pass 1: Target Selection & Preference Ranking** — Each agent (processed in ID order) evaluates all visible neighbors and builds a ranked preference list. Preferences are ranked by **distance-discounted surplus** = `surplus × β^distance`, where β is the discount factor and distance is Manhattan distance. Agents skip neighbors in cooldown. Already-paired agents validate their pairing and maintain target lock.
+    *   **Pass 2: Mutual Consent Pairing** — Agents who mutually list each other as their top choice are paired via "mutual consent." Lower-ID agent executes the pairing to avoid duplication. Cooldowns are cleared for both agents.
+    *   **Pass 3: Best-Available Fallback** — Unpaired agents with remaining preferences use **surplus-based greedy matching**: all potential pairings are sorted by descending discounted surplus, and pairs are greedily assigned in order. When an agent claims a partner, that partner's target is updated to point back at the claimer (reciprocal commitment).
+    *   **Resource Claiming**: When agents select forage targets, they **claim** the resource to prevent clustering (if `enable_resource_claiming=True`). Stale claims are cleared at the start of each tick.
+    *   **Pairing Commitment**: Once paired, both agents commit exclusively to each other. They move toward each other and attempt trades until opportunities are exhausted (trade fails) or mode changes. Paired agents do not re-evaluate preferences or seek new partners until unpaired.
+
+3.  **Movement**: Agents move towards their chosen targets (paired partner, resource, or other position) according to their `move_budget_per_tick`. Movement is deterministic, following specific tie-breaking rules (x-axis before y-axis, negative direction on ties, diagonal deadlock resolution by higher ID).
+
+4.  **Trade**: Only **paired agents** within `interaction_radius` attempt trades. The engine uses a sophisticated price search algorithm to find mutually beneficial terms:
+    *   **Generic Matching**: Selects the best exchange pair (A↔B, A↔M, B↔M) based on `exchange_regime` parameter
+    *   **Compensating Block Search**: Scans trade sizes ΔA from 1 to dA_max, testing candidate prices in [seller.ask, buyer.bid]
+    *   **First-Acceptable-Trade Principle**: Accepts the first (ΔA, ΔB, price) tuple that yields strict utility gain (ΔU > 0) for both parties
+    *   **Trade Outcome**: Successful trades maintain pairing (agents attempt another trade next tick); failed trades unpair agents and set mutual cooldown
+
+5.  **Foraging**: Agents located on a resource cell harvest that resource, increasing their inventory. The amount harvested is limited by the `forage_rate`.
+    *   **Paired Agent Skip**: Paired agents skip foraging (exclusive commitment to trading).
+    *   **Single-Harvester Enforcement**: If `enforce_single_harvester=True`, only one agent per resource cell can harvest per tick (determined by lowest `agent.id`).
+
 6.  **Resource Regeneration**: Resource cells that have been harvested regenerate over time. A cell must wait `resource_regen_cooldown` ticks before it can begin regenerating at a rate of `resource_growth_rate` per tick.
-7.  **Housekeeping**: The tick concludes with cleanup and maintenance tasks. Agents refresh their trade quotes based on their new inventory levels, and the telemetry system logs all data for the tick to the database.
+
+7.  **Housekeeping**: The tick concludes with cleanup and maintenance tasks:
+    *   **Quote Refresh**: Agents refresh their trade quotes if `inventory_changed` or `lambda_changed` flags are set
+    *   **Pairing Integrity Checks**: Detect and repair asymmetric pairings (defensive validation)
+    *   **Lambda Updates** (Phase 3+, KKT mode): Adaptive marginal utility estimation from neighbor prices
+    *   **Telemetry Logging**: Agent snapshots, resource snapshots, tick states, pairing events, preferences logged to database
 
 ---
 
@@ -51,10 +72,16 @@ Determinism is the cornerstone of the VMT engine. Given the same scenario file a
 
 ### Economic Logic
 
-#### Utility and Reservation Prices
+#### Utility Functions and Money-Aware API
 -   **Utility Functions**: The engine supports `UCES` (Constant Elasticity of Substitution, including the Cobb-Douglas case) and `ULinear` (perfect substitutes) utility functions, defined in `src/vmt_engine/econ/utility.py`.
+-   **Money-Aware API** (Phase 2+): The utility interface provides separate methods for goods and total utility:
+    *   `u_goods(A, B)` — Utility from goods only (canonical method)
+    *   `mu_A(A, B)`, `mu_B(A, B)` — Marginal utilities of goods A and B (∂U/∂A, ∂U/∂B)
+    *   `u_total(inventory, params)` — Total utility including money (Phase 3+, planned)
+    *   Legacy methods `u(A, B)` and `mu(A, B)` route to the money-aware API for backward compatibility
+-   **Quasilinear Utility** (Phases 1-2): U_total = U_goods(A, B) + λ·M, where λ is the marginal utility of money and M is money holdings in minor units
 -   **Reservation Bounds**: Agents' willingness to trade is determined by their reservation price, which is derived from their marginal rate of substitution (MRS). To avoid hard-coding MRS formulas, the engine uses a generic `reservation_bounds_A_in_B(A, B, eps)` function. This returns the minimum price an agent would accept (`p_min`) and the maximum price they would pay (`p_max`).
--   **Zero-Inventory Guard**: A critical innovation is the handling of zero-inventory cases for CES utilities. When an agent has zero of a good, its MRS can be undefined or infinite. The engine handles this by adding a tiny `epsilon` value to the inventory levels *only for the ratio calculation* used to determine reservation bounds. The core utility calculation `u(A, B)` always uses the true integer inventories.
+-   **Zero-Inventory Guard**: A critical innovation is the handling of zero-inventory cases for CES utilities. When an agent has zero of a good, its MRS can be undefined or infinite. The engine handles this by adding a tiny `epsilon` value to the inventory levels *only for the ratio calculation* used to determine reservation bounds. The core utility calculation `u_goods(A, B)` always uses the true integer inventories.
 
 #### Agent Initialization and Heterogeneity
 Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows for specifying a distribution of preferences across the agent population.
@@ -64,10 +91,21 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
 -   **Initial Inventories**: Initial inventories can also be heterogeneous, specified either as a single value (all agents start the same) or as an explicit list of values, one for each agent.
     
 #### Quotes and Trading
--   **Quotes**: An agent's broadcasted `ask` and `bid` prices are calculated from their reservation bounds: `ask = p_min * (1 + spread)` and `bid = p_max * (1 - spread)`.
--   **Partner Selection**: An agent `i` chooses a partner `j` by evaluating the potential surplus from a trade. The surplus is the overlap between `i`'s bid and `j`'s ask (or vice-versa). The agent targets the partner with the highest positive surplus.
--   **Price Search Algorithm**: Because goods are discrete integers, a price that looks good on paper (based on MRS) might not result in a mutually beneficial trade after rounding. The `find_compensating_block` function in `src/vmt_engine/systems/matching.py` solves this. It probes multiple prices within the valid `[ask_seller, bid_buyer]` range and, for each price, scans trade quantities from `ΔA=1` up to `ΔA_max`. It accepts the first trade block `(ΔA, ΔB)` that provides a **strict utility improvement (ΔU > 0)** for both agents.
--   **Rounding**: All quantity calculations use **round-half-up** (`floor(p * ΔA + 0.5)`) for consistency.
+-   **Quotes**: Agents maintain a dictionary of quotes (`Agent.quotes: dict[str, float]`) with keys for all active exchange pairs:
+    *   Barter: `"ask_A_in_B"`, `"bid_A_in_B"`, `"p_min"`, `"p_max"`
+    *   Money (Phase 2+): `"ask_A_in_M"`, `"bid_A_in_M"`, `"ask_B_in_M"`, `"bid_B_in_M"`
+    *   Quotes are calculated from reservation bounds: `ask = p_min * (1 + spread)` and `bid = p_max * (1 - spread)`
+-   **Generic Matching Algorithm** (Phase 2+): The engine selects the best exchange pair for each agent pair based on `exchange_regime`:
+    *   `"barter_only"` — Only A↔B trades (default, backward compatible)
+    *   `"money_only"` — Only A↔M and B↔M trades
+    *   `"mixed"` — All exchange pairs allowed; selects pair with highest surplus
+    *   Function: `find_best_trade(agent_i, agent_j, exchange_regime)` in `src/vmt_engine/systems/matching.py`
+-   **Price Search Algorithm**: Because goods are discrete integers, a price that looks good on paper (based on MRS) might not result in a mutually beneficial trade after rounding. The `find_compensating_block_generic` function solves this:
+    *   Probes multiple prices within the valid `[ask_seller, bid_buyer]` range
+    *   For each price, scans trade quantities from `ΔA=1` (or `ΔM=1` for money trades) up to `ΔA_max`
+    *   Applies **round-half-up** rounding: `ΔB = floor(price * ΔA + 0.5)`
+    *   Accepts the **first** trade block `(ΔA, ΔB)` that provides **strict utility improvement (ΔU > 0)** for both agents
+    *   This is the **first-acceptable-trade principle**, not highest-surplus search
 
 ### Behavioral Logic
 
@@ -95,15 +133,58 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
     -   `enforce_single_harvester` (default: `True`): During Phase 5 (Foraging), only the first agent (by ID) on a resource cell can harvest per tick
 -   **Performance**: Claiming adds O(C) overhead where C = active claims (typically C ≤ N). Total decision complexity remains O(N*R). Single-harvester enforcement adds O(N) set operations during foraging.
 
+#### Trade Pairing System
+-   **Motivation**: Previous all-pairs matching was O(N²) per tick. The pairing system reduces this to O(N) by establishing committed bilateral partnerships that persist across ticks.
+-   **Three-Pass Algorithm**: See [Decision Phase](#the-7-phase-tick-cycle) above for full details. Summary:
+    *   **Pass 1**: Build ranked preference lists using distance-discounted surplus = `surplus × β^distance`
+    *   **Pass 2**: Mutual consent pairing (both agents list each other as top choice)
+    *   **Pass 3**: Surplus-based greedy matching (highest-surplus unmatched pairs assigned first)
+-   **Commitment Model**: Once paired, agents commit exclusively to each other:
+    *   Move toward partner until within interaction radius
+    *   Attempt trades each tick (may execute multiple trades across ticks)
+    *   Ignore all other trading and foraging opportunities during pairing
+    *   Unpair only when trade fails (opportunities exhausted) or mode changes
+-   **Telemetry**: Three new tables track pairing dynamics:
+    *   `pairings` — Pairing/unpairing events with reason codes
+    *   `preferences` — Top-ranked agent preferences (default: top 3, configurable to full list)
+    *   `decisions.is_paired` — Boolean flag indicating pairing status
+-   **Performance**: Reduces trade phase from O(N²) distance checks to O(P) where P = paired count (typically P ≤ N/2). Decision phase remains O(N·k) where k = average neighbors.
+-   **Pedagogical Note**: Agents can commit to distant partners and spend many ticks moving toward them while ignoring other opportunities. Once paired, they execute multiple sequential trades. This demonstrates opportunity cost of commitment and iterative bilateral exchange.
+
+#### Money System (Phases 1-2)
+-   **Money as Good**: Money holdings (`M`) are stored as integers in minor units (e.g., cents). The `money_scale` parameter converts between whole units and minor units (default: 1 = no conversion).
+-   **Exchange Regimes**: The `exchange_regime` parameter controls allowed exchange types:
+    *   `"barter_only"` — Only A↔B trades (default, backward compatible with legacy scenarios)
+    *   `"money_only"` — Only A↔M and B↔M trades (goods for money)
+    *   `"mixed"` — All exchange pairs allowed; generic matching selects highest-surplus pair
+    *   `"mixed_liquidity_gated"` — Mixed with minimum quote depth requirement (Phase 3+)
+-   **Quasilinear Utility** (Phases 1-2): U_total = U_goods(A, B) + λ·M, where:
+    *   λ (`lambda_money`) is the marginal utility of money (default: 1.0)
+    *   M is money holdings in minor units
+    *   Phase 1-2 uses fixed λ (no updates); Phase 3+ will implement adaptive λ (KKT mode)
+-   **Generic Matching**: The `find_best_trade()` function evaluates all allowed exchange pairs and selects the pair with highest surplus. Each pair uses the same compensating block search as barter.
+-   **Money Transfers**: Successful money trades update inventories: `buyer.M -= dM`, `seller.M += dM`. Money transfers are recorded in the `trades.dM` telemetry field.
+-   **Backward Compatibility**: All money fields default to preserve legacy behavior:
+    *   `exchange_regime` defaults to `"barter_only"`
+    *   `Inventory.M` defaults to 0
+    *   `lambda_money` defaults to 1.0
+    *   Legacy scenarios run identically with zero behavioral changes
+
 ---
 
 ## 🔬 Testing and Validation
 
-The VMT engine is rigorously tested to ensure both technical correctness and theoretical soundness. The test suite (`tests/`) contains over 55 tests covering:
--   **Core State**: Grid logic, agent creation, state management.
--   **Utilities**: Correctness of UCES and ULinear calculations, especially at edge cases.
--   **Reservation Bounds**: Correctness of the zero-inventory guard.
--   **Trade Logic**: Correctness of rounding, compensating multi-lot search, and cooldowns.
--   **Resource Regeneration**: Correctness of cooldowns, growth rates, and caps.
--   **Determinism**: End-to-end tests that verify bit-identical log outputs for the same seed.
+The VMT engine is rigorously tested to ensure both technical correctness and theoretical soundness. The test suite (`tests/`) contains 75+ tests covering:
+-   **Core State**: Grid logic, agent creation, state management, pairing state
+-   **Utilities**: Correctness of UCES and ULinear calculations, especially at edge cases; money-aware API methods
+-   **Reservation Bounds**: Correctness of the zero-inventory guard
+-   **Trade Logic**: Correctness of rounding, compensating multi-lot search, cooldowns, and pairing
+-   **Generic Matching**: Money-aware matching algorithm, exchange regime parameter, quote computation
+-   **Trade Pairing**: Mutual consent pairing, fallback pairing, pairing integrity, cooldown interactions
+-   **Resource Claiming**: Claim recording, stale clearing, single-harvester enforcement
+-   **Resource Regeneration**: Correctness of cooldowns, growth rates, and caps
+-   **Money Integration**: Phase 1 infrastructure, Phase 2 monetary exchange, telemetry extensions
+-   **Mode Management**: Mode schedule transitions, exchange regime interactions
+-   **Determinism**: End-to-end tests that verify bit-identical log outputs for the same seed
+-   **Performance**: Benchmark scenarios validating TPS thresholds with 400 agents
 

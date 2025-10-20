@@ -10,6 +10,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Trade Pairing System** (2025-10-20): Implemented three-pass pairing algorithm for committed bilateral partnerships
+  - Pass 1: Agents build ranked preference lists using distance-discounted surplus (surplus × β^distance)
+  - Pass 2: Mutual consent pairing establishes partnerships where both agents list each other as top choice
+  - Pass 3: Surplus-based greedy matching assigns highest-surplus unmatched pairs
+  - Commitment model: paired agents move toward each other and attempt multiple trades until opportunities exhausted
+  - Performance: Reduces trade phase from O(N²) to O(P) where P = paired count
+  - New agent state fields: `paired_with_id`, `_preference_list`, `_decision_target_type`
+  - New telemetry tables: `pairings` (pair/unpair events), `preferences` (top 3 agent preferences), `decisions.is_paired` flag
+  - Comprehensive test suite covering mutual consent, fallback pairing, cooldown interactions, integrity checks
+  - See: `docs/tmp/pairing/FINAL_PAIRING.md` for complete design specification
+
+- **Money System Phase 1: Infrastructure** (2025-10-19): Added complete money system infrastructure with zero behavioral impact
+  - New schema fields: `exchange_regime`, `money_mode`, `money_scale`, `lambda_money` and related parameters
+  - Core state extensions: `Inventory.M` (money in minor units), `Agent.lambda_money`, `Agent.lambda_changed`
+  - Telemetry extensions: money columns in all tables, new `tick_states` table (mode+regime per tick), `lambda_updates` table (Phase 3+)
+  - Simulation integration: money params added to sim.params dict, tick-level telemetry logging
+  - Backward compatibility: all money fields default to preserve legacy behavior (exchange_regime="barter_only", M=0)
+  - Performance baseline: 4.7-22.9 TPS with 400 agents (established regression thresholds)
+  - Test suite: 15 new tests (78 total passing, 0 skipped)
+  - See: `docs/BIG/PHASE1_COMPLETION_SUMMARY.md` for detailed completion report
+
+- **Money System Phase 2: Bilateral Exchange** (2025-10-20): Implemented monetary exchange with quasilinear utility
+  - Quasilinear utility: U_total = U_goods(A, B) + λ·M where λ = marginal utility of money
+  - Money-aware utility API: `u_goods()`, `mu_A()`, `mu_B()` (canonical); legacy `u()`, `mu()` route through for compatibility
+  - Generic matching algorithm: evaluates all allowed exchange pairs (A↔B, A↔M, B↔M) based on exchange_regime
+  - Exchange regimes: "barter_only" (default), "money_only", "mixed" (all pairs), "mixed_liquidity_gated" (Phase 3+)
+  - Quotes dictionary: `Agent.quotes: dict[str, float]` with keys for all active exchange pairs
+  - Generic compensating block search: supports barter and monetary trades with same first-acceptable-trade principle
+  - Money transfers: recorded in `trades.dM` telemetry field with exchange pair type
+  - Agent quotes now stored as dict (money-aware) instead of Quote dataclass (barter-only)
+  - Comprehensive test suite: generic matching, money trades, quote computation, integration scenarios
+  - See: `docs/BIG/PHASE2_PR_DESCRIPTION.md` for detailed implementation report
+
 - **Target Arrow Visualization** (2025-10-20): Implemented visual indicators for agent movement intentions in Pygame renderer
   - Color-coded arrows show agent targets: green for trade targets (agent pursuing another agent), orange for forage targets (agent pursuing resources)
   - Red borders highlight idle agents (no target)
@@ -63,6 +96,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Telemetry Configuration Simplified** (2025-10-19): `LogLevel` enum renumbered (STANDARD=1, DEBUG=2) and `__post_init__` logic simplified to only handle DEBUG level configuration
 
+### Documentation
+- **Comprehensive Documentation Refresh** (2025-10-20): Updated all major documentation files to reflect implemented features
+  - Updated `docs/4_typing_overview.md`: Money fields marked [IMPLEMENTED], money-aware Quotes, utility API split, telemetry extensions
+  - Updated `src/vmt_engine/README.md`: 7-phase tick details (pairing, claiming, money-aware matching, single-harvester)
+  - Updated `docs/2_technical_manual.md`: Expanded tick cycle, trade pairing (3-pass algorithm), money system (Phases 1-2), resource claiming
+  - Updated `docs/1_project_overview.md`: Target arrows, smart co-location, resource claiming, money intro, telemetry schema
+  - Updated `docs/README.md`: Refreshed hub descriptions with current feature set
+  - Updated `docs/BIG/money_SSOT_implementation_plan.md`: Marked Phases 1-2 complete, Phase 3+ planned
+  - All docs now accurately reflect 75+ tests, pairing system, money Phases 1-2, and visualization features
+  - Created `docs/PLAN_OF_RECORD.md` tracking all documentation updates
+
 ### Fixed
 - Nothing yet
 
@@ -70,16 +114,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Summary of Recent Enhancements (2025-10-19 to 2025-10-20)
 
-This release period introduced three major visualization and coordination features:
-1. **Target Arrow Visualization**: Shows agent movement intentions with color-coded arrows
-2. **Resource Claiming System**: Reduces agent clustering through coordination mechanism
-3. **Smart Co-location Rendering**: Intelligently displays multiple agents on same cell
+This release period introduced major economic, coordination, and visualization features:
 
-**Test Status**: 169/169 passing (up from 152, +17 new tests)  
-**Performance**: No regressions detected, all features maintain O(N) complexity  
-**Backward Compatibility**: All features either opt-in or automatic enhancements
+**Economic Systems:**
+1. **Money System Phases 1-2**: Complete infrastructure and bilateral monetary exchange with quasilinear utility
+2. **Trade Pairing**: Three-pass algorithm with mutual consent and surplus-based greedy matching
 
-See `docs/IMPLEMENTATION_REVIEW_2025-10-20.md` for comprehensive review.
+**Coordination & Visualization:**
+3. **Resource Claiming System**: Reduces agent clustering through claim-based coordination
+4. **Target Arrow Visualization**: Shows agent movement intentions and pairings with color-coded arrows
+5. **Smart Co-location Rendering**: Intelligently displays multiple agents on same cell
+
+**Documentation:**
+6. **Comprehensive Documentation Refresh**: All docs updated to reflect implemented features (money, pairing, claiming, viz)
+
+**Test Status**: 75+ tests passing (up from 63 baseline, +15 new tests for money/pairing)  
+**Performance**: Baseline established at 4.7-22.9 TPS with 400 agents; no regressions detected  
+**Backward Compatibility**: All features maintain full backward compatibility (exchange_regime="barter_only" default)
+
+See `docs/BIG/PHASE1_COMPLETION_SUMMARY.md`, `docs/BIG/PHASE2_PR_DESCRIPTION.md`, and `docs/PLAN_OF_RECORD.md` for comprehensive implementation details.
 
 ---
 

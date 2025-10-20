@@ -34,17 +34,31 @@ UtilityVal  := float            // A scalar value representing an agent's utilit
 These composite types represent the state of entities within the simulation.
 
 #### 2.1 Position & Inventory
-`Position` is an alias for `Coord`. The `Inventory` is a mapping from a `Good` to its `Quantity`.
+`Position` is an alias for `Coord`. The `Inventory` tracks goods A, B, and money M.
 
 ```text
 Position := Coord
-Inventory := map<Good, Quantity>
+Inventory := {
+  A: Quantity,  // Amount of good A
+  B: Quantity,  // Amount of good B
+  M: Quantity   // Money holdings in minor units [IMPLEMENTED Phase 1]
+}
 ```
-*   **Invariant:** All quantities in an inventory must be non-negative.
+*   **Invariant:** All quantities in an inventory must be non-negative (integer ≥ 0).
+*   **Source of Truth:** `src/vmt_engine/core/state.py:Inventory`
 
-#### 2.2 Economic State: Quote
-A `Quote` encapsulates an agent's trading posture for a given good pair (e.g., A in terms of B).
+#### 2.2 Economic State: Quotes `[IMPLEMENTED]`
+An agent's trading posture is represented as a dictionary mapping exchange pair keys to prices.
 
+**Money-Aware Quotes Dictionary** (Phase 2+):
+```text
+Quotes := dict<str, Price> where keys are:
+  "ask_A_in_B", "bid_A_in_B", "p_min", "p_max"  // Barter A↔B
+  "ask_A_in_M", "bid_A_in_M"                     // Monetary A↔M
+  "ask_B_in_M", "bid_B_in_M"                     // Monetary B↔M
+```
+
+**Legacy Quote Dataclass** (for bilateral barter only):
 ```text
 Quote := {
   ask_A_in_B: Price,  // Price seller is asking for 1 unit of A (in terms of B)
@@ -53,8 +67,9 @@ Quote := {
   p_max:      Price   // Buyer's reservation price (derived from MRS)
 }
 ```
-*   **Source of Truth:** `src/vmt_engine/core/state.py:Quote`
-*   **Invariant:** `ask_A_in_B ≥ p_min` and `bid_A_in_B ≤ p_max`. For a non-zero `spread` parameter, `ask_A_in_B` will be strictly greater than `bid_A_in_B`.
+*   **Source of Truth:** `src/vmt_engine/core/state.py:Quote` (dataclass), `src/vmt_engine/core/agent.py:Agent.quotes` (dict)
+*   **Current Implementation:** Agents use `quotes: dict[str, float]` for money-aware exchange pairs
+*   **Invariant:** For barter pairs, `ask_A_in_B ≥ p_min` and `bid_A_in_B ≤ p_max`. With non-zero `spread`, ask strictly exceeds bid.
 
 #### 2.3 Agent State
 The `Agent` object is separated into its configuration (defined at the start of a simulation) and its dynamic runtime state.
@@ -72,11 +87,14 @@ AgentConfig := {
 AgentState := {
   pos:               Position,
   inventory:         Inventory,
-  quotes:            Quote,
-  inventory_changed: bool, // Flag to trigger quote recalculation
+  quotes:            dict<str, Price>, // Money-aware: keys for all exchange pairs [IMPLEMENTED Phase 2]
+  inventory_changed: bool,             // Flag to trigger quote recalculation
   target_pos:        optional<Position>,
   target_agent_id:   optional<AgentID>,
-  trade_cooldowns:   map<AgentID, Tick> // Cooldown until tick for a given partner
+  trade_cooldowns:   map<AgentID, Tick>, // Cooldown until tick for a given partner
+  paired_with_id:    optional<AgentID>,  // Trade partner ID (pairing system) [IMPLEMENTED]
+  lambda_money:      float,              // Marginal utility of money [IMPLEMENTED Phase 1]
+  lambda_changed:    bool                // Flag for lambda update detection [IMPLEMENTED Phase 1]
 }
 ```
 *   **Source of Truth:** `src/vmt_engine/core/agent.py:Agent`
@@ -106,7 +124,7 @@ Environment := {
 
 This section defines the core economic computations.
 
-#### 3.1 Utility Functions
+#### 3.1 Utility Functions `[IMPLEMENTED]`
 Utility is represented as a discriminated union, allowing for different functional forms.
 
 ```text
@@ -121,39 +139,74 @@ Utility :=
   | { type: "ces",    params: CESParams }
   | { type: "linear", params: LinearParams }
 ```
+
+**Money-Aware Utility API** (Phase 2+):
+*   `u_goods(A: int, B: int) -> float`: Compute utility from goods only (canonical method)
+*   `mu_A(A: int, B: int) -> float`: Marginal utility of good A (∂U/∂A)
+*   `mu_B(A: int, B: int) -> float`: Marginal utility of good B (∂U/∂B)
+*   `u_total(inventory, params) -> float`: Total utility including money `[PLANNED Phase 3+]`
+
+**Legacy API** (backward compatible):
+*   `u(A: int, B: int) -> float`: Routes to `u_goods()` `[DEPRECATED]`
+*   `mu(A: int, B: int) -> tuple[float, float]`: Routes to `(mu_A(), mu_B())` `[DEPRECATED]`
+
 *   **Source of Truth:** `src/vmt_engine/econ/utility.py`
 *   **Note:** Cobb-Douglas is implemented as a special case of CES where `rho` approaches 0.
 
-#### 3.2 Trade & Surplus
+#### 3.2 Trade & Surplus `[IMPLEMENTED]`
 The logic for initiating and executing a trade is a multi-step process designed to find a mutually beneficial integer exchange.
 
+**Surplus Computation:**
 ```text
-// 1. A potential for trade is identified if there is a positive surplus.
+// Surplus identifies trading potential (quote spread overlap)
 surplus(i, j) := max(i.bid - j.ask, j.bid - i.ask)
-
-// 2. A search is conducted for a viable trade. This involves:
-//    a. Iterating through trade sizes ΔA from 1 to dA_max.
-//    b. For each ΔA, testing multiple candidate prices within the
-//       [seller.ask, buyer.bid] range.
-
-// 3. The first (ΔA, price) pair that yields a rounded ΔB where
-//    both agents' utility strictly increases is executed.
-ΔB = floor(price * ΔA + 0.5)
 ```
-*   **Source of Truth:** `src/vmt_engine/systems/matching.py:find_compensating_block`
-*   **Invariants:** A trade only executes if it results in a strict utility increase (`ΔU > 0`) for *both* parties. The final transaction price is the one discovered during the search, not necessarily the midpoint of the initial quotes.
 
-### 4. Simulation Loop (Tick Cycle)
+**Compensating Block Search** (First-Acceptable-Trade Principle):
+```text
+// 1. Iterate through trade sizes ΔA from 1 to dA_max
+// 2. For each ΔA, test multiple candidate prices within [seller.ask, buyer.bid]
+// 3. For each candidate price, compute rounded ΔB:
+ΔB = floor(price * ΔA + 0.5)
+
+// 4. Accept the FIRST (ΔA, ΔB, price) tuple that yields strict utility gain for both:
+if ΔU_buyer > 0 AND ΔU_seller > 0:
+    execute trade and return
+```
+
+**Generic Matching** (Phase 2):
+*   `find_compensating_block_generic()`: Supports barter (A↔B) and monetary (A↔M, B↔M) exchange
+*   `find_best_trade()`: Selects highest-surplus exchange pair for a given agent pair
+
+*   **Source of Truth:** `src/vmt_engine/systems/matching.py:find_compensating_block`, `find_compensating_block_generic`, `find_best_trade`
+*   **Invariants:** 
+    *   A trade only executes if `ΔU > 0` for *both* parties
+    *   Uses first-acceptable-trade (not highest-surplus search)
+    *   Final price is the discovered candidate, not quote midpoint
+    *   Rounding ensures integer transfers for all goods
+
+### 4. Simulation Loop (Tick Cycle) `[IMPLEMENTED]`
 
 The simulation proceeds in a fixed, deterministic sequence of 7 phases. **This order is never changed.**
 
-1.  **Perception:** Agents gather information about their local environment.
-2.  **Decision:** Agents decide on a target (e.g., another agent to trade with, a resource to forage).
-3.  **Movement:** Agents move towards their target.
-4.  **Trade:** Agents attempt to execute trades with adjacent partners.
+1.  **Perception:** Agents gather information about their local environment (neighbors, resources).
+2.  **Decision:** Agents decide on a target and establish trade pairings.
+    *   3-pass pairing algorithm: (1) build preference lists, (2) mutual consent pairing, (3) best-available fallback
+    *   Resource claiming: agents claim forage targets to reduce clustering
+    *   Stale claims cleared at start of tick
+3.  **Movement:** Agents move towards their target (paired partner, resource, or other).
+4.  **Trade:** Paired agents attempt to execute trades if within interaction radius.
+    *   Generic money-aware matching (Phase 2): supports A↔B, A↔M, B↔M
+    *   Only paired agents trade (enforces commitment)
+    *   Failed trades unpair agents and set cooldown
 5.  **Forage:** Agents harvest resources from their current cell.
+    *   Single-harvester enforcement: first agent at cell claims harvest
+    *   Paired agents skip foraging (exclusive commitment to trading)
 6.  **Resource Regeneration:** Resources in cells are replenished according to scenario parameters.
-7.  **Housekeeping:** Internal state is updated (e.g., quotes are recomputed if inventories changed).
+7.  **Housekeeping:** Internal state is updated.
+    *   Quotes recomputed if inventories changed
+    *   Pairing integrity checks
+    *   Lambda updates (KKT mode, Phase 3+)
 
 *   **Determinism Rule:** Within each phase, agents are always processed in ascending order of their `agent.id`. Trade pairs are processed in ascending order of `(min_id, max_id)`.
 
@@ -222,7 +275,7 @@ The simulation generates detailed logs stored in a SQLite database (`./logs/tele
 
 *   **Source of Truth:** The `CREATE TABLE` statements in `src/telemetry/database.py`.
 
-#### Table: `runs`
+#### Table: `simulation_runs`
 Stores metadata for each simulation run.
 *   `run_id` (INTEGER, PK): Unique ID for the run.
 *   `scenario_name` (TEXT): Name of the scenario.
@@ -232,6 +285,9 @@ Stores metadata for each simulation run.
 *   `num_agents` (INTEGER): Number of agents in the run.
 *   `grid_width`, `grid_height` (INTEGER): Dimensions of the grid.
 *   `config_json` (TEXT): A JSON dump of the full scenario configuration.
+*   `exchange_regime` (TEXT): Exchange type control ("barter_only", "money_only", "mixed") `[IMPLEMENTED Phase 1]`
+*   `money_mode` (TEXT): Money utility mode ("quasilinear", "kkt_lambda") `[IMPLEMENTED Phase 1]`
+*   `money_scale` (INTEGER): Minor units scale for money `[IMPLEMENTED Phase 1]`
 
 #### Table: `agent_snapshots`
 Records the state of each agent at periodic intervals.
@@ -240,10 +296,16 @@ Records the state of each agent at periodic intervals.
 *   `tick` (INTEGER)
 *   `agent_id` (INTEGER)
 *   `x`, `y` (INTEGER): Agent's position.
-*   `inventory_A`, `inventory_B` (INTEGER): Agent's inventory.
+*   `inventory_A`, `inventory_B` (INTEGER): Agent's goods inventory.
+*   `inventory_M` (INTEGER): Agent's money holdings in minor units `[IMPLEMENTED Phase 1]`
 *   `utility` (REAL): Agent's calculated utility value.
-*   `ask_A_in_B`, `bid_A_in_B` (REAL): Agent's current quotes.
-*   `p_min`, `p_max` (REAL): Agent's reservation prices.
+*   `ask_A_in_B`, `bid_A_in_B` (REAL): Barter quotes for A in terms of B.
+*   `p_min`, `p_max` (REAL): Reservation prices for barter.
+*   `ask_A_in_M`, `bid_A_in_M` (REAL): Monetary quotes for A `[IMPLEMENTED Phase 2]`
+*   `ask_B_in_M`, `bid_B_in_M` (REAL): Monetary quotes for B `[IMPLEMENTED Phase 2]`
+*   `perceived_price_A`, `perceived_price_B` (REAL): Aggregated neighbor prices (KKT mode) `[IMPLEMENTED Phase 2]`
+*   `lambda_money` (REAL): Marginal utility of money `[IMPLEMENTED Phase 1]`
+*   `lambda_changed` (INTEGER): Boolean flag for lambda update detection `[IMPLEMENTED Phase 1]`
 *   `target_agent_id` (INTEGER, nullable): The ID of the agent's current trade target.
 *   `target_x`, `target_y` (INTEGER, nullable): The coordinates of the agent's current target.
 *   `utility_type` (TEXT): The class name of the agent's utility function.
@@ -265,8 +327,12 @@ Records every successful trade that occurs.
 *   `x`, `y` (INTEGER): Location of the trade.
 *   `buyer_id`, `seller_id` (INTEGER)
 *   `dA`, `dB` (INTEGER): The amounts of goods A and B exchanged.
-*   `price` (REAL): The price of the trade (in B per A).
+*   `dM` (INTEGER): Money transfer amount (0 for barter) `[IMPLEMENTED Phase 2]`
+*   `price` (REAL): The price of the trade.
 *   `direction` (TEXT): String indicating who initiated the trade.
+*   `exchange_pair_type` (TEXT): Exchange pair ("A<->B", "A<->M", "B<->M") `[IMPLEMENTED Phase 2]`
+*   `buyer_lambda`, `seller_lambda` (REAL): Lambda values at trade time `[IMPLEMENTED Phase 2]`
+*   `buyer_surplus`, `seller_surplus` (REAL): Utility gains for each party `[IMPLEMENTED Phase 2]`
 
 #### Table: `decisions`
 Records the outcome of the decision-making phase for each agent at each tick.
@@ -276,10 +342,13 @@ Records the outcome of the decision-making phase for each agent at each tick.
 *   `agent_id` (INTEGER)
 *   `chosen_partner_id` (INTEGER, nullable): Partner chosen for trade.
 *   `surplus_with_partner` (REAL, nullable): Potential surplus with the chosen partner.
-*   `target_type` (TEXT): The type of action chosen ('trade', 'forage', 'idle').
+*   `target_type` (TEXT): The type of action chosen ('trade', 'forage', 'idle', 'trade_paired').
 *   `target_x`, `target_y` (INTEGER, nullable): The target coordinates.
 *   `num_neighbors` (INTEGER): Number of other agents in the agent's vision radius.
-*   `alternatives` (TEXT): A string representation of the other options considered.
+*   `alternatives` (TEXT): A string representation of the other options considered (deprecated, see `preferences` table).
+*   `mode` (TEXT): Current mode from mode_schedule ('forage', 'trade', 'both') `[IMPLEMENTED]`
+*   `claimed_resource_pos` (TEXT): Resource position claimed by agent `[IMPLEMENTED]`
+*   `is_paired` (INTEGER): Boolean flag indicating if agent is paired `[IMPLEMENTED]`
 
 #### Table: `trade_attempts`
 (Debug-level log) Records the detailed mechanics of every trade attempt, successful or not.
@@ -287,23 +356,81 @@ Records the outcome of the decision-making phase for each agent at each tick.
 *   `run_id`, `tick`, `buyer_id`, `seller_id` (INTEGER)
 *   ... (many columns detailing the initial/final states, feasibility, and outcome of the compensating block search)
 
+#### Table: `tick_states` `[IMPLEMENTED Phase 1]`
+Tracks combined mode+regime state per tick (Option A-plus observability).
+*   `tick_id` (INTEGER, PK)
+*   `run_id` (INTEGER, FK)
+*   `tick` (INTEGER)
+*   `current_mode` (TEXT): Temporal control ("forage", "trade", "both")
+*   `exchange_regime` (TEXT): Type control ("barter_only", "money_only", "mixed")
+*   `active_pairs` (TEXT): JSON array of active exchange pair types, e.g., `["A<->M", "B<->M"]`
+
+#### Table: `pairings` `[IMPLEMENTED]`
+Records pairing and unpairing events between agents.
+*   `pairing_id` (INTEGER, PK)
+*   `run_id` (INTEGER, FK)
+*   `tick` (INTEGER)
+*   `agent_i`, `agent_j` (INTEGER): The two agents involved
+*   `event` (TEXT): "pair" or "unpair"
+*   `reason` (TEXT): Event reason ("mutual_consent", "fallback_rank_0_surplus_0.6", "trade_failed", "mode_switch", etc.)
+*   `surplus_i`, `surplus_j` (REAL, nullable): Undiscounted surplus for each agent (NULL for unpair events)
+
+#### Table: `preferences` `[IMPLEMENTED]`
+Records agent preference rankings (top 3 by default, configurable to full list).
+*   `preference_id` (INTEGER, PK)
+*   `run_id` (INTEGER, FK)
+*   `tick` (INTEGER)
+*   `agent_id` (INTEGER)
+*   `partner_id` (INTEGER)
+*   `rank` (INTEGER): Preference ranking (0 = top choice, 1 = second, etc.)
+*   `surplus` (REAL): Undiscounted surplus
+*   `discounted_surplus` (REAL): Distance-discounted surplus (= surplus × β^distance)
+*   `distance` (INTEGER): Manhattan distance to partner
+
+#### Table: `lambda_updates` `[PLANNED Phase 3+]`
+Tracks KKT lambda estimation diagnostics (KKT mode only).
+*   `update_id` (INTEGER, PK)
+*   `run_id` (INTEGER, FK)
+*   `tick` (INTEGER)
+*   `agent_id` (INTEGER)
+*   `lambda_old`, `lambda_new` (REAL): Lambda before/after update
+*   `lambda_hat_A`, `lambda_hat_B`, `lambda_hat` (REAL): Intermediate estimates
+*   `clamped` (INTEGER): Boolean flag if bounds were hit
+*   `clamp_type` (TEXT, nullable): "lower", "upper", or NULL
+
 ---
 
 ## Part 3: Future & Cross-Platform
 
 This part outlines planned extensions to the type system and provides reference material for ports to other languages.
 
-### 7. Money & Market Contracts `[PLANNED]`
+### 7. Money & Market Contracts
 
-This section specifies the data contracts for a future implementation of centralized markets and currency.
+This section documents the money system implementation and plans for centralized markets.
 
-#### 7.1 Core Monetary Concepts
-*   **Numéraire (Money):** A special `Good` with the identifier `"M"` will be introduced. It is perfectly divisible (`Quantity` becomes `float` for "M"), fungible, and serves as the universal medium of exchange.
-*   **Price:** All prices will be quoted in terms of the numéraire, `Price_in_M`.
-*   **Wallets:** Agent inventories will be partitioned into `goods: map<Good, int>` and `money: float`.
+#### 7.1 Core Monetary Concepts `[IMPLEMENTED Phases 1-2]`
+*   **Numéraire (Money):** Good with identifier `"M"`, stored as `Inventory.M: int` in minor units (e.g., cents)
+*   **Exchange Regimes:** `exchange_regime` parameter controls allowed exchange types:
+    *   `"barter_only"`: Only A↔B trades (default, backward compatible)
+    *   `"money_only"`: Only A↔M and B↔M trades
+    *   `"mixed"`: All exchange pairs allowed
+    *   `"mixed_liquidity_gated"`: Mixed with minimum quote depth requirement
+*   **Quasilinear Utility:** Phase 2 uses U_total = U_goods(A, B) + λ·M where λ = marginal utility of money
+*   **Lambda Management:** 
+    *   Phase 1-2: Fixed λ (quasilinear mode)
+    *   Phase 3+: Adaptive λ (KKT mode) estimated from neighbor prices
+*   **Money Scale:** `money_scale` converts between whole units and minor units (default: 1 = no conversion)
 
-#### 7.2 Market Maker & Order Book
-A new type of entity, the `MarketMakerAgent`, will be introduced to facilitate exchange.
+#### 7.2 Bilateral Money Exchange `[IMPLEMENTED Phase 2]`
+Phase 2 implements decentralized bilateral money exchange:
+*   Agents trade goods (A or B) for money (M) with adjacent partners
+*   Generic matching algorithm selects best exchange pair (A↔M, B↔M, or A↔B)
+*   Quotes computed for all active exchange pairs based on marginal utilities
+*   Same pairing and compensating block logic as barter
+*   Money transfers recorded in `trades.dM` telemetry field
+
+#### 7.3 Market Maker & Order Book `[PLANNED Phase 4+]`
+A new type of entity, the `MarketMakerAgent`, will be introduced to facilitate centralized exchange.
 
 ```text
 // An order submitted to the market maker
@@ -324,7 +451,7 @@ OrderBook := {
 }
 ```
 
-#### 7.3 New Simulation Phases
+#### 7.4 New Simulation Phases `[PLANNED Phase 4+]`
 The introduction of a market will require new phases in the tick cycle, such as:
 *   `OrderPlacement`
 *   `MarketClearing`
@@ -383,4 +510,15 @@ This section tracks major revisions to this type and data contract specification
     *   Rewritten to align with the existing codebase for foraging and bilateral barter.
     *   Added detailed, code-derived schemas for Scenario Configuration (YAML) and Telemetry (SQLite).
     *   Added `[PLANNED]` section for Money & Market contracts.
+
+*   **Money System Documentation (2025-10-20):**
+    *   Updated Inventory to include M field `[IMPLEMENTED Phase 1]`
+    *   Updated AgentState with lambda_money and lambda_changed `[IMPLEMENTED Phase 1]`
+    *   Documented money-aware Quotes dictionary `[IMPLEMENTED Phase 2]`
+    *   Updated Utility API with u_goods, mu_A, mu_B methods `[IMPLEMENTED Phase 2]`
+    *   Documented generic matching and first-acceptable-trade principle `[IMPLEMENTED Phase 2]`
+    *   Expanded 7-Phase Tick Cycle with pairing, claiming, and single-harvester details `[IMPLEMENTED]`
+    *   Extended telemetry schema with money fields and new tables `[IMPLEMENTED Phases 1-2]`
+    *   Added tick_states, pairings, and preferences tables `[IMPLEMENTED]`
+    *   Updated Money & Market Contracts section with Phase 1-2 implementation status
 ---

@@ -1,0 +1,29 @@
+---
+description: "Covers the authoritative data contracts, type specifications, scenario configuration (YAML), and telemetry database (SQLite) schema for the VMT project."
+---
+# VMT Data Contracts & Telemetry
+
+This document outlines the critical data contracts for the VMT project. The absolute single source of truth for all types and data structures is [docs/4_typing_overview.md](mdc:docs/4_typing_overview.md).
+
+## Core Types & Invariants
+- **Integer Quantities**: All inventories (`A`, `B`, `M`), resources on the grid, and trade amounts (`ΔA`, `ΔB`, `dM`) are and must be **integers** (non-negative). This is a critical invariant.
+- **Spatial Parameters**: Agent parameters like `vision_radius`, `interaction_radius`, and `move_budget_per_tick` are also `int`.
+- **Identifiers**: `AgentID` and `Tick` are non-negative integers. `Position` is a `tuple[int, int]`.
+- **Money Representation**: `Inventory.M` stores money in *minor units* (e.g., cents) as an integer to avoid floating-point inaccuracies in economic calculations. The `money_scale` parameter controls this conversion.
+- **Quotes**: Agent quotes are stored in a modern, money-aware dictionary with string keys for all active exchange pairs (e.g., `"ask_A_in_M"`, `"bid_B_in_M"`), not in the legacy `Quote` dataclass.
+
+## Scenario Configuration (YAML)
+- Simulations are configured via `.yaml` files located in the root `scenarios/` directory.
+- The schema is extensive and allows for defining the grid, agent populations, initial inventories (including money `M`), a mix of different utility functions, and dozens of behavioral and economic parameters.
+- The authoritative source for the complete schema is the set of Python `dataclass` definitions in [src/scenarios/schema.py](mdc:src/scenarios/schema.py).
+
+## Telemetry System (SQLite)
+- All simulation data is logged to a high-performance SQLite database at `./logs/telemetry.db`. The viewer is launched with `python view_logs.py`.
+- The database schema is the primary contract for any analysis. The source of truth for the schema is [src/telemetry/database.py](mdc:src/telemetry/database.py).
+- Key tables for analysis include:
+    - `simulation_runs`: High-level metadata for each simulation run.
+    - `agent_snapshots`: The state of each agent (position, inventory, utility, quotes) at each tick.
+    - `trades`: A detailed record of every successful trade, including monetary transfers (`dM`) and surplus calculations.
+    - `pairings`: A log of all "pair" and "unpair" events, crucial for analyzing the trade pairing system.
+    - `preferences`: Per-tick rankings of potential trade partners for each agent.
+    - `tick_states`: Tracks the active `exchange_regime` and other global states at each tick.
