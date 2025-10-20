@@ -238,12 +238,12 @@ Add two new optional parameters to `scenarios/schema.py`:
 class ScenarioParams:
     # ... existing fields ...
     
-    # Resource claiming system (default: disabled for backward compatibility)
-    enable_resource_claiming: bool = False
-    enforce_single_harvester: bool = False
+    # Resource claiming system (default: enabled)
+    enable_resource_claiming: bool = True
+    enforce_single_harvester: bool = True
 ```
 
-**Backward Compatibility**: Both default to `False`, so existing scenarios behave identically.
+**Backward Compatibility**: Both default to `True`, if needed for backward compatibility set to False.
 
 ---
 
