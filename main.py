@@ -48,6 +48,10 @@ def main():
     print("  UP/DOWN: Increase/decrease speed")
     if renderer.needs_scrolling:
         print("  ARROW KEYS: Scroll camera (large grid)")
+    print("  T: Toggle trade arrows")
+    print("  F: Toggle forage arrows")
+    print("  A: All arrows on")
+    print("  O: All arrows off")
     print("  Q: Quit")
     print()
     
@@ -83,6 +87,30 @@ def main():
                 
                 elif event.key == pygame.K_q:
                     running = False
+                
+                elif event.key == pygame.K_t:
+                    # Toggle trade arrows only
+                    renderer.show_trade_arrows = not renderer.show_trade_arrows
+                    status = "ON" if renderer.show_trade_arrows else "OFF"
+                    print(f"Trade arrows: {status}")
+                
+                elif event.key == pygame.K_f:
+                    # Toggle forage arrows only
+                    renderer.show_forage_arrows = not renderer.show_forage_arrows
+                    status = "ON" if renderer.show_forage_arrows else "OFF"
+                    print(f"Forage arrows: {status}")
+                
+                elif event.key == pygame.K_a:
+                    # Toggle all arrows on
+                    renderer.show_trade_arrows = True
+                    renderer.show_forage_arrows = True
+                    print("All arrows: ON")
+                
+                elif event.key == pygame.K_o:
+                    # Toggle all arrows off
+                    renderer.show_trade_arrows = False
+                    renderer.show_forage_arrows = False
+                    print("All arrows: OFF")
         
         # Handle camera scrolling (for large grids)
         keys = pygame.key.get_pressed()

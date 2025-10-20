@@ -98,9 +98,16 @@ class VMTRenderer:
         self.COLOR_GREEN = (100, 255, 100)
         self.COLOR_PURPLE = (200, 100, 255)
         self.COLOR_YELLOW = (255, 255, 100)
+        self.COLOR_ARROW_TRADE = (100, 255, 100)      # Green for trade targeting
+        self.COLOR_ARROW_FORAGE = (255, 165, 0)       # Orange for forage targeting
+        self.COLOR_IDLE_BORDER = (255, 100, 100)      # Red border for idle agents
         
         # Track trade events for visualization
         self.recent_trades = self.sim.telemetry.recent_trades_for_renderer
+        
+        # Arrow visualization state
+        self.show_trade_arrows = False
+        self.show_forage_arrows = False
     
     def handle_camera_input(self, keys):
         """Handle camera movement with arrow keys."""
@@ -142,6 +149,7 @@ class VMTRenderer:
         self.draw_grid()
         self.draw_resources()
         self.draw_agents()
+        self.draw_target_arrows()
         self.draw_trade_indicators()
         self.draw_hud()
         
@@ -464,6 +472,154 @@ class VMTRenderer:
             #         agents, screen_x, screen_y, agent_count
             #     )
     
+    def draw_arrow(self, start_pos, end_pos, color, width=2):
+        """
+        Draw arrow from start to end position with arrowhead.
+        
+        Args:
+            start_pos: (screen_x, screen_y) tuple
+            end_pos: (screen_x, screen_y) tuple  
+            color: RGB color tuple
+            width: Line width in pixels
+        """
+        # Draw line
+        pygame.draw.line(self.screen, color, start_pos, end_pos, width)
+        
+        # Calculate arrowhead
+        dx = end_pos[0] - start_pos[0]
+        dy = end_pos[1] - start_pos[1]
+        length = math.sqrt(dx*dx + dy*dy)
+        
+        if length < 1:
+            return  # Too short to draw arrowhead
+        
+        # Normalize direction
+        dx /= length
+        dy /= length
+        
+        # Arrowhead parameters
+        arrow_len = 8
+        arrow_angle = math.pi / 6  # 30 degrees
+        
+        # Calculate arrowhead points
+        p1 = (
+            end_pos[0] - arrow_len * (dx * math.cos(arrow_angle) + dy * math.sin(arrow_angle)),
+            end_pos[1] - arrow_len * (dy * math.cos(arrow_angle) - dx * math.sin(arrow_angle))
+        )
+        p2 = (
+            end_pos[0] - arrow_len * (dx * math.cos(arrow_angle) - dy * math.sin(arrow_angle)),
+            end_pos[1] - arrow_len * (dy * math.cos(arrow_angle) + dx * math.sin(arrow_angle))
+        )
+        
+        # Draw arrowhead
+        pygame.draw.polygon(self.screen, color, [end_pos, p1, p2])
+    
+    def draw_target_arrows(self):
+        """Draw arrows showing agent movement targets and highlight idle agents."""
+        arrows_enabled = self.show_trade_arrows or self.show_forage_arrows
+        if not arrows_enabled:
+            return  # Early exit if all arrows disabled
+        
+        # Track idle agents for border rendering
+        idle_agents = []
+        
+        for agent in self.sim.agents:
+            if agent.target_pos is None:
+                # Idle agent - track for border rendering
+                idle_agents.append(agent)
+                continue
+            
+            # Determine arrow type
+            is_trade = agent.target_agent_id is not None
+            is_forage = agent.target_agent_id is None
+            
+            # Skip if this arrow type is disabled
+            if is_trade and not self.show_trade_arrows:
+                continue
+            if is_forage and not self.show_forage_arrows:
+                continue
+            
+            # Convert positions to screen coordinates
+            agent_x, agent_y = agent.pos
+            target_x, target_y = agent.target_pos
+            
+            agent_screen = self.to_screen_coords(agent_x, agent_y)
+            target_screen = self.to_screen_coords(target_x, target_y)
+            
+            # Check if either endpoint is visible (viewport culling)
+            if not (self.is_visible(agent_screen[0], agent_screen[1]) or 
+                    self.is_visible(target_screen[0], target_screen[1])):
+                continue
+            
+            # Calculate cell centers for arrow endpoints
+            agent_center = (
+                agent_screen[0] + self.cell_size // 2,
+                agent_screen[1] + self.cell_size // 2
+            )
+            target_center = (
+                target_screen[0] + self.cell_size // 2,
+                target_screen[1] + self.cell_size // 2
+            )
+            
+            # Choose color based on target type
+            color = self.COLOR_ARROW_TRADE if is_trade else self.COLOR_ARROW_FORAGE
+            
+            # Draw arrow
+            self.draw_arrow(agent_center, target_center, color, width=2)
+        
+        # Draw red borders for idle agents
+        self.draw_idle_agent_borders(idle_agents)
+    
+    def draw_idle_agent_borders(self, idle_agents):
+        """
+        Draw red borders around idle agents (those with no target).
+        
+        Args:
+            idle_agents: List of agents with no target_pos
+        """
+        # Group idle agents by position for proper rendering
+        position_groups = {}
+        for agent in idle_agents:
+            pos = agent.pos
+            if pos not in position_groups:
+                position_groups[pos] = []
+            position_groups[pos].append(agent)
+        
+        # Sort agents within each group by ID for deterministic rendering
+        for pos in position_groups:
+            position_groups[pos].sort(key=lambda a: a.id)
+        
+        for pos, agents in position_groups.items():
+            x, y = pos
+            screen_x, screen_y = self.to_screen_coords(x, y)
+            
+            # Skip if not visible
+            if not self.is_visible(screen_x, screen_y):
+                continue
+            
+            # Calculate cell center
+            cell_center_x = screen_x + self.cell_size // 2
+            cell_center_y = screen_y + self.cell_size // 2
+            
+            # Calculate optimal radius for this group size
+            agent_count = len(agents)
+            radius = self.calculate_agent_radius(self.cell_size, agent_count)
+            
+            # Draw red border for each idle agent
+            border_width = max(2, radius // 3)  # Border scales with agent size
+            
+            for idx, agent in enumerate(agents):
+                # Get display position for this agent (same logic as draw_agents)
+                px, py = self.calculate_agent_display_position(
+                    idx, agent_count, cell_center_x, cell_center_y
+                )
+                
+                # Draw red border circle
+                pygame.draw.circle(
+                    self.screen, self.COLOR_IDLE_BORDER, (px, py), 
+                    radius + border_width, border_width
+                )
+    
     def draw_trade_indicators(self):
         """Draw indicators for recent trades."""
         # This method is now obsolete as trades are drawn on the HUD
@@ -507,11 +663,26 @@ class VMTRenderer:
         
         # Controls (with scrolling if needed)
         if self.needs_scrolling:
-            controls_text = "SPACE=Pause R=Reset S=Step ←→↑↓=Scroll/Speed Q=Quit"
+            controls_text = "SPACE=Pause R=Reset S=Step ←→↑↓=Scroll/Speed T/F/A/O=Arrows Q=Quit"
         else:
-            controls_text = "Controls: SPACE=Pause  R=Reset  S=Step  ↑↓=Speed  Q=Quit"
+            controls_text = "SPACE=Pause R=Reset S=Step ↑↓=Speed T/F/A/O=Arrows Q=Quit"
         controls_label = self.small_font.render(controls_text, True, self.COLOR_BLACK)
         self.screen.blit(controls_label, (10, hud_y + 60))
+        
+        # Arrow toggle status
+        arrow_status_parts = []
+        if self.show_trade_arrows:
+            arrow_status_parts.append("Trade")
+        if self.show_forage_arrows:
+            arrow_status_parts.append("Forage")
+        
+        if arrow_status_parts:
+            arrow_status = "Arrows: " + "+".join(arrow_status_parts)
+        else:
+            arrow_status = "Arrows: OFF"
+        
+        arrow_label = self.small_font.render(arrow_status, True, self.COLOR_BLACK)
+        self.screen.blit(arrow_label, (10, hud_y + 75))
 
         # Recent trades (flexible format for barter and monetary)
         trade_hud_y = hud_y

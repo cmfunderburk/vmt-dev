@@ -1,6 +1,7 @@
-# Performance Benchmark: Combined Forage & Exchange Modes
+# Performance Benchmark: Combined Forage & Exchange Modes (Simultaneous)
 # 400 agents, 50x50 grid, balanced resources and inventories
 # 75 CES agents + 25 Linear agents with randomized utility parameters
+# Both forage and trade modes active simultaneously (no mode schedule)
 # Seed 42 for deterministic reproducibility
 
 schema_version: 1
@@ -160,9 +161,4 @@ resource_seed:
   density: 0.20  # Moderate density
   amount: 5
 
-# Both modes available
-mode_schedule:
-  type: global_cycle
-  forage_ticks: 15
-  trade_ticks: 15
-  start_mode: forage
+# No mode_schedule specified = both modes available simultaneously at all times
