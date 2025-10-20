@@ -41,8 +41,9 @@ This approach maximizes trade opportunities while preserving economic rationalit
 **Potential problematic behavior (documented):**
 - Agents can commit to distant partners and spend many ticks moving toward them
 - During this movement period, they ignore all other trading and foraging opportunities
+- Once paired, agents execute multiple trades (until opportunities exhausted) before unpairing
 - This is by design (commitment model) but may appear suboptimal in some scenarios
-- Educational value: demonstrates opportunity cost of commitment decisions
+- Educational value: demonstrates opportunity cost of commitment decisions and iterative trade
 
 ### 4. Performance
 - Target: O(N) complexity for decision phase (down from O(N²) in current all-pairs matching)
@@ -274,9 +275,14 @@ def _pass2_mutual_consent(self, sim: Simulation) -> None:
                 agent.trade_cooldowns.pop(partner_id, None)
                 partner.trade_cooldowns.pop(agent.id, None)
                 
+                # Get both agents' surpluses for logging
+                surplus_i = compute_surplus(agent, partner)
+                surplus_j = compute_surplus(partner, agent)
+                
                 # Log pairing event
                 sim.telemetry.log_pairing_event(
-                    sim.tick, agent.id, partner_id, "pair", "mutual_consent"
+                    sim.tick, agent.id, partner_id, "pair", "mutual_consent",
+                    surplus_i, surplus_j
                 )
 ```
 
@@ -349,11 +355,15 @@ def _pass3_best_available_fallback(self, sim: Simulation) -> None:
             agent.trade_cooldowns.pop(partner_id, None)
             partner.trade_cooldowns.pop(agent.id, None)
             
+            # Get both agents' surpluses for logging
+            surplus_i = surplus  # Already computed for this agent
+            surplus_j = compute_surplus(partner, agent)
+            
             # Log pairing event with rank and surplus information
             sim.telemetry.log_pairing_event(
                 sim.tick, agent_id, partner_id, "pair", 
                 f"fallback_rank_{rank}_surplus_{discounted_surplus:.4f}", 
-                surplus
+                surplus_i, surplus_j
             )
 ```
 
@@ -524,7 +534,8 @@ def trade_pair(agent_i, agent_j, params, telemetry, tick):
     result = find_compensating_block(agent_i, agent_j, params)
     
     if result is None:
-        # Trade failed - unpair and set cooldown
+        # Trade failed - no mutually beneficial trade exists
+        # This means trade opportunities are exhausted → unpair and set cooldown
         agent_i.paired_with_id = None
         agent_j.paired_with_id = None
         
@@ -541,17 +552,14 @@ def trade_pair(agent_i, agent_j, params, telemetry, tick):
     # Trade succeeded
     execute_trade(agent_i, agent_j, result)
     
-    # Unpair after successful trade
-    agent_i.paired_with_id = None
-    agent_j.paired_with_id = None
-    
-    # Log unpair event
-    telemetry.log_pairing_event(
-        tick, agent_i.id, agent_j.id, "unpair", "trade_success"
-    )
+    # Log trade success
+    # Note: Agents REMAIN PAIRED after successful trade
+    # They will attempt another trade next tick if still within interaction_radius
+    # This continues until trade attempt fails (opportunities exhausted)
+    telemetry.log_trade_success(tick, agent_i.id, agent_j.id, result)
 ```
 
-**Key insight:** Paired agents unpair after BOTH success and failure. Pairing is per-trade-attempt, not persistent.
+**Key insight:** Paired agents remain paired across multiple ticks, executing repeated trades until opportunities are exhausted (trade attempt fails). This is critical for the O(N) performance benefit.
 
 ---
 
@@ -663,11 +671,14 @@ CREATE TABLE pairings (
     agent_i INTEGER,
     agent_j INTEGER,
     event TEXT,              # "pair" or "unpair"
-    reason TEXT,             # "mutual_consent", "fallback_rank_0_surplus_0.6000", "trade_success", etc.
-    surplus REAL,            # Claimer's undiscounted surplus with this partner (NULL for unpair)
+    reason TEXT,             # "mutual_consent", "fallback_rank_0_surplus_0.6000", "trade_failed", etc.
+    surplus_i REAL,          # Agent i's undiscounted surplus with agent j (NULL for unpair)
+    surplus_j REAL,          # Agent j's undiscounted surplus with agent i (NULL for unpair)
     PRIMARY KEY (tick, agent_i, agent_j, event)
 )
 ```
+
+**Note:** Both surpluses logged for complete information, especially useful for analyzing mutual vs fallback pairings.
 
 ### New Table: `preferences`
 
@@ -698,16 +709,22 @@ CREATE TABLE preferences (
 
 **Logging example:**
 ```python
-# Pairing event
+# Pairing event (mutual consent)
 telemetry.log_pairing_event(
     tick=15, agent_i=3, agent_j=7, event="pair", 
-    reason="fallback_rank_1_surplus_0.6500", surplus=0.85
+    reason="mutual_consent", surplus_i=0.85, surplus_j=0.92
 )
 
-# Unpair event
+# Pairing event (fallback)
+telemetry.log_pairing_event(
+    tick=15, agent_i=3, agent_j=7, event="pair", 
+    reason="fallback_rank_1_surplus_0.6500", surplus_i=0.85, surplus_j=0.45
+)
+
+# Unpair event (trade failed - opportunities exhausted)
 telemetry.log_pairing_event(
     tick=18, agent_i=3, agent_j=7, event="unpair",
-    reason="trade_success", surplus=None
+    reason="trade_failed", surplus_i=None, surplus_j=None
 )
 
 # Preference logging (for each agent each tick)
@@ -880,12 +897,13 @@ def test_mode_switch_clears_pairings():
     # Expected: Both unpaired, no cooldown set
 ```
 
-#### Test 8: Trade Success Unpairs
+#### Test 8: Trade Success Maintains Pairing
 ```python
-def test_trade_success_unpairs():
-    """Successful trade clears pairing."""
+def test_trade_success_maintains_pairing():
+    """Successful trade keeps agents paired for subsequent trades."""
     # Setup: A-B paired and adjacent, trade succeeds
-    # Expected: Both unpaired, no cooldown
+    # Expected: Both remain paired, no cooldown
+    # Next tick: They attempt another trade
 ```
 
 #### Test 9: Trade Failure Unpairs with Cooldown
@@ -909,8 +927,9 @@ def test_paired_agents_skip_forage():
 #### Test 11: Full Cycle Test
 ```python
 def test_full_pairing_lifecycle():
-    """Complete lifecycle: pair → move → trade → unpair → cooldown."""
+    """Complete lifecycle: pair → move → repeated trades → unpair → cooldown."""
     # Multi-tick simulation tracking pairing events
+    # Expected: Multiple successful trades before unpair (opportunities exhausted)
 ```
 
 #### Test 12: Preference List Determinism
@@ -1004,9 +1023,15 @@ For 1000 agents: ~1 MB additional memory (negligible)
 ### 1. Commitment Model ✅
 **Decision:** Full commitment once paired (no rejection mechanism)
 
-**Rationale:** Simpler implementation, clearer semantics
+**Pairing persistence:** Agents remain paired across multiple ticks, executing repeated trades until opportunities are exhausted (trade attempt fails).
 
-**Documented caveat:** Agents may commit to distant partners and spend many ticks moving toward them while ignoring other opportunities. This is by design but may appear suboptimal in some scenarios. Has educational value for demonstrating opportunity cost of commitment.
+**Rationale:** 
+- Critical for O(N) performance benefit (avoid re-pairing overhead)
+- Simpler implementation and clearer semantics
+- Reflects realistic bilateral trading relationships
+- Agents fully exploit gains from trade before seeking new partners
+
+**Documented caveat:** Agents may commit to distant partners and spend many ticks moving toward them while ignoring other opportunities. Once paired, they execute multiple sequential trades. This is by design but may appear suboptimal in some scenarios. Has educational value for demonstrating opportunity cost of commitment and iterative bilateral exchange.
 
 ### 2. Distance Filtering and Ranking ✅
 **Decision:** Two-stage filtering:
