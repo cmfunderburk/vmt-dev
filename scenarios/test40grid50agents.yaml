@@ -15,12 +15,12 @@ params:
   epsilon: 1.0e-12
   beta: 0.95
   resource_growth_rate: 1
-  resource_max_amount: 1
+  resource_max_amount: 2
   resource_regen_cooldown: 20
   trade_cooldown_ticks: 20
 resource_seed:
   density: 0.10
-  amount: 1
+  amount: 2
 utilities:
   mix:
   - type: ces

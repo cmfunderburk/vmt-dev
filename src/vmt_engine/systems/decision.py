@@ -20,6 +20,7 @@ class DecisionSystem:
         self._pass1_target_selection(sim)
         self._pass2_mutual_consent(sim)
         self._pass3_best_available_fallback(sim)
+        self._pass3b_handle_unpaired_trade_targets(sim)
         self._pass4_log_decisions(sim)
     
     def _pass1_target_selection(self, sim: "Simulation") -> None:
@@ -249,6 +250,32 @@ class DecisionSystem:
                     surplus_i, surplus_j
                 )
     
+    def _pass3b_handle_unpaired_trade_targets(self, sim: "Simulation") -> None:
+        """Pass 3b: Handle unpaired agents who still have unfulfilled trade targets."""
+        
+        for agent in sorted(sim.agents, key=lambda a: a.id):
+            # Skip paired agents (they're fine)
+            if agent.paired_with_id is not None:
+                continue
+            
+            # Skip agents without trade targets
+            if agent.target_agent_id is None:
+                continue
+            
+            # This agent has a trade target but didn't get paired
+            # Clear the trade target and fall back to alternative activities
+            agent.target_agent_id = None
+            agent.target_pos = None
+            
+            # In "both" mode, fall back to foraging
+            if sim.current_mode == "both":
+                view = agent.perception_cache
+                self._evaluate_forage_target(agent, view, sim)
+            
+            # In "trade" mode, just stay idle (no foraging allowed)
+            else:
+                agent._decision_target_type = "idle"
+    
     def _pass4_log_decisions(self, sim: "Simulation") -> None:
         """Pass 4: Log all agent decisions with final pairing status."""
         
@@ -300,8 +327,8 @@ class DecisionSystem:
                 is_paired=(agent.paired_with_id is not None)
             )
             
-            # Log preferences to separate table
-            if agent._preference_list:
+            # Log preferences to separate table (opt-in via log_preferences parameter)
+            if agent._preference_list and sim.params.get("log_preferences", False):
                 # Determine how many preferences to log
                 log_full = sim.params.get("log_full_preferences", False)
                 max_prefs = len(agent._preference_list) if log_full else min(3, len(agent._preference_list))
