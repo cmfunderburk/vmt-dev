@@ -1,9 +1,48 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
+from dataclasses import dataclass
 from .matching import trade_pair, find_best_trade, execute_trade_generic
 
 if TYPE_CHECKING:
     from ..simulation import Simulation
+
+
+@dataclass
+class TradeCandidate:
+    """
+    Represents a potential trade between two agents.
+    
+    Used for ranking and selecting trades in mixed exchange regimes where
+    multiple trade types (barter, monetary) may be available simultaneously.
+    
+    Attributes:
+        buyer_id: ID of the agent receiving the good
+        seller_id: ID of the agent providing the good
+        good_sold: Good being sold ("A" or "B")
+        good_paid: Good used for payment ("A", "B", or "M")
+        dX: Quantity of good being sold (positive integer)
+        dY: Quantity of good used for payment (positive integer)
+        buyer_surplus: Surplus gained by buyer (ΔU > 0)
+        seller_surplus: Surplus gained by seller (ΔU > 0)
+    """
+    buyer_id: int
+    seller_id: int
+    good_sold: str
+    good_paid: str
+    dX: int
+    dY: int
+    buyer_surplus: float
+    seller_surplus: float
+    
+    @property
+    def total_surplus(self) -> float:
+        """Total welfare gain from this trade."""
+        return self.buyer_surplus + self.seller_surplus
+    
+    @property
+    def pair_type(self) -> str:
+        """Exchange pair type (e.g., 'A<->M', 'B<->A')."""
+        return f"{self.good_sold}<->{self.good_paid}"
 
 
 class TradeSystem:
@@ -40,6 +79,63 @@ class TradeSystem:
                 f"Unknown exchange_regime: '{regime}'. "
                 f"Must be one of: 'barter_only', 'money_only', 'mixed', 'mixed_liquidity_gated'"
             )
+    
+    def _rank_trade_candidates(self, candidates: list[TradeCandidate]) -> list[TradeCandidate]:
+        """
+        Rank trade candidates with deterministic three-level tie-breaking.
+        
+        Sorting priority (money-first policy for mixed regimes):
+        1. Total surplus (descending) - maximize welfare
+        2. Pair type priority (ascending) - money-first:
+           - Priority 0: A↔M (good A for money)
+           - Priority 1: B↔M (good B for money) 
+           - Priority 2: A↔B (barter)
+        3. Agent pair (min_id, max_id) (ascending) - deterministic tie-breaker
+        
+        This ensures that when multiple trade types offer equal surplus,
+        monetary exchanges are preferred (liquidity advantage), and remaining
+        ties are broken deterministically by agent ID for reproducibility.
+        
+        Args:
+            candidates: List of TradeCandidate objects to rank
+            
+        Returns:
+            Sorted list of candidates (highest priority first)
+            
+        Example:
+            If two trades both offer surplus=10.0, and one is A↔M while the 
+            other is A↔B, the A↔M trade will be ranked higher (executed first).
+        """
+        # Define pair type priority for money-first policy
+        # Lower number = higher priority (executed first when surplus equal)
+        PAIR_PRIORITY = {
+            "A<->M": 0,  # Highest priority: monetary exchange for A
+            "B<->M": 1,  # Second priority: monetary exchange for B
+            "A<->B": 2,  # Lowest priority: barter
+            "B<->A": 2,  # Barter (equivalent to A<->B)
+            "M<->A": 0,  # Seller perspective of A↔M (treated same as A<->M)
+            "M<->B": 1,  # Seller perspective of B↔M (treated same as B<->M)
+        }
+        
+        def sort_key(candidate: TradeCandidate) -> tuple:
+            """Generate sort key for a candidate."""
+            # 1. Negate surplus for descending order (higher surplus first)
+            surplus_key = -candidate.total_surplus
+            
+            # 2. Get pair type priority (lower is better)
+            pair_type = candidate.pair_type
+            pair_priority = PAIR_PRIORITY.get(pair_type, 99)  # Unknown pairs last
+            
+            # 3. Agent pair for deterministic tie-breaking (ascending)
+            agent_pair = (
+                min(candidate.buyer_id, candidate.seller_id),
+                max(candidate.buyer_id, candidate.seller_id)
+            )
+            
+            return (surplus_key, pair_priority, agent_pair)
+        
+        # Sort and return
+        return sorted(candidates, key=sort_key)
 
     def execute(self, sim: "Simulation") -> None:
         # Check if using money-aware matching (Phase 2+)
