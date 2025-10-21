@@ -1,0 +1,22 @@
+---
+description: Telemetry invariants and critical tests for determinism and pedagogy
+---
+# Telemetry and Tests: Invariants and Coverage Targets
+
+Telemetry invariants:
+- Do not mutate quotes mid-tick; refresh only in Housekeeping.
+- Log `exchange_pair_type` for all trades in money-aware regimes.
+- Pairing integrity: detect and repair asymmetric pairings; log unpair with reason.
+- Mode changes: log `(tick, old_mode -> new_mode)` and clear pairings without cooldown.
+
+Tests to preserve:
+- Determinism: same seed ⇒ identical logs.
+- Pairing: mutual consent, fallback ranking, integrity repair.
+- Money: mixed regime tie-breaking (money-first), correct `dM` recording.
+- Modes: forage-only ticks have zero trading attempts; trade-only ticks skip foraging.
+- Performance: pairing keeps O(N) behavior (no all-pairs scans).
+
+References:
+- Housekeeping: [src/vmt_engine/systems/housekeeping.py](mdc:src/vmt_engine/systems/housekeeping.py)
+- Trading (logging): [src/vmt_engine/systems/trading.py](mdc:src/vmt_engine/systems/trading.py)
+- Type contracts: [docs/4_typing_overview.md](mdc:docs/4_typing_overview.md)

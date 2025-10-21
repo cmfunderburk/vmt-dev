@@ -1,0 +1,25 @@
+---
+alwaysApply: true
+---
+# Project Structure and Entry Points
+
+Use these anchors to navigate the codebase quickly:
+
+- Core loop and systems: [src/vmt_engine/simulation.py](mdc:src/vmt_engine/simulation.py)
+- Engine overview: [src/vmt_engine/README.md](mdc:src/vmt_engine/README.md)
+- Systems (phases):
+  - Perception: [src/vmt_engine/systems/perception.py](mdc:src/vmt_engine/systems/perception.py)
+  - Decision (pairing): [src/vmt_engine/systems/decision.py](mdc:src/vmt_engine/systems/decision.py)
+  - Movement: [src/vmt_engine/systems/movement.py](mdc:src/vmt_engine/systems/movement.py)
+  - Trading: [src/vmt_engine/systems/trading.py](mdc:src/vmt_engine/systems/trading.py)
+  - Matching helpers: [src/vmt_engine/systems/matching.py](mdc:src/vmt_engine/systems/matching.py)
+  - Foraging & Regeneration: [src/vmt_engine/systems/foraging.py](mdc:src/vmt_engine/systems/foraging.py)
+  - Housekeeping: [src/vmt_engine/systems/housekeeping.py](mdc:src/vmt_engine/systems/housekeeping.py)
+- Scenario schema & loader:
+  - [src/scenarios/schema.py](mdc:src/scenarios/schema.py)
+  - [src/scenarios/loader.py](mdc:src/scenarios/loader.py)
+- Utilities (economics): [src/vmt_engine/econ/utility.py](mdc:src/vmt_engine/econ/utility.py)
+- Telemetry: [src/telemetry/database.py](mdc:src/telemetry/database.py), [src/telemetry/db_loggers.py](mdc:src/telemetry/db_loggers.py), [view_logs.py](mdc:view_logs.py)
+- Docs (core): [docs/1_project_overview.md](mdc:docs/1_project_overview.md), [docs/2_technical_manual.md](mdc:docs/2_technical_manual.md), [docs/3_strategic_roadmap.md](mdc:docs/3_strategic_roadmap.md), [docs/4_typing_overview.md](mdc:docs/4_typing_overview.md)
+- Entrypoints: [launcher.py](mdc:launcher.py), [main.py](mdc:main.py)
+- Tests: [tests/](mdc:tests)

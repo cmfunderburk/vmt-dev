@@ -1,0 +1,15 @@
+---
+description: Clarify exchange_regime vs mode_schedule usage and testing hooks
+---
+# Regimes and Modes (Type vs Temporal Control)
+
+- Temporal control (WHEN): `mode_schedule` in [src/scenarios/schema.py](mdc:src/scenarios/schema.py) → applied in [src/vmt_engine/simulation.py](mdc:src/vmt_engine/simulation.py) `_should_execute_system`.
+- Type control (WHAT): `exchange_regime` in [src/scenarios/schema.py](mdc:src/scenarios/schema.py) → used in [src/vmt_engine/systems/trading.py](mdc:src/vmt_engine/systems/trading.py) and matching primitives.
+
+Rules:
+- Forage mode: skip TradeSystem; Trade/Both: enable TradeSystem.
+- Active pair types exposed via `_get_active_exchange_pairs()` for telemetry/log viewer.
+- `mixed_liquidity_gated` exists in schema; treat gating logic as planned unless fully implemented.
+
+Testing hooks:
+- Add/maintain tests verifying: (a) forage-only ticks have zero trade attempts, (b) mixed regime logs `exchange_pair_type` correctly, (c) mode switch unpairs without cooldown.
