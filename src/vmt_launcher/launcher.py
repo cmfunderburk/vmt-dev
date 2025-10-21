@@ -19,13 +19,11 @@ SCENARIOS_DIR = "scenarios"
 
 def find_scenario_files():
     """
-    Find all YAML scenario files in the scenarios directory.
+    Find all YAML scenario files in the scenarios directory (recursive).
     
-    Args:
-        scenarios_dir: Path to scenarios directory
-        
     Returns:
-        List of (filename, full_path) tuples
+        List of (display_name, full_path) tuples
+        display_name includes folder path relative to scenarios/
     """
     scenarios_path = Path(SCENARIOS_DIR)
     
@@ -33,11 +31,16 @@ def find_scenario_files():
         return []
     
     yaml_files = []
-    for file in scenarios_path.glob("*.yaml"):
-        if file.is_file():
-            yaml_files.append((file.name, str(file)))
     
-    # Sort by filename
+    # Recursively find all .yaml files
+    for file in scenarios_path.rglob("*.yaml"):
+        if file.is_file():
+            # Get relative path from scenarios directory
+            relative_path = file.relative_to(scenarios_path)
+            display_name = str(relative_path)
+            yaml_files.append((display_name, str(file)))
+    
+    # Sort by display name (will naturally group by folder)
     yaml_files.sort(key=lambda x: x[0])
     
     return yaml_files
@@ -146,11 +149,14 @@ class LauncherWindow(QMainWindow):
             
             # Auto-select the new scenario if it was saved in scenarios/
             new_file_path = dialog.saved_path
-            if new_file_path and new_file_path.parent.name == SCENARIOS_DIR:
-                items = self.scenario_list.findItems(new_file_path.name, Qt.MatchExactly)
-                if items:
-                    self.scenario_list.setCurrentItem(items[0])
-                    self.on_scenario_selected(items[0])
+            if new_file_path:
+                # Find item by matching the full path stored in UserRole
+                for i in range(self.scenario_list.count()):
+                    item = self.scenario_list.item(i)
+                    if item.data(Qt.UserRole) == str(new_file_path):
+                        self.scenario_list.setCurrentItem(item)
+                        self.on_scenario_selected(item)
+                        break
     
     def run_simulation(self):
         """Run the selected simulation."""

@@ -39,11 +39,12 @@ def export_run_to_csv(db: TelemetryDatabase, run_id: int, output_dir: str):
 
 
 def export_agent_snapshots(db: TelemetryDatabase, run_id: int, output_file: Path):
-    """Export agent snapshots to CSV."""
+    """Export agent snapshots to CSV (with money columns)."""
     query = """
-        SELECT tick, agent_id as id, x, y, inventory_A as A, inventory_B as B, utility as U,
+        SELECT tick, agent_id as id, x, y, inventory_A as A, inventory_B as B, 
+               inventory_M as M, utility as U,
                ask_A_in_B, bid_A_in_B, p_min, p_max,
-               target_agent_id, target_x, target_y, utility_type
+               target_agent_id, target_x, target_y, utility_type, lambda_money
         FROM agent_snapshots
         WHERE run_id = ?
         ORDER BY tick, agent_id
@@ -52,20 +53,21 @@ def export_agent_snapshots(db: TelemetryDatabase, run_id: int, output_file: Path
     with open(output_file, 'w', newline='') as f:
         writer = csv.writer(f)
         writer.writerow([
-            'tick', 'id', 'x', 'y', 'A', 'B', 'U',
+            'tick', 'id', 'x', 'y', 'A', 'B', 'M', 'U',
             'ask_A_in_B', 'bid_A_in_B', 'p_min', 'p_max',
-            'target_agent_id', 'target_x', 'target_y', 'utility_type'
+            'target_agent_id', 'target_x', 'target_y', 'utility_type', 'lambda_money'
         ])
         
         cursor = db.execute(query, (run_id,))
         for row in cursor:
             writer.writerow([
                 row['tick'], row['id'], row['x'], row['y'],
-                row['A'], row['B'], f"{row['U']:.6f}",
+                row['A'], row['B'], row['M'], f"{row['U']:.6f}",
                 f"{row['ask_A_in_B']:.6f}", f"{row['bid_A_in_B']:.6f}",
                 f"{row['p_min']:.6f}", f"{row['p_max']:.6f}",
                 row['target_agent_id'] or '', row['target_x'] or '', 
-                row['target_y'] or '', row['utility_type']
+                row['target_y'] or '', row['utility_type'],
+                f"{row['lambda_money']:.6f}" if row['lambda_money'] is not None else ''
             ])
 
 
@@ -120,9 +122,10 @@ def export_decisions(db: TelemetryDatabase, run_id: int, output_file: Path):
 
 
 def export_trades(db: TelemetryDatabase, run_id: int, output_file: Path):
-    """Export trades to CSV."""
+    """Export trades to CSV (with money columns)."""
     query = """
-        SELECT tick, x, y, buyer_id, seller_id, dA, dB, price, direction
+        SELECT tick, x, y, buyer_id, seller_id, dA, dB, dM, price, direction,
+               buyer_lambda, seller_lambda, exchange_pair_type
         FROM trades
         WHERE run_id = ?
         ORDER BY tick
@@ -132,7 +135,8 @@ def export_trades(db: TelemetryDatabase, run_id: int, output_file: Path):
         writer = csv.writer(f)
         writer.writerow([
             'tick', 'x', 'y', 'buyer_id', 'seller_id',
-            'dA', 'dB', 'price', 'direction'
+            'dA', 'dB', 'dM', 'price', 'direction',
+            'buyer_lambda', 'seller_lambda', 'exchange_pair_type'
         ])
         
         cursor = db.execute(query, (run_id,))
@@ -140,8 +144,11 @@ def export_trades(db: TelemetryDatabase, run_id: int, output_file: Path):
             writer.writerow([
                 row['tick'], row['x'], row['y'],
                 row['buyer_id'], row['seller_id'],
-                row['dA'], row['dB'], f"{row['price']:.6f}",
-                row['direction']
+                row['dA'], row['dB'], row['dM'], f"{row['price']:.6f}",
+                row['direction'],
+                f"{row['buyer_lambda']:.6f}" if row['buyer_lambda'] is not None else '',
+                f"{row['seller_lambda']:.6f}" if row['seller_lambda'] is not None else '',
+                row['exchange_pair_type']
             ])
 
 

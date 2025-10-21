@@ -108,6 +108,18 @@ class VMTRenderer:
         # Arrow visualization state
         self.show_trade_arrows = False
         self.show_forage_arrows = False
+        
+        # Money visualization state
+        self.show_money_labels = True  # Toggle with 'M' key
+        self.show_lambda_heatmap = False  # Toggle with 'L' key
+        self.show_mode_regime_overlay = True  # Toggle with 'I' key
+        
+        # Money transfer animations
+        self.money_sparkles = []  # List of active sparkle animations
+        
+        # Colors for money
+        self.COLOR_GOLD = (255, 215, 0)
+        self.COLOR_DARK_GOLD = (218, 165, 32)
     
     def handle_camera_input(self, keys):
         """Handle camera movement with arrow keys."""
@@ -148,9 +160,18 @@ class VMTRenderer:
         
         self.draw_grid()
         self.draw_resources()
-        self.draw_agents()
+        
+        # Draw agents with optional lambda heatmap coloring
+        if self.show_lambda_heatmap:
+            self.draw_agents_with_lambda_heatmap()
+        else:
+            self.draw_agents()
+        
         self.draw_target_arrows()
+        self.draw_money_labels()
+        self.draw_money_sparkles()
         self.draw_trade_indicators()
+        self.draw_mode_regime_overlay()
         self.draw_hud()
         
         pygame.display.flip()
@@ -620,6 +641,269 @@ class VMTRenderer:
                     radius + border_width, border_width
                 )
     
+    def draw_money_labels(self):
+        """Draw money inventory labels near agents (gold text)."""
+        if not self.show_money_labels:
+            return
+        
+        # Check if money is active in this simulation
+        has_money = self.sim.params.get('exchange_regime') in ('money_only', 'mixed', 'mixed_liquidity_gated')
+        if not has_money:
+            return
+        
+        # Group agents by position
+        position_groups = self.group_agents_by_position()
+        
+        for pos, agents in position_groups.items():
+            x, y = pos
+            screen_x, screen_y = self.to_screen_coords(x, y)
+            
+            # Skip if not visible
+            if not self.is_visible(screen_x, screen_y):
+                continue
+            
+            # Calculate cell center
+            cell_center_x = screen_x + self.cell_size // 2
+            cell_center_y = screen_y + self.cell_size // 2
+            
+            agent_count = len(agents)
+            
+            # Draw money label for each agent
+            for idx, agent in enumerate(agents):
+                # Get display position for this agent
+                px, py = self.calculate_agent_display_position(
+                    idx, agent_count, cell_center_x, cell_center_y
+                )
+                
+                # Format money value
+                money_text = f"${agent.inventory.M}"
+                
+                # Render as gold text above agent
+                money_label = self.small_font.render(money_text, True, self.COLOR_GOLD)
+                label_width = money_label.get_width()
+                label_height = money_label.get_height()
+                
+                # Position above the agent with black outline for readability
+                label_x = px - label_width // 2
+                label_y = py - self.cell_size // 3 - label_height
+                
+                # Draw black outline
+                for dx in [-1, 0, 1]:
+                    for dy in [-1, 0, 1]:
+                        if dx != 0 or dy != 0:
+                            outline_label = self.small_font.render(money_text, True, self.COLOR_BLACK)
+                            self.screen.blit(outline_label, (label_x + dx, label_y + dy))
+                
+                # Draw gold text on top
+                self.screen.blit(money_label, (label_x, label_y))
+    
+    def draw_money_sparkles(self):
+        """Draw gold sparkle animations for money transfers."""
+        # Update and draw active sparkles
+        active_sparkles = []
+        
+        for sparkle in self.money_sparkles:
+            # Sparkle format: {'start_pos': (x, y), 'end_pos': (x, y), 'progress': 0.0-1.0, 'amount': M}
+            sparkle['progress'] += 0.05  # Animation speed
+            
+            if sparkle['progress'] < 1.0:
+                # Calculate current position (interpolate between start and end)
+                start_x, start_y = sparkle['start_pos']
+                end_x, end_y = sparkle['end_pos']
+                t = sparkle['progress']
+                
+                curr_x = start_x + (end_x - start_x) * t
+                curr_y = start_y + (end_y - start_y) * t
+                
+                # Draw gold circle (sparkle)
+                sparkle_radius = max(3, self.cell_size // 8)
+                pygame.draw.circle(
+                    self.screen, self.COLOR_GOLD, 
+                    (int(curr_x), int(curr_y)), sparkle_radius
+                )
+                pygame.draw.circle(
+                    self.screen, self.COLOR_DARK_GOLD,
+                    (int(curr_x), int(curr_y)), sparkle_radius, 1
+                )
+                
+                active_sparkles.append(sparkle)
+        
+        self.money_sparkles = active_sparkles
+    
+    def add_money_transfer_animation(self, buyer_pos: tuple[int, int], seller_pos: tuple[int, int], amount: int):
+        """
+        Add a money sparkle animation from buyer to seller.
+        
+        Args:
+            buyer_pos: (x, y) grid position of buyer
+            seller_pos: (x, y) grid position of seller
+            amount: Amount of money transferred
+        """
+        # Convert grid positions to screen positions
+        buyer_screen = self.to_screen_coords(*buyer_pos)
+        seller_screen = self.to_screen_coords(*seller_pos)
+        
+        # Calculate cell centers
+        buyer_center = (
+            buyer_screen[0] + self.cell_size // 2,
+            buyer_screen[1] + self.cell_size // 2
+        )
+        seller_center = (
+            seller_screen[0] + self.cell_size // 2,
+            seller_screen[1] + self.cell_size // 2
+        )
+        
+        # Add sparkle animation
+        self.money_sparkles.append({
+            'start_pos': buyer_center,
+            'end_pos': seller_center,
+            'progress': 0.0,
+            'amount': amount
+        })
+    
+    def draw_agents_with_lambda_heatmap(self):
+        """
+        Draw agents colored by their lambda_money value (heatmap).
+        Blue = low lambda, Red = high lambda.
+        """
+        # Find min/max lambda for normalization
+        lambdas = [a.lambda_money for a in self.sim.agents if hasattr(a, 'lambda_money')]
+        if not lambdas:
+            # Fall back to regular rendering if no lambda data
+            self.draw_agents()
+            return
+        
+        min_lambda = min(lambdas)
+        max_lambda = max(lambdas)
+        lambda_range = max_lambda - min_lambda
+        
+        if lambda_range == 0:
+            lambda_range = 1  # Avoid division by zero
+        
+        # Group agents by position
+        position_groups = self.group_agents_by_position()
+        
+        for pos, agents in position_groups.items():
+            x, y = pos
+            screen_x, screen_y = self.to_screen_coords(x, y)
+            
+            # Skip if not visible
+            if not self.is_visible(screen_x, screen_y):
+                continue
+            
+            # Calculate cell center
+            cell_center_x = screen_x + self.cell_size // 2
+            cell_center_y = screen_y + self.cell_size // 2
+            
+            # Calculate optimal radius for this group size
+            agent_count = len(agents)
+            radius = self.calculate_agent_radius(self.cell_size, agent_count)
+            
+            # Draw each agent in the group with heatmap color
+            for idx, agent in enumerate(agents):
+                # Get display position for this agent
+                px, py = self.calculate_agent_display_position(
+                    idx, agent_count, cell_center_x, cell_center_y
+                )
+                
+                # Calculate heatmap color based on lambda
+                if hasattr(agent, 'lambda_money'):
+                    normalized = (agent.lambda_money - min_lambda) / lambda_range
+                    # Blue (low) -> Red (high) gradient
+                    red = int(100 + normalized * 155)
+                    blue = int(255 - normalized * 155)
+                    green = 100
+                    color = (red, green, blue)
+                else:
+                    color = self.COLOR_GRAY
+                
+                # Draw agent circle
+                pygame.draw.circle(self.screen, color, (px, py), radius)
+                pygame.draw.circle(
+                    self.screen, self.COLOR_BLACK, (px, py), radius,
+                    max(1, radius // 5)
+                )
+                
+                # Draw agent ID (if space permits)
+                if radius >= 5 and self.cell_size >= 15:
+                    id_label = self.small_font.render(str(agent.id), True, self.COLOR_BLACK)
+                    id_rect = id_label.get_rect(center=(px, py))
+                    self.screen.blit(id_label, id_rect)
+    
+    def draw_mode_regime_overlay(self):
+        """Draw mode/regime information overlay in top-left corner."""
+        if not self.show_mode_regime_overlay:
+            return
+        
+        # Get current mode and regime
+        current_mode = getattr(self.sim, 'current_mode', 'both')
+        exchange_regime = self.sim.params.get('exchange_regime', 'barter_only')
+        
+        # Get active exchange pairs
+        active_pairs = []
+        if hasattr(self.sim, '_get_active_exchange_pairs'):
+            active_pairs = self.sim._get_active_exchange_pairs()
+        
+        # Background panel
+        panel_width = 250
+        panel_height = 100
+        panel_margin = 10
+        
+        # Draw semi-transparent background
+        overlay_surface = pygame.Surface((panel_width, panel_height))
+        overlay_surface.set_alpha(220)
+        overlay_surface.fill(self.COLOR_LIGHT_GRAY)
+        self.screen.blit(overlay_surface, (panel_margin, panel_margin))
+        
+        # Draw border
+        pygame.draw.rect(
+            self.screen, self.COLOR_BLACK,
+            (panel_margin, panel_margin, panel_width, panel_height),
+            2
+        )
+        
+        # Mode text with color coding
+        mode_colors = {
+            'forage': self.COLOR_GREEN,
+            'trade': self.COLOR_BLUE,
+            'both': self.COLOR_PURPLE
+        }
+        mode_color = mode_colors.get(current_mode, self.COLOR_BLACK)
+        
+        mode_text = f"Mode: {current_mode.upper()}"
+        mode_label = self.font.render(mode_text, True, mode_color)
+        self.screen.blit(mode_label, (panel_margin + 10, panel_margin + 10))
+        
+        # Regime text with color coding
+        regime_colors = {
+            'barter_only': (100, 200, 100),
+            'money_only': self.COLOR_GOLD,
+            'mixed': (150, 100, 255),
+            'mixed_liquidity_gated': (50, 50, 200)
+        }
+        regime_color = regime_colors.get(exchange_regime, self.COLOR_BLACK)
+        
+        regime_text = f"Regime: {exchange_regime}"
+        regime_label = self.font.render(regime_text, True, regime_color)
+        self.screen.blit(regime_label, (panel_margin + 10, panel_margin + 35))
+        
+        # Active pairs text
+        if active_pairs:
+            pairs_text = f"Active: {', '.join(active_pairs)}"
+        else:
+            pairs_text = "Active: None"
+        
+        pairs_label = self.small_font.render(pairs_text, True, self.COLOR_BLACK)
+        self.screen.blit(pairs_label, (panel_margin + 10, panel_margin + 60))
+        
+        # Show lambda info if in KKT mode
+        money_mode = self.sim.params.get('money_mode', 'quasilinear')
+        if money_mode == 'kkt_lambda':
+            avg_lambda = sum(a.lambda_money for a in self.sim.agents if hasattr(a, 'lambda_money')) / len(self.sim.agents)
+            lambda_text = f"Avg λ: {avg_lambda:.2f}"
+            lambda_label = self.small_font.render(lambda_text, True, self.COLOR_BLACK)
+            self.screen.blit(lambda_label, (panel_margin + 10, panel_margin + 80))
+    
     def draw_trade_indicators(self):
         """Draw indicators for recent trades."""
         # This method is now obsolete as trades are drawn on the HUD
@@ -663,9 +947,9 @@ class VMTRenderer:
         
         # Controls (with scrolling if needed)
         if self.needs_scrolling:
-            controls_text = "SPACE=Pause R=Reset S=Step ←→↑↓=Scroll/Speed T/F/A/O=Arrows Q=Quit"
+            controls_text = "SPACE=Pause R=Reset S=Step ←→↑↓=Scroll/Speed T/F/A/O=Arrows M/L/I=Money Q=Quit"
         else:
-            controls_text = "SPACE=Pause R=Reset S=Step ↑↓=Speed T/F/A/O=Arrows Q=Quit"
+            controls_text = "SPACE=Pause R=Reset S=Step ↑↓=Speed T/F/A/O=Arrows M/L/I=Money Q=Quit"
         controls_label = self.small_font.render(controls_text, True, self.COLOR_BLACK)
         self.screen.blit(controls_label, (10, hud_y + 60))
         
@@ -683,6 +967,23 @@ class VMTRenderer:
         
         arrow_label = self.small_font.render(arrow_status, True, self.COLOR_BLACK)
         self.screen.blit(arrow_label, (10, hud_y + 75))
+        
+        # Money visualization status
+        money_viz_parts = []
+        if self.show_money_labels:
+            money_viz_parts.append("$Labels")
+        if self.show_lambda_heatmap:
+            money_viz_parts.append("λHeat")
+        if self.show_mode_regime_overlay:
+            money_viz_parts.append("Info")
+        
+        if money_viz_parts:
+            money_viz_status = "Money Viz: " + "+".join(money_viz_parts)
+        else:
+            money_viz_status = "Money Viz: OFF"
+        
+        money_viz_label = self.small_font.render(money_viz_status, True, self.COLOR_BLACK)
+        self.screen.blit(money_viz_label, (200, hud_y + 75))
 
         # Recent trades (flexible format for barter and monetary)
         trade_hud_y = hud_y

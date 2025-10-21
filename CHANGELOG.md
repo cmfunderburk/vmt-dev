@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [Pre-release: Money Track 1 WP3 (quasilinear) - 2025-10-21]
+
+### Added
+- Pygame money visualization enhancements (WP3 3A):
+  - Money labels `$M` above agents with outline for readability
+  - Money transfer sparkles animation on trades
+  - Lambda heatmap overlay (toggle: L)
+  - Mode/regime information overlay (toggle: I)
+  - Keyboard toggle for money labels (M)
+- Log Viewer money features (WP3 3B):
+  - New “Money” tab with statistics, trade distribution by type, and money trades table
+  - Query helpers: money trades, lambda trajectory, mode timeline, distribution by type
+  - CSV export includes `inventory_M`, `lambda_money`, `dM`, `buyer_lambda`, `seller_lambda`, and `exchange_pair_type`
+- Demo scenarios (WP3 3C):
+  - `scenarios/demos/demo_01_simple_money.yaml`
+  - `scenarios/demos/demo_02_barter_vs_money.yaml`
+  - `scenarios/demos/demo_03_mixed_regime.yaml`
+  - `scenarios/demos/demo_04_mode_schedule.yaml`
+  - `scenarios/demos/demo_05_liquidity_zones.yaml`
+- Launcher improvements:
+  - Recursive discovery of scenarios (nested folders under `scenarios/`)
+
+### Documentation
+- User Guide: Money System (`docs/user_guide_money.md`)
+- Regime Comparison Guide (`docs/regime_comparison.md`)
+- Technical Reference: Money Implementation (`docs/technical/money_implementation.md`)
+- Core Docs updated (WP3 3E/3F): `docs/2_technical_manual.md`, `docs/4_typing_overview.md`, Quick Reference updates
+
+### Testing Status
+- 316 tests passing; 1 warning in quotes filtering when `exchange_regime = "mixed_liquidity_gated"` (falls back to `barter_only` pending Track 2 work)
+- E2E runs executed separately on demo scenarios; telemetry verified (DB created, trades recorded where applicable)
+
+### Notes
+- This prerelease finalizes Money Track 1 WP3 (renderer, log viewer, demos, documentation). Performance validation is deferred; quality checks are minimized for functional focus.
+
 ### Added
 - **Trade Pairing System** (2025-10-20): Implemented three-pass pairing algorithm for committed bilateral partnerships
   - Pass 1: Agents build ranked preference lists using distance-discounted surplus (surplus × β^distance)

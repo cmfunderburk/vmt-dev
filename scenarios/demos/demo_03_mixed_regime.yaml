@@ -1,0 +1,61 @@
+# Demo 3: Mixed Regime (Hybrid Economy)
+#
+# Pedagogical Goal: "When is Barter Still Used?"
+#
+# In a mixed economy, both barter (A↔B) and monetary exchange (A↔M, B↔M) 
+# coexist. This scenario demonstrates that money doesn't eliminate barter 
+# entirely - agents will still barter when it's more efficient than using money.
+# The "money-first tie-breaking" rule means money trades are preferred when
+# surplus is equal, but barter can win if it offers higher surplus.
+#
+# Key Teaching Points:
+# - Money and barter coexistence
+# - Money-first tie-breaking policy (Phase 3 feature)
+# - Trade type distribution (use analyze_trade_distribution.py script)
+# - When barter remains optimal (high bilateral gains)
+#
+# Suggested Exercise:
+# 1. Run scenario and observe both trade types in HUD
+# 2. Use scripts/analyze_trade_distribution.py to see trade breakdown
+# 3. Press 'M' in renderer to see money labels
+# 4. Press 'I' to see mode/regime overlay
+
+schema_version: 1
+name: "Demo 3: Mixed Regime"
+N: 20
+agents: 15
+
+initial_inventories:
+  A: [10, 5, 0, 8, 2, 0, 9, 4, 1, 7, 0, 6, 3, 0, 10]
+  B: [0, 5, 10, 2, 8, 9, 0, 4, 7, 1, 10, 3, 6, 8, 0]
+  M: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
+
+utilities:
+  mix:
+    - type: ces
+      weight: 1.0
+      params:
+        rho: 0.3
+        wA: 0.6
+        wB: 0.4
+
+params:
+  spread: 0.1
+  vision_radius: 20
+  interaction_radius: 1
+  move_budget_per_tick: 2
+  dA_max: 4
+  forage_rate: 2
+  
+  # Mixed regime: All trade types allowed
+  exchange_regime: mixed
+  money_mode: quasilinear
+  money_scale: 1
+  lambda_money: 1.0
+
+resource_seed:
+  density: 0.25
+  amount: 5
+
+# Recommended: Run for 100 ticks and analyze trade distribution
+
