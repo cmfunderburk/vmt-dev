@@ -214,7 +214,8 @@ class TelemetryManager:
             self._flush_decisions()
     
     def log_trade(self, tick: int, x: int, y: int, buyer_id: int, seller_id: int,
-                  dA: int, dB: int, price: float, direction: str, dM: int = 0):
+                  dA: int, dB: int, price: float, direction: str, dM: int = 0,
+                  exchange_pair_type: str = "A<->B"):
         """
         Log a successful trade.
         
@@ -228,6 +229,7 @@ class TelemetryManager:
             price: Trade price
             direction: Trade direction string
             dM: Amount of money traded (Phase 2+, default 0 for barter)
+            exchange_pair_type: Type of exchange (Phase 3+, default "A<->B")
         """
         if not self.config.log_trades or self.db is None or self.run_id is None:
             return
@@ -235,14 +237,16 @@ class TelemetryManager:
         self._trade_buffer.append((
             self.run_id, tick, int(x), int(y),
             int(buyer_id), int(seller_id),
-            int(dA), int(dB), int(dM), float(price), direction
+            int(dA), int(dB), int(dM), float(price), direction,
+            exchange_pair_type  # Phase 3: log exchange pair type
         ))
         
-        # Also store for renderer (Phase 2+: include dM)
+        # Also store for renderer (Phase 2+: include dM and exchange_pair_type)
         self.recent_trades_for_renderer.append({
             "tick": tick, "x": x, "y": y,
             "buyer_id": buyer_id, "seller_id": seller_id,
-            "dA": dA, "dB": dB, "dM": dM, "price": price, "direction": direction
+            "dA": dA, "dB": dB, "dM": dM, "price": price, "direction": direction,
+            "exchange_pair_type": exchange_pair_type
         })
         if len(self.recent_trades_for_renderer) > 20:
             self.recent_trades_for_renderer.pop(0)
@@ -458,8 +462,8 @@ class TelemetryManager:
         
         self.db.executemany("""
             INSERT INTO trades
-            (run_id, tick, x, y, buyer_id, seller_id, dA, dB, dM, price, direction)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (run_id, tick, x, y, buyer_id, seller_id, dA, dB, dM, price, direction, exchange_pair_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, self._trade_buffer)
         self.db.commit()
         self._trade_buffer.clear()

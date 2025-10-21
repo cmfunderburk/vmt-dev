@@ -1,10 +1,11 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 from dataclasses import dataclass
-from .matching import trade_pair, find_best_trade, execute_trade_generic
+from .matching import trade_pair, find_best_trade, find_all_feasible_trades, execute_trade_generic
 
 if TYPE_CHECKING:
     from ..simulation import Simulation
+    from ..core import Agent
 
 
 @dataclass
@@ -172,43 +173,176 @@ class TradeSystem:
                     trade_pair(agent, partner, sim.params, sim.telemetry, sim.tick)
             # else: Too far apart, stay paired and keep moving
     
-    def _trade_generic(self, agent_i, agent_j, sim):
-        """Execute money-aware trade using generic matching primitives."""
-        exchange_regime = sim.params.get("exchange_regime", "barter_only")
+    def _convert_to_trade_candidate(
+        self, 
+        agent_i: 'Agent', 
+        agent_j: 'Agent', 
+        pair_name: str, 
+        trade: tuple
+    ) -> TradeCandidate:
+        """
+        Convert a trade tuple from matching to a TradeCandidate object.
         
-        # Find best trade across allowed pairs
-        result = find_best_trade(
-            agent_i, agent_j, exchange_regime, sim.params, 
-            epsilon=sim.params.get("epsilon", 1e-9)
-        )
-        
-        if result is None:
-            # No mutually beneficial trade found - UNPAIR and set cooldown
-            # This means trade opportunities are exhausted
-            agent_i.paired_with_id = None
-            agent_j.paired_with_id = None
+        Args:
+            agent_i: First agent
+            agent_j: Second agent
+            pair_name: Pair type ("A<->B", "A<->M", "B<->M")
+            trade: Tuple (dA_i, dB_i, dM_i, dA_j, dB_j, dM_j, surplus_i, surplus_j)
             
-            cooldown_until = sim.tick + sim.params.get('trade_cooldown_ticks', 10)
-            agent_i.trade_cooldowns[agent_j.id] = cooldown_until
-            agent_j.trade_cooldowns[agent_i.id] = cooldown_until
-            
-            # Log unpair event
-            sim.telemetry.log_pairing_event(
-                sim.tick, agent_i.id, agent_j.id, "unpair", "trade_failed"
-            )
-            return
-        
-        pair_name, trade = result
+        Returns:
+            TradeCandidate with buyer/seller roles determined by trade direction
+        """
         dA_i, dB_i, dM_i, dA_j, dB_j, dM_j, surplus_i, surplus_j = trade
         
-        # Execute the trade
-        execute_trade_generic(agent_i, agent_j, trade)
+        # Determine buyer/seller and good/payment based on pair type
+        if pair_name == "A<->B":
+            # Barter: whoever receives A is the buyer
+            if dA_i > 0:  # agent_i receives A (buyer)
+                return TradeCandidate(
+                    buyer_id=agent_i.id, seller_id=agent_j.id,
+                    good_sold="A", good_paid="B",
+                    dX=dA_i, dY=-dB_i,
+                    buyer_surplus=surplus_i, seller_surplus=surplus_j
+                )
+            else:  # agent_j receives A (buyer)
+                return TradeCandidate(
+                    buyer_id=agent_j.id, seller_id=agent_i.id,
+                    good_sold="A", good_paid="B",
+                    dX=-dA_i, dY=dB_i,
+                    buyer_surplus=surplus_j, seller_surplus=surplus_i
+                )
         
-        # REMAIN PAIRED - agents will attempt another trade next tick
-        # This is critical for O(N) performance
+        elif pair_name == "A<->M":
+            # Monetary: whoever receives A is the buyer
+            if dA_i > 0:  # agent_i receives A (buyer)
+                return TradeCandidate(
+                    buyer_id=agent_i.id, seller_id=agent_j.id,
+                    good_sold="A", good_paid="M",
+                    dX=dA_i, dY=-dM_i,
+                    buyer_surplus=surplus_i, seller_surplus=surplus_j
+                )
+            else:  # agent_j receives A (buyer)
+                return TradeCandidate(
+                    buyer_id=agent_j.id, seller_id=agent_i.id,
+                    good_sold="A", good_paid="M",
+                    dX=-dA_i, dY=dM_i,
+                    buyer_surplus=surplus_j, seller_surplus=surplus_i
+                )
         
-        # Log to telemetry
-        self._log_generic_trade(agent_i, agent_j, pair_name, trade, sim)
+        else:  # "B<->M"
+            # Monetary: whoever receives B is the buyer
+            if dB_i > 0:  # agent_i receives B (buyer)
+                return TradeCandidate(
+                    buyer_id=agent_i.id, seller_id=agent_j.id,
+                    good_sold="B", good_paid="M",
+                    dX=dB_i, dY=-dM_i,
+                    buyer_surplus=surplus_i, seller_surplus=surplus_j
+                )
+            else:  # agent_j receives B (buyer)
+                return TradeCandidate(
+                    buyer_id=agent_j.id, seller_id=agent_i.id,
+                    good_sold="B", good_paid="M",
+                    dX=-dB_i, dY=dM_i,
+                    buyer_surplus=surplus_j, seller_surplus=surplus_i
+                )
+    
+    def _trade_generic(self, agent_i, agent_j, sim):
+        """
+        Execute money-aware trade using generic matching primitives.
+        
+        For mixed regimes (Phase 3+), evaluates ALL feasible trade types,
+        ranks them using money-first tie-breaking, and executes the best trade.
+        
+        For barter_only and money_only regimes, uses Phase 2 logic (first feasible trade).
+        """
+        exchange_regime = sim.params.get("exchange_regime", "barter_only")
+        epsilon = sim.params.get("epsilon", 1e-9)
+        
+        # Phase 3: Mixed regime logic with tie-breaking
+        if exchange_regime in ["mixed", "mixed_liquidity_gated"]:
+            # Find ALL feasible trades
+            feasible_trades = find_all_feasible_trades(
+                agent_i, agent_j, exchange_regime, sim.params, epsilon
+            )
+            
+            if not feasible_trades:
+                # No mutually beneficial trade found - UNPAIR and set cooldown
+                agent_i.paired_with_id = None
+                agent_j.paired_with_id = None
+                
+                cooldown_until = sim.tick + sim.params.get('trade_cooldown_ticks', 10)
+                agent_i.trade_cooldowns[agent_j.id] = cooldown_until
+                agent_j.trade_cooldowns[agent_i.id] = cooldown_until
+                
+                # Log unpair event
+                sim.telemetry.log_pairing_event(
+                    sim.tick, agent_i.id, agent_j.id, "unpair", "trade_failed"
+                )
+                return
+            
+            # Convert to TradeCandidate objects
+            candidates = [
+                self._convert_to_trade_candidate(agent_i, agent_j, pair_name, trade)
+                for pair_name, trade in feasible_trades
+            ]
+            
+            # Rank using money-first tie-breaking
+            ranked_candidates = self._rank_trade_candidates(candidates)
+            
+            # Execute the best trade
+            best_candidate = ranked_candidates[0]
+            
+            # Find the original trade tuple for execution
+            # (need to match it back to the pair_name, trade format)
+            best_pair_name = best_candidate.pair_type
+            best_trade = None
+            for pair_name, trade in feasible_trades:
+                if pair_name == best_pair_name:
+                    best_trade = trade
+                    break
+            
+            if best_trade is None:
+                # Should never happen, but defensive programming
+                return
+            
+            # Execute the trade
+            execute_trade_generic(agent_i, agent_j, best_trade)
+            
+            # REMAIN PAIRED - agents will attempt another trade next tick
+            
+            # Log to telemetry
+            self._log_generic_trade(agent_i, agent_j, best_pair_name, best_trade, sim)
+        
+        else:
+            # Phase 2 logic: barter_only or money_only (first feasible trade)
+            result = find_best_trade(
+                agent_i, agent_j, exchange_regime, sim.params, epsilon
+            )
+            
+            if result is None:
+                # No mutually beneficial trade found - UNPAIR and set cooldown
+                agent_i.paired_with_id = None
+                agent_j.paired_with_id = None
+                
+                cooldown_until = sim.tick + sim.params.get('trade_cooldown_ticks', 10)
+                agent_i.trade_cooldowns[agent_j.id] = cooldown_until
+                agent_j.trade_cooldowns[agent_i.id] = cooldown_until
+                
+                # Log unpair event
+                sim.telemetry.log_pairing_event(
+                    sim.tick, agent_i.id, agent_j.id, "unpair", "trade_failed"
+                )
+                return
+            
+            pair_name, trade = result
+            
+            # Execute the trade
+            execute_trade_generic(agent_i, agent_j, trade)
+            
+            # REMAIN PAIRED - agents will attempt another trade next tick
+            
+            # Log to telemetry
+            self._log_generic_trade(agent_i, agent_j, pair_name, trade, sim)
     
     def _log_generic_trade(self, agent_i, agent_j, pair_name, trade, sim):
         """Log money-aware trade to telemetry."""
@@ -262,10 +396,11 @@ class TradeSystem:
         else:
             price = 0.0
         
-        # Log trade (Phase 2+: include dM)
+        # Log trade (Phase 2+: include dM and exchange_pair_type)
         sim.telemetry.log_trade(
             sim.tick,
             agent_i.pos[0], agent_i.pos[1],
             buyer_id, seller_id,
-            dA, dB, price, direction, dM
+            dA, dB, price, direction, dM,
+            exchange_pair_type=pair_name  # Phase 3: log pair type for analysis
         )
