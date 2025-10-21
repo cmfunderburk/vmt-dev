@@ -98,9 +98,10 @@ python main.py scenarios/single_agent_forage.yaml 123
 - **🔬 75+ Passing Tests** - Comprehensive coverage including pairing, money, and performance benchmarks
 - **🎮 Pygame Visualization** - Interactive real-time rendering with smart co-location and target arrows
 - **🖥️ GUI Launcher** - Browse scenarios and create custom ones through forms
+- **⚡ CLI Scenario Generator** - Generate valid scenarios in < 0.1s with random parameters
 - **📊 SQLite Telemetry** - High-performance database logging with interactive PyQt5 viewer
 - **🎯 Deterministic** - Same seed → identical results every time
-- **⚙️ YAML Configuration** - Easy scenario customization
+- **⚙️ YAML Configuration** - Easy scenario customization (manual, GUI, or CLI)
 - **⚡ Performance Optimized** - O(N) agent interactions via spatial indexing and trade pairing
 
 ### Visualization Features
@@ -179,9 +180,55 @@ for agent in sim.agents:
 
 ## ✨ Creating Custom Scenarios
 
-### Using the GUI Builder
+VMT provides **three methods** for creating scenarios, each optimized for different workflows:
 
-The easiest way to create custom scenarios is through the GUI:
+### Method 1: CLI Scenario Generator (Developer Workflow) ⚡
+
+**Best for:** Rapid iteration, test suites, scripting, batch generation
+
+The command-line scenario generator creates valid YAML files in seconds:
+
+```bash
+# Basic usage - generates scenarios/my_test.yaml
+python3 -m src.vmt_tools.generate_scenario my_test \
+  --agents 20 --grid 30 --inventory-range 10,50 \
+  --utilities ces,linear --resources 0.3,5,1 --seed 42
+
+# With presets (Phase 2)
+python3 -m src.vmt_tools.generate_scenario demo --preset money_demo
+
+# Money economy (Phase 2)
+python3 -m src.vmt_tools.generate_scenario money_test \
+  --agents 20 --grid 30 --inventory-range 10,50 \
+  --utilities linear --resources 0.3,5,1 \
+  --exchange-regime money_only
+```
+
+**Current Status (Phase 1 - Complete):**
+- ✅ All 5 utility types with conservative parameter randomization
+- ✅ Deterministic generation with `--seed` flag
+- ✅ Automatic validation (schema-compliant YAML)
+- ✅ Generation time < 0.1 seconds per scenario
+- ✅ Comprehensive documentation in `src/vmt_tools/README.md`
+
+**Planned Extensions (Phase 2 - Ready for Implementation):**
+- 📋 Exchange regime selection (`--exchange-regime {barter_only|money_only|mixed}`)
+- 📋 Scenario presets (`--preset {minimal|standard|large|money_demo|mixed_economy}`)
+- 📋 Automatic money inventory generation for monetary economies
+
+**Future Phases (Based on Feedback):**
+- 🔮 Weighted utility mixes (`--utilities ces:0.6,linear:0.4`)
+- 🔮 Custom money inventory ranges
+- 🔮 Parameter validation mode
+- 🔮 Unit test integration
+
+See `docs/tmp/plans/scenario_generator_tool_plan.md` for complete roadmap.
+
+### Method 2: GUI Builder (Interactive)
+
+**Best for:** Exploration, one-off scenarios, learning
+
+The graphical scenario builder provides a form-based interface:
 
 1. **Launch the GUI**: `python launcher.py`
 2. **Click "Create Custom Scenario"** at the top
@@ -193,6 +240,10 @@ The easiest way to create custom scenarios is through the GUI:
 4. **Click "Generate Scenario"**
 5. **Save the YAML file** (default: `scenarios/` folder)
 6. **New scenario automatically appears** in the launcher list
+
+### Method 3: Manual YAML Editing (Advanced)
+
+**Best for:** Fine-grained control, advanced features, documentation
 
 ### Scenario Example
 
