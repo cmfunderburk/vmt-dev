@@ -111,6 +111,24 @@ def main():
                     renderer.show_trade_arrows = False
                     renderer.show_forage_arrows = False
                     print("All arrows: OFF")
+                
+                elif event.key == pygame.K_m:
+                    # Toggle money labels
+                    renderer.show_money_labels = not renderer.show_money_labels
+                    status = "ON" if renderer.show_money_labels else "OFF"
+                    print(f"Money labels: {status}")
+                
+                elif event.key == pygame.K_l:
+                    # Toggle lambda heatmap
+                    renderer.show_lambda_heatmap = not renderer.show_lambda_heatmap
+                    status = "ON" if renderer.show_lambda_heatmap else "OFF"
+                    print(f"Lambda heatmap: {status}")
+                
+                elif event.key == pygame.K_i:
+                    # Toggle mode/regime info overlay
+                    renderer.show_mode_regime_overlay = not renderer.show_mode_regime_overlay
+                    status = "ON" if renderer.show_mode_regime_overlay else "OFF"
+                    print(f"Mode/regime overlay: {status}")
         
         # Handle camera scrolling (for large grids)
         keys = pygame.key.get_pressed()
