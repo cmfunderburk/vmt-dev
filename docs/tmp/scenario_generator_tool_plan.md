@@ -114,6 +114,7 @@ gamma: uniform(0.0, 0.2)  # Weak cross-curvature
 - Bliss points inside typical inventory range (agents can reach them)
 - Curvature proportional to bliss point (sensible satiation rates)
 - Small gamma (weak complementarity, avoids complex interactions)
+- **Note**: Schema expects parameter name `gamma` (not `gamma_quad`). This is a different parameter than Stone-Geary's `gamma_A`/`gamma_B`
 
 #### Translog (Transcendental Logarithmic)
 ```python
@@ -142,6 +143,7 @@ gamma_B: 0.0
 - Normalized alphas (standard LES formulation)
 - Users can manually edit YAML to add subsistence if needed
 - Avoids inventory-parameter coupling issues
+- **Note**: Schema expects parameter names `gamma_A` and `gamma_B` (not `gamma_A_SG`). These are different parameters than quadratic's `gamma`
 
 ### 2.3 Inventory Generation
 
@@ -155,6 +157,15 @@ B_initial = randint(inventory_min, inventory_max)
 - Heterogeneous starting endowments (more realistic)
 - Uniform distribution over specified range
 - Integer values (consistent with VMT type system)
+
+**Validation:**
+- `inventory_min >= 1` (required for log-based utilities like Translog and Stone-Geary)
+- `inventory_max > inventory_min`
+
+**Type Safety:**
+- Good inventories (A, B) are always integers
+- Money inventories (M) are always integers
+- Utility parameters are floats, rounded to 2 decimal places in YAML output
 
 ### 2.4 Utility Mix Assignment
 
@@ -170,6 +181,11 @@ if utilities = ["ces:0.5", "quadratic:0.3", "translog:0.2"]:
 ```
 
 For each agent, randomly sample one utility from the mix (weighted sampling).
+
+**Note on CES Weights:**
+- CES utility weights (wA, wB) are normalized to sum to 1.0 by convention for interpretability
+- The CES formula does not strictly require normalization (weights are scale-free)
+- This is a convention, not a mathematical requirement
 
 ### 2.5 Default Simulation Parameters
 
@@ -188,9 +204,62 @@ params:
   exchange_regime: barter_only   # Default to barter
   enable_resource_claiming: true # Prevent clustering
   enforce_single_harvester: true # One agent per resource
+  resource_growth_rate: 1        # Resource regeneration rate
+  resource_max_amount: 5         # Max resource per cell
+  resource_regen_cooldown: 5     # Cooldown before regen starts
 ```
 
+**Note:** All resource parameters are now in the main `params` dict, not a separate `resource_params` section.
+
 Users can override any of these via CLI flags if needed (Phase 2 feature).
+
+### 2.6 Money Inventory Generation
+
+When `exchange_regime` is set to `money_only`, `mixed`, or `mixed_liquidity_gated`, the schema requires money (M) in `initial_inventories`.
+
+**Default behavior (Phase 1):**
+- Phase 1 only supports `barter_only` regime (no money)
+- Money inventory generation is deferred to Phase 2
+
+**Phase 2 behavior:**
+```python
+if exchange_regime in ["money_only", "mixed", "mixed_liquidity_gated"]:
+    # Generate money inventories (integers)
+    # Default: same range as goods, or user-specified via --money-range
+    M_inventories = [randint(money_min, money_max) for _ in range(n_agents)]
+    initial_inventories['M'] = M_inventories
+    
+    # Update params with money configuration
+    params['money_mode'] = 'quasilinear'  # Default, or user-specified
+    params['money_scale'] = 100           # Default, or user-specified
+    params['lambda_money'] = 1.0          # Default, or user-specified
+    # Other money params use schema defaults
+```
+
+**CLI flags (Phase 2):**
+```bash
+--exchange-regime mixed              # Required to enable money
+--money-range 100,500               # Optional: defaults to goods inventory range
+--money-scale 100                   # Optional: defaults to 1
+--lambda-money 1.0                  # Optional: defaults to 1.0
+--money-mode quasilinear            # Optional: defaults to quasilinear
+```
+
+**Important:** Mode schedules are NOT supported in the CLI. They are considered a power-user feature and should be manually added to YAML files if needed.
+
+### 2.7 Agent Positioning
+
+**Important:** Agent starting positions are **not specified in the scenario YAML**. The simulation engine handles agent placement deterministically based on the simulation seed.
+
+From the simulation engine:
+- Agents are placed on random grid cells during initialization
+- Placement is deterministic given the simulation seed
+- Positions are shuffled but reproducible
+
+This is not a scenario generation concern, but users should understand that:
+1. The scenario file does not control agent positions
+2. Running the same scenario with different simulation seeds produces different spatial configurations
+3. Spatial heterogeneity emerges from the simulation, not the scenario
 
 ---
 
@@ -302,9 +371,12 @@ python -m vmt_tools.generate_scenario "gains_from_trade_demo" \
 - Optional arguments:
   - `--seed N` - Random seed for reproducibility
   - `--output PATH` - Output file path (default: `scenarios/{name}.yaml`)
+  - `--skip-validation` - Skip parameter validation (default: True for Phase 1)
 - Parameter randomization for all 5 utility types
 - Conservative default ranges (as specified in Part 2.2)
 - Stone-Geary with gamma=0 (Cobb-Douglas behavior)
+- All parameters rounded to 2 decimal places for YAML output
+- Inventory validation: MIN >= 1, MAX > MIN
 
 **Example usage:**
 ```bash
@@ -386,7 +458,13 @@ def generate_scenario(name, n_agents, grid_size, inventory_range,
     inv_min, inv_max = inventory_range
     density, max_amt, regen = resource_config
     
-    # Generate inventories
+    # Validate inventory range
+    if inv_min < 1:
+        raise ValueError(f"inventory_min must be >= 1 (got {inv_min}). Required for log-based utilities.")
+    if inv_max <= inv_min:
+        raise ValueError(f"inventory_max must be > inventory_min (got max={inv_max}, min={inv_min})")
+    
+    # Generate inventories (integers)
     inventories_A = generate_inventories(n_agents, inv_min, inv_max)
     inventories_B = generate_inventories(n_agents, inv_min, inv_max)
     
@@ -395,14 +473,18 @@ def generate_scenario(name, n_agents, grid_size, inventory_range,
     weight = 1.0 / len(utilities)
     for util_type in utilities:
         params = generate_utility_params(util_type, inventory_range)
+        # Round all float params to 2 decimals
+        params = {k: round(v, 2) if isinstance(v, float) else v 
+                  for k, v in params.items()}
         utility_mix.append({
             'type': util_type,
-            'weight': weight,
+            'weight': round(weight, 2),
             'params': params
         })
     
     # Construct scenario dict
     scenario = {
+        'schema_version': 1,
         'name': name,
         'N': grid_size,
         'agents': n_agents,
@@ -425,16 +507,14 @@ def generate_scenario(name, n_agents, grid_size, inventory_range,
             'epsilon': 1e-12,
             'exchange_regime': 'barter_only',
             'enable_resource_claiming': True,
-            'enforce_single_harvester': True
+            'enforce_single_harvester': True,
+            'resource_growth_rate': regen,
+            'resource_max_amount': max_amt,
+            'resource_regen_cooldown': 5  # Standard default
         },
         'resource_seed': {
             'density': density,
             'amount': max_amt
-        },
-        'resource_params': {
-            'resource_growth_rate': regen,
-            'resource_max_amount': max_amt,
-            'resource_regen_cooldown': 5  # Standard default
         }
     }
     
@@ -450,6 +530,8 @@ def generate_scenario(name, n_agents, grid_size, inventory_range,
 **Goal:** Add customization options and presets
 
 **Timeline:** 1-2 days
+
+**Design Decision - Mode Schedules:** Mode schedules (temporal cycling between forage/trade phases) are **NOT** supported in the CLI generator. They are considered a power-user feature and should be manually added to YAML files post-generation. This keeps the CLI simple and focused on the common case.
 
 **Features:**
 1. **Weighted utility mixes:**
@@ -470,8 +552,19 @@ def generate_scenario(name, n_agents, grid_size, inventory_range,
 
 4. **Exchange regime selection:**
    ```bash
+   # Basic regimes (no money required)
+   --exchange-regime barter_only  # Default
+   
+   # Money regimes (generates M inventories)
+   --exchange-regime money_only
    --exchange-regime mixed
-   --mode-schedule "enable_M:10,enable_A_M:20,enable_B_M:30"
+   --exchange-regime mixed_liquidity_gated
+   
+   # Money configuration (when using money regimes)
+   --money-range 100,500          # M inventory range
+   --money-scale 100              # Money scale (minor units)
+   --lambda-money 1.0             # Marginal utility of money
+   --money-mode quasilinear       # quasilinear | kkt_lambda
    ```
 
 5. **Presets for common scenarios:**
@@ -481,6 +574,11 @@ def generate_scenario(name, n_agents, grid_size, inventory_range,
    --preset performance # Large, optimized for benchmarking
    ```
 
+6. **Parameter validation:**
+   ```bash
+   --validate  # Enable monotonicity and constraint checking (off by default in Phase 1)
+   ```
+
 **Example:**
 ```bash
 python -m vmt_tools.generate_scenario complex_test \
@@ -488,9 +586,20 @@ python -m vmt_tools.generate_scenario complex_test \
   --utilities ces:0.3,linear:0.2,quadratic:0.2,translog:0.15,stone_geary:0.15 \
   --resources 0.35,8,2 \
   --exchange-regime mixed \
-  --mode-schedule "enable_M:15,enable_A_M:30,enable_B_M:45" \
+  --money-range 200,800 \
+  --money-scale 100 \
+  --lambda-money 1.0 \
   --movement 2 --vision 12 \
   --seed 42
+```
+
+**Note:** Mode schedules are not supported in the CLI. Users who need mode schedules should manually edit the generated YAML to add:
+```yaml
+mode_schedule:
+  type: "global_cycle"
+  forage_ticks: 10
+  trade_ticks: 5
+  start_mode: "forage"
 ```
 
 ---
@@ -599,162 +708,118 @@ Complete specification of random parameter generation:
 import random
 import numpy as np
 
-CONSERVATIVE_RANGES = {
-    'ces': {
-        'rho': {
-            'min': -1.0,
-            'max': 1.0,
-            'exclude': (0.8, 1.2),  # Avoid near-Cobb-Douglas and rho=1
-            'generator': lambda: _uniform_excluding(-1.0, 1.0, 0.8, 1.2)
-        },
-        'wA': {
-            'min': 0.3,
-            'max': 0.7,
-            'generator': lambda: random.uniform(0.3, 0.7)
-        },
-        'wB': {
-            'generator': lambda wA: 1.0 - wA  # Dependent on wA
-        }
-    },
-    
-    'linear': {
-        'vA': {
-            'min': 0.5,
-            'max': 3.0,
-            'generator': lambda: random.uniform(0.5, 3.0)
-        },
-        'vB': {
-            'min': 0.5,
-            'max': 3.0,
-            'generator': lambda: random.uniform(0.5, 3.0)
-        }
-    },
-    
-    'quadratic': {
-        'A_star': {
-            'generator': lambda inv_range: random.uniform(
-                inv_range[0] * 1.2,
-                inv_range[1] * 0.8
-            )
-        },
-        'B_star': {
-            'generator': lambda inv_range: random.uniform(
-                inv_range[0] * 1.2,
-                inv_range[1] * 0.8
-            )
-        },
-        'sigma_A': {
-            'generator': lambda A_star: random.uniform(
-                A_star * 0.4,
-                A_star * 0.8
-            )
-        },
-        'sigma_B': {
-            'generator': lambda B_star: random.uniform(
-                B_star * 0.4,
-                B_star * 0.8
-            )
-        },
-        'gamma': {
-            'min': 0.0,
-            'max': 0.2,
-            'generator': lambda: random.uniform(0.0, 0.2)
-        }
-    },
-    
-    'translog': {
-        'alpha_0': {
-            'fixed': 0.0  # Standard normalization
-        },
-        'alpha_A': {
-            'min': 0.4,
-            'max': 0.6,
-            'generator': lambda: random.uniform(0.4, 0.6)
-        },
-        'alpha_B': {
-            'min': 0.4,
-            'max': 0.6,
-            'generator': lambda: random.uniform(0.4, 0.6)
-        },
-        'beta_AA': {
-            'min': -0.10,
-            'max': -0.02,
-            'generator': lambda: random.uniform(-0.10, -0.02)
-        },
-        'beta_BB': {
-            'min': -0.10,
-            'max': -0.02,
-            'generator': lambda: random.uniform(-0.10, -0.02)
-        },
-        'beta_AB': {
-            'min': -0.03,
-            'max': 0.03,
-            'generator': lambda: random.uniform(-0.03, 0.03)
-        }
-    },
-    
-    'stone_geary': {
-        'alpha_A': {
-            'min': 0.4,
-            'max': 0.6,
-            'generator': lambda: random.uniform(0.4, 0.6)
-        },
-        'alpha_B': {
-            'generator': lambda alpha_A: 1.0 - alpha_A  # Normalized
-        },
-        'gamma_A': {
-            'fixed': 0.0  # Default: no subsistence
-        },
-        'gamma_B': {
-            'fixed': 0.0  # Default: no subsistence
-        }
-    }
-}
-
 def generate_utility_params(utility_type: str, inventory_range: tuple) -> dict:
-    """Generate random parameters for a utility type."""
-    if utility_type not in CONSERVATIVE_RANGES:
+    """
+    Generate random parameters for a utility type.
+    
+    Uses explicit parameter generation with clear dependency ordering.
+    All parameters are generated within conservative ranges that ensure
+    valid, well-behaved utility functions.
+    
+    Args:
+        utility_type: One of 'ces', 'linear', 'quadratic', 'translog', 'stone_geary'
+        inventory_range: Tuple of (min, max) inventory values
+        
+    Returns:
+        Dictionary of parameters for the utility function
+    """
+    inv_min, inv_max = inventory_range
+    
+    if utility_type == "ces":
+        # CES: U = [wA * A^ρ + wB * B^ρ]^(1/ρ)
+        wA = random.uniform(0.3, 0.7)
+        return {
+            'rho': _uniform_excluding(-1.0, 1.0, 0.8, 1.2),
+            'wA': wA,
+            'wB': 1.0 - wA  # Normalized (convention, not requirement)
+        }
+    
+    elif utility_type == "linear":
+        # Linear: U = vA * A + vB * B
+        return {
+            'vA': random.uniform(0.5, 3.0),
+            'vB': random.uniform(0.5, 3.0)
+        }
+    
+    elif utility_type == "quadratic":
+        # Quadratic: U = -sigma_A*(A - A_star)^2 - sigma_B*(B - B_star)^2 - gamma*(A - A_star)*(B - B_star)
+        A_star = random.uniform(inv_min * 1.2, inv_max * 0.8)
+        B_star = random.uniform(inv_min * 1.2, inv_max * 0.8)
+        return {
+            'A_star': A_star,
+            'B_star': B_star,
+            'sigma_A': random.uniform(A_star * 0.4, A_star * 0.8),
+            'sigma_B': random.uniform(B_star * 0.4, B_star * 0.8),
+            'gamma': random.uniform(0.0, 0.2)
+        }
+    
+    elif utility_type == "translog":
+        # Translog: ln(U) = α₀ + αₐ*ln(A) + αᵦ*ln(B) + βₐₐ*ln(A)² + βᵦᵦ*ln(B)² + βₐᵦ*ln(A)*ln(B)
+        return {
+            'alpha_0': 0.0,  # Standard normalization
+            'alpha_A': random.uniform(0.4, 0.6),
+            'alpha_B': random.uniform(0.4, 0.6),
+            'beta_AA': random.uniform(-0.10, -0.02),  # Negative = diminishing returns
+            'beta_BB': random.uniform(-0.10, -0.02),
+            'beta_AB': random.uniform(-0.03, 0.03)    # Small interaction
+        }
+    
+    elif utility_type == "stone_geary":
+        # Stone-Geary: U = αₐ * ln(A - γₐ) + αᵦ * ln(B - γᵦ)
+        alpha_A = random.uniform(0.4, 0.6)
+        return {
+            'alpha_A': alpha_A,
+            'alpha_B': 1.0 - alpha_A,  # Normalized (standard LES)
+            'gamma_A': 0.0,             # No subsistence (acts like Cobb-Douglas)
+            'gamma_B': 0.0
+        }
+    
+    else:
         raise ValueError(f"Unknown utility type: {utility_type}")
-    
-    strategy = CONSERVATIVE_RANGES[utility_type]
-    params = {}
-    
-    # Generate parameters (may have dependencies)
-    for param_name, param_spec in strategy.items():
-        if 'fixed' in param_spec:
-            params[param_name] = param_spec['fixed']
-        elif 'generator' in param_spec:
-            gen_func = param_spec['generator']
-            # Check if generator needs arguments
-            import inspect
-            sig = inspect.signature(gen_func)
-            
-            if len(sig.parameters) == 0:
-                params[param_name] = gen_func()
-            elif param_name == 'wB':
-                params[param_name] = gen_func(params['wA'])
-            elif param_name == 'alpha_B':
-                params[param_name] = gen_func(params['alpha_A'])
-            elif param_name in ['A_star', 'B_star']:
-                params[param_name] = gen_func(inventory_range)
-            elif param_name == 'sigma_A':
-                params[param_name] = gen_func(params['A_star'])
-            elif param_name == 'sigma_B':
-                params[param_name] = gen_func(params['B_star'])
-    
-    return params
 
 def generate_inventories(n_agents: int, min_val: int, max_val: int) -> list:
-    """Generate random integer inventories for agents."""
+    """
+    Generate random integer inventories for agents.
+    
+    Args:
+        n_agents: Number of agents
+        min_val: Minimum inventory (must be >= 1)
+        max_val: Maximum inventory (must be > min_val)
+        
+    Returns:
+        List of n_agents random integers in [min_val, max_val]
+    """
+    if min_val < 1:
+        raise ValueError(f"min_val must be >= 1 (got {min_val})")
+    if max_val <= min_val:
+        raise ValueError(f"max_val must be > min_val (got max={max_val}, min={min_val})")
+    
     return [random.randint(min_val, max_val) for _ in range(n_agents)]
 
 def _uniform_excluding(min_val, max_val, excl_min, excl_max, max_tries=100):
-    """Sample uniform random value excluding a range."""
+    """
+    Sample uniform random value excluding a range.
+    
+    Used for CES rho to avoid rho=1 (undefined) and near-Cobb-Douglas values.
+    
+    Args:
+        min_val: Minimum value
+        max_val: Maximum value
+        excl_min: Start of excluded range
+        excl_max: End of excluded range
+        max_tries: Maximum attempts before giving up
+        
+    Returns:
+        Random value in [min_val, max_val] \ [excl_min, excl_max]
+        
+    Note: This implementation uses rejection sampling. A more robust version
+    would explicitly sample from the valid regions. See Open Question #11.
+    """
     for _ in range(max_tries):
         val = random.uniform(min_val, max_val)
         if val < excl_min or val > excl_max:
             return val
-    # Fallback: return edge value
+    # Fallback: return edge value (IMPERFECT - see Open Question #11)
     return min_val if random.random() < 0.5 else max_val
 ```
 
@@ -772,7 +837,7 @@ def _uniform_excluding(min_val, max_val, excl_min, excl_max, max_tries=100):
 **Quadratic:**
 - Bliss points 20-80% into inventory range: Reachable but not trivial
 - Sigma 40-80% of bliss point: Moderate curvature, not too sharp/flat
-- Gamma 0-0.2: Weak complementarity, avoids complex interactions
+- gamma 0-0.2: Weak complementarity, avoids complex interactions
 
 **Translog:**
 - Alpha near 0.5: Balanced first-order preferences
@@ -781,7 +846,7 @@ def _uniform_excluding(min_val, max_val, excl_min, excl_max, max_tries=100):
 - These ranges empirically ensure monotonicity over [1, 1000]
 
 **Stone-Geary:**
-- Gamma = 0: Acts like Cobb-Douglas, avoids subsistence complexity
+- gamma_A = gamma_B = 0: Acts like Cobb-Douglas, avoids subsistence complexity
 - Normalized alphas: Standard LES formulation
 - Users can manually set gamma > 0 in YAML if subsistence needed
 
@@ -907,23 +972,37 @@ python -m vmt_tools.generate_scenario "equal_mix" \
 
 ### 8.1 Open Questions
 
-1. **Should the tool support subsistence generation for Stone-Geary?**
+1. **Should the tool support subsistence generation for Stone-Geary?** (DEFERRED)
    - Current plan: gamma=0 by default
    - Future: Add `--enable-subsistence` flag that sets gamma = min_inventory * 0.3?
    - Trade-off: Simplicity vs. feature completeness
+   - **Decision**: Deferred to post-Phase 1 (non-critical)
 
-2. **Should we validate generated parameters?**
-   - Current plan: No validation (just create YAML)
-   - Future: Optional `--validate` flag that checks constraints?
+2. **Should we validate generated parameters?** (RESOLVED for Phase 1)
+   - Phase 1 plan: Skip validation by default (`--skip-validation` flag)
+   - Phase 2: Add `--validate` flag for monotonicity and constraint checking
    - Trade-off: Speed vs. safety
+   - **Decision**: Validation deferred to Phase 2
 
 3. **Should resource placement be randomized or deterministic?**
    - Current: Uses density parameter (deterministic cell selection per seed)
    - Alternative: Explicit `--resource-locations` file?
+   - **Status**: Current approach is sufficient for Phase 1
 
 4. **Parameter preset names?**
    - Proposed: `quick_test`, `full_demo`, `performance`
    - Better names? `minimal`, `standard`, `benchmark`?
+   - **Status**: To be finalized during Phase 2 implementation
+
+5. **How should `_uniform_excluding` handle edge cases?** (DEFERRED)
+   - Current: Rejection sampling with fallback
+   - Alternative: Explicit region sampling (see review comments)
+   - **Decision**: Current implementation sufficient for Phase 1; revisit if issues arise
+
+6. **Parameter naming for gamma values:** (RESOLVED)
+   - Quadratic uses `gamma_quad` for cross-curvature
+   - Stone-Geary uses `gamma_A_SG` and `gamma_B_SG` for subsistence levels
+   - **Decision**: Disambiguated to avoid confusion
 
 ### 8.2 Future Enhancements
 
@@ -946,6 +1025,12 @@ python -m vmt_tools.generate_scenario "equal_mix" \
 - Generate scenarios + run simulations + collect results
 - Built-in parameter sweep framework
 - Export summary statistics
+
+**Resource amount distributions (out of scope for Phase 1):**
+- The schema supports `amount: {uniform_int: [3, 8]}` for variable resource amounts
+- Phase 1 uses fixed integer amounts only
+- Future enhancement: Support distribution syntax for more variety
+- Example: `--resources 0.3,uniform:5:10,1` for amounts uniformly distributed in [5, 10]
 
 ---
 
@@ -993,6 +1078,7 @@ python -m vmt_tools.generate_scenario "equal_mix" \
 ### Generated YAML Structure
 
 ```yaml
+schema_version: 1
 name: "quick_test"
 N: 30
 agents: 20
@@ -1006,9 +1092,9 @@ utilities:
     - type: "ces"
       weight: 0.5
       params:
-        rho: 0.3456
-        wA: 0.5821
-        wB: 0.4179
+        rho: 0.35
+        wA: 0.58
+        wB: 0.42
     
     - type: "quadratic"
       weight: 0.5
@@ -1032,16 +1118,26 @@ params:
   exchange_regime: "barter_only"
   enable_resource_claiming: true
   enforce_single_harvester: true
+  resource_growth_rate: 1
+  resource_max_amount: 5
+  resource_regen_cooldown: 5
 
 resource_seed:
   density: 0.3
   amount: 5
-
-resource_params:
-  resource_growth_rate: 1
-  resource_max_amount: 5
-  resource_regen_cooldown: 5
 ```
+
+**Changes from original plan:**
+- ✅ Added `schema_version: 1` (required field)
+- ✅ Moved resource parameters into main `params` dict
+- ✅ Rounded float parameters to 2 decimal places
+- ✅ Inventories remain as integers (A, B are goods)
+
+**Note on parameter names:**
+- Quadratic uses `gamma` for cross-curvature (schema requirement)
+- Stone-Geary uses `gamma_A` and `gamma_B` for subsistence levels (schema requirement)
+- These are distinct parameters for different utility functions - no name collision in practice
+- Parameter names MUST match schema exactly for validation to pass
 
 ---
 
@@ -1054,6 +1150,50 @@ The **VMT Scenario Generator Tool** will dramatically improve developer workflow
 2. Begin Phase 1 implementation
 3. Iterate based on developer feedback
 4. Expand to Phases 2-3 as needs emerge
+
+---
+
+---
+
+## Revision Log
+
+**2025-10-21 - Post-Review Updates**
+
+The following changes were made based on comprehensive pre-implementation review:
+
+### Critical Issues Resolved:
+1. ✅ **Added `schema_version: 1`** to all generated YAML outputs (required field)
+2. ✅ **Fixed parameter structure**: Moved resource parameters from separate `resource_params` into main `params` dict
+3. ✅ **CES weight clarification**: Documented that normalization is by convention, not requirement
+
+### High Priority Issues Resolved:
+4. ✅ **Validation approach**: Phase 1 skips validation by default; Phase 2 adds `--validate` flag for monotonicity checking
+5. ✅ **Inventory validation**: Added `ValueError` for `inventory_min < 1` (required for log-based utilities)
+6. ⏭️ **Subsistence validation**: Deferred (non-critical for Phase 1 with gamma=0)
+7. ✅ **Parameter generation refactored**: Replaced reflection-based approach with explicit, maintainable code
+8. ✅ **Phase 2 exchange regime**: Resolved - no mode schedule support in CLI (manual YAML editing)
+9. ✅ **Money inventory generation**: Added section 2.6 with Phase 2 plan
+10. ✅ **Type safety**: Documented integer inventories, 2-decimal float parameters in YAML
+11. ⏭️ **`_uniform_excluding` improvements**: Deferred; current implementation sufficient
+12. ✅ **Parameter naming**: Clarified that `gamma` (quadratic) and `gamma_A`/`gamma_B` (Stone-Geary) are distinct parameters that don't collide; must match schema exactly
+13. ✅ **Agent positioning**: Added section 2.7 documenting simulation engine behavior
+14. ✅ **Resource distributions**: Noted as future enhancement (out of scope for Phase 1)
+
+### Documentation Improvements:
+- Added explicit rationale for all parameter ranges
+- Clarified CES weight normalization convention
+- Documented type safety guarantees (integers vs. floats)
+- Added agent positioning clarification
+- Updated example YAML to reflect all changes
+- Marked open questions with resolution status
+
+### Code Quality Improvements:
+- Replaced brittle reflection-based parameter generation with explicit, readable code
+- Added comprehensive docstrings to utility functions
+- Improved error messages with actionable guidance
+- Added validation at scenario generation time (not just schema validation)
+
+**Status**: Ready for Phase 1 implementation. Phase 2 design is complete and ready for implementation after Phase 1.
 
 ---
 
