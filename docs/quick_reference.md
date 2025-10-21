@@ -30,10 +30,8 @@
 
 | Goal | Document | Location |
 |------|----------|----------|
-| **Next: Money Phase 3** (mixed regimes) | [Money Phase 3 Checklist](BIG/money_phase3_checklist.md) | docs/BIG/ |
-| **Next: Scenario Generator Phase 2** | [Scenario Gen Phase 2 Plan](implementation/scenario_generator_phase2_plan.md) | docs/implementation/ |
-| See money system roadmap | [Money SSOT Implementation Plan](BIG/money_SSOT_implementation_plan.md) | docs/BIG/ |
-| Understand money strategy | [Money Implementation Strategy](BIG/money_implementation_strategy.md) | docs/BIG/ |
+| **See money system guide** (v1.0 complete) | [Money System Guide](guides/money_system.md) | docs/guides/ |
+| **Check money implementation status** | [Money System Tracker](implementation/money_system_tracker.md) | docs/implementation/ |
 | Check scenario generator status | [Scenario Generator Status](implementation/scenario_generator_status.md) | docs/implementation/ |
 
 ### Strategic Planning
@@ -49,8 +47,7 @@
 
 | Goal | Document | Location |
 |------|----------|----------|
-| Money Phase 1 completion details | [Phase 1 Completion Summary](BIG/PHASE1_COMPLETION_SUMMARY.md) | docs/BIG/ |
-| Money Phase 2 completion details | [Phase 2 PR Description](BIG/PHASE2_PR_DESCRIPTION.md) | docs/BIG/ |
+| Money system history | [Money System Tracker](implementation/money_system_tracker.md#historical-reference) | Git history |
 | Scenario Generator Phase 1 details | [Phase 1 Changelog](archive/scenario_generator_phase1_changelog.md) | docs/archive/ |
 | Performance baseline (no logging) | [Performance Baseline Phase 1](performance_baseline_phase1_with_logging.md) | docs/ |
 
@@ -75,12 +72,10 @@
 ### Implementation Status
 
 **Money System:**
-- ✅ Phase 1: [Completion Summary](BIG/PHASE1_COMPLETION_SUMMARY.md)
-- ✅ Phase 2: [PR Description](BIG/PHASE2_PR_DESCRIPTION.md)
-- 📋 **Phase 3**: [Checklist](BIG/money_phase3_checklist.md) ← **NEXT**
-- 📋 Phase 4: [Checklist](BIG/money_phase4_checklist.md)
-- ⏳ Phase 5: [Checklist](BIG/money_phase5_checklist.md) (Marked ADVANCED)
-- ⏳ Phase 6: [Checklist](BIG/money_phase6_checklist.md) (Marked ADVANCED)
+- ✅ Phases 1-4: COMPLETE (v1.0 quasilinear mode)
+- 📖 **Complete Guide**: [Money System Guide](guides/money_system.md) ← **READ THIS**
+- 📊 **Status Tracker**: [Money System Tracker](implementation/money_system_tracker.md)
+- ⏸️ Phases 5-6: Deferred per [ADR-001](decisions/001-hybrid-money-modularization-sequencing.md)
 
 **Scenario Generator:**
 - ✅ Phase 1: [Archive](archive/) - Complete
@@ -199,19 +194,12 @@ docs/
 │   ├── README.md
 │   └── 001-hybrid-money-modularization-sequencing.md
 │
-├── BIG/                           # Money system documentation
-│   ├── money_SSOT_implementation_plan.md
-│   ├── money_implementation_strategy.md
-│   ├── money_phase3_checklist.md  ← NEXT
-│   ├── money_phase4_checklist.md
-│   ├── money_phase5_checklist.md  (Track 2)
-│   ├── money_phase6_checklist.md  (Track 2)
-│   ├── PHASE1_COMPLETION_SUMMARY.md
-│   └── PHASE2_PR_DESCRIPTION.md
+├── guides/                        # User & developer guides
+│   └── money_system.md            ← Consolidated money guide (v1.0)
 │
-├── implementation/                # Active plans
+├── implementation/                # Active work trackers
 │   ├── README.md
-│   ├── scenario_generator_phase2_plan.md  ← READY
+│   ├── money_system_tracker.md    ← Money v1.0 status
 │   └── scenario_generator_status.md
 │
 ├── proposals/                     # Under consideration
