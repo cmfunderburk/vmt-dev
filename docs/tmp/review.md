@@ -29,9 +29,6 @@ The `PerceptionView` dataclass exists in `perception.py` but is **not** what get
 1. Change the existing code to store `PerceptionView` objects instead of dicts, OR
 2. Update the interface specification to accept `dict` and document the expected keys
 
-***RESOLUTION:***
-
-This is an *unresolved* issue. We need to discuss this further before we can proceed. In the meantime, the remaining issues should be resolved.
 
 ---
 
@@ -51,9 +48,6 @@ The comment says "Either a ResourceCell or another Agent" but there's no such un
 Target = Union[Cell, Agent]  # Or Position | Agent, depending on design intent
 ```
 
-***RESOLUTION:***
-
-Targets are currently handled by in src/vmt-engine/systems/decision.py. If a new `Target` type is needed, it should respect the existing behavior.
 ---
 
 ### **Category 2: Missing Behavioral Context**
