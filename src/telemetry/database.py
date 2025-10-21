@@ -137,6 +137,7 @@ class TelemetryDatabase:
                 mode TEXT,
                 claimed_resource_pos TEXT DEFAULT NULL,
                 is_paired INTEGER DEFAULT 0,
+                is_foraging_committed INTEGER DEFAULT 0,
                 FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id)
             )
         """)

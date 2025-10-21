@@ -92,6 +92,14 @@ def forage(agent: 'Agent', grid: 'Grid', forage_rate: int, current_tick: int = 0
     # Mark that inventory changed (for quote refresh)
     agent.inventory_changed = True
     
+    # Break foraging commitment (agent can now trade)
+    if agent.is_foraging_committed:
+        agent.is_foraging_committed = False
+        agent.forage_target_pos = None
+        
+        # Clear trade cooldowns (productive foraging clears frustration)
+        agent.trade_cooldowns.clear()
+    
     return True
 
 

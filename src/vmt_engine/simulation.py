@@ -281,6 +281,12 @@ class Simulation:
         
         # Clear all pairings when mode changes
         self._clear_pairings_on_mode_switch(old_mode, new_mode)
+        
+        # Clear all foraging commitments on mode change
+        for agent in self.agents:
+            if agent.is_foraging_committed:
+                agent.is_foraging_committed = False
+                agent.forage_target_pos = None
     
     def _clear_pairings_on_mode_switch(self, old_mode: str, new_mode: str) -> None:
         """Clear all pairings when mode changes."""

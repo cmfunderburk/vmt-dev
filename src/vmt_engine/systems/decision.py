@@ -33,6 +33,24 @@ class DecisionSystem:
             
             view = agent.perception_cache
             
+            # Case 0: Agent is foraging-committed - check if target still valid
+            if agent.is_foraging_committed and agent.forage_target_pos:
+                # Check if committed resource still exists
+                cell = sim.grid.get_cell(agent.forage_target_pos[0], agent.forage_target_pos[1])
+                resource = cell.resource
+                if resource.type is None or resource.amount == 0:
+                    # Resource disappeared - break commitment and clear claim
+                    agent.is_foraging_committed = False
+                    if agent.forage_target_pos in sim.resource_claims:
+                        del sim.resource_claims[agent.forage_target_pos]
+                    agent.forage_target_pos = None
+                else:
+                    # Resource still valid - maintain commitment and target
+                    agent.target_pos = agent.forage_target_pos
+                    agent.target_agent_id = None
+                    agent._decision_target_type = "forage"
+                    continue  # Skip rest of decision logic
+            
             # Case 1: Agent is already paired
             if agent.paired_with_id is not None:
                 self._handle_paired_agent_pass1(agent, sim)
@@ -85,6 +103,12 @@ class DecisionSystem:
             if neighbor_id not in sim.agent_by_id:
                 continue
             
+            neighbor = sim.agent_by_id[neighbor_id]
+            
+            # Skip neighbors who are foraging-committed (not available for trade)
+            if neighbor.is_foraging_committed:
+                continue
+            
             # Check cooldown
             if neighbor_id in agent.trade_cooldowns:
                 if sim.tick < agent.trade_cooldowns[neighbor_id]:
@@ -93,7 +117,6 @@ class DecisionSystem:
                     # Cooldown expired, remove
                     del agent.trade_cooldowns[neighbor_id]
             
-            neighbor = sim.agent_by_id[neighbor_id]
             surplus = compute_surplus(agent, neighbor)
             
             if surplus > 0:
@@ -142,6 +165,10 @@ class DecisionSystem:
             agent.target_pos = target
             agent.target_agent_id = None
             agent._decision_target_type = "forage"
+            
+            # Set foraging commitment (persists until harvest)
+            agent.is_foraging_committed = True
+            agent.forage_target_pos = target
         else:
             agent.target_pos = None
             agent.target_agent_id = None
@@ -324,7 +351,8 @@ class DecisionSystem:
                 decision_type, target_x, target_y, len(neighbors),
                 alternatives_str, mode=sim.current_mode, 
                 claimed_resource_pos=claimed_pos,
-                is_paired=(agent.paired_with_id is not None)
+                is_paired=(agent.paired_with_id is not None),
+                is_foraging_committed=agent.is_foraging_committed
             )
             
             # Log preferences to separate table (opt-in via log_preferences parameter)
@@ -349,6 +377,10 @@ class DecisionSystem:
         
         for pos, agent_id in sim.resource_claims.items():
             agent = sim.agent_by_id.get(agent_id)
+            
+            # Keep claim if agent is foraging-committed to this resource
+            if agent and agent.is_foraging_committed and agent.forage_target_pos == pos:
+                continue  # Claim persists until commitment breaks
             
             # Remove claim if:
             # 1. Agent doesn't exist (shouldn't happen but defensive)

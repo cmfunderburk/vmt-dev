@@ -173,7 +173,7 @@ class TelemetryManager:
                      target_x: Optional[int], target_y: Optional[int],
                      num_neighbors: int, alternatives: str = "", mode: str = "both",
                      claimed_resource_pos: Optional[tuple[int, int]] = None,
-                     is_paired: bool = False):
+                     is_paired: bool = False, is_foraging_committed: bool = False):
         """
         Log an agent's decision.
         
@@ -190,6 +190,7 @@ class TelemetryManager:
             mode: Current simulation mode
             claimed_resource_pos: Position of claimed resource (x, y) or None
             is_paired: Whether agent is currently paired with a trade partner
+            is_foraging_committed: Whether agent is committed to harvesting a specific resource
         """
         if not self.config.log_decisions or self.db is None or self.run_id is None:
             return
@@ -206,7 +207,8 @@ class TelemetryManager:
             target_x if target_x is None else int(target_x),  # Convert numpy int to Python int
             target_y if target_y is None else int(target_y),  # Convert numpy int to Python int
             num_neighbors, alternatives, mode, claimed_pos_str,
-            1 if is_paired else 0
+            1 if is_paired else 0,
+            1 if is_foraging_committed else 0
         ))
         
         # Flush buffer if needed
@@ -449,8 +451,8 @@ class TelemetryManager:
         self.db.executemany("""
             INSERT INTO decisions
             (run_id, tick, agent_id, chosen_partner_id, surplus_with_partner,
-             target_type, target_x, target_y, num_neighbors, alternatives, mode, claimed_resource_pos, is_paired)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             target_type, target_x, target_y, num_neighbors, alternatives, mode, claimed_resource_pos, is_paired, is_foraging_committed)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, self._decision_buffer)
         self.db.commit()
         self._decision_buffer.clear()

@@ -32,6 +32,10 @@ class Agent:
     inventory_changed: bool = field(default=True, repr=False)
     trade_cooldowns: dict[int, int] = field(default_factory=dict, repr=False)  # partner_id -> cooldown_until_tick
     
+    # Foraging commitment state
+    is_foraging_committed: bool = field(default=False, repr=False)  # True when committed to harvesting a specific resource
+    forage_target_pos: Optional[Position] = field(default=None, repr=False)  # Resource position agent is committed to
+    
     # Pairing state (persists across ticks until unpaired)
     paired_with_id: Optional[int] = field(default=None, repr=False)
     
