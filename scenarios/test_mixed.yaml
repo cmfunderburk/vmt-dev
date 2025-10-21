@@ -1,0 +1,87 @@
+schema_version: 1
+name: test_mixed
+N: 30
+agents: 20
+initial_inventories:
+  A:
+  - 50
+  - 17
+  - 11
+  - 27
+  - 25
+  - 24
+  - 18
+  - 16
+  - 44
+  - 15
+  - 47
+  - 37
+  - 12
+  - 11
+  - 15
+  - 23
+  - 24
+  - 42
+  - 48
+  - 11
+  B:
+  - 45
+  - 22
+  - 44
+  - 36
+  - 24
+  - 38
+  - 47
+  - 27
+  - 10
+  - 20
+  - 37
+  - 31
+  - 27
+  - 19
+  - 23
+  - 31
+  - 16
+  - 15
+  - 34
+  - 16
+utilities:
+  mix:
+  - type: ces
+    weight: 0.33
+    params:
+      rho: -0.31
+      wA: 0.44
+      wB: 0.56
+  - type: linear
+    weight: 0.33
+    params:
+      vA: 1.16
+      vB: 0.61
+  - type: quadratic
+    weight: 0.34
+    params:
+      A_star: 24.86
+      B_star: 15.5
+      sigma_A: 19.12
+      sigma_B: 6.69
+      gamma: 0.06
+params:
+  spread: 0.0
+  vision_radius: 8
+  interaction_radius: 1
+  move_budget_per_tick: 1
+  dA_max: 5
+  forage_rate: 1
+  trade_cooldown_ticks: 3
+  beta: 0.95
+  epsilon: 1.0e-12
+  exchange_regime: barter_only
+  enable_resource_claiming: true
+  enforce_single_harvester: true
+  resource_growth_rate: 1
+  resource_max_amount: 5
+  resource_regen_cooldown: 5
+resource_seed:
+  density: 0.3
+  amount: 5

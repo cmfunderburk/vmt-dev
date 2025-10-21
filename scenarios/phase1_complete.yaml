@@ -1,0 +1,123 @@
+schema_version: 1
+name: phase1_complete
+N: 40
+agents: 30
+initial_inventories:
+  A:
+  - 55
+  - 22
+  - 16
+  - 32
+  - 30
+  - 29
+  - 23
+  - 21
+  - 58
+  - 49
+  - 20
+  - 52
+  - 42
+  - 17
+  - 16
+  - 20
+  - 28
+  - 29
+  - 47
+  - 53
+  - 16
+  - 50
+  - 27
+  - 60
+  - 56
+  - 59
+  - 49
+  - 41
+  - 29
+  - 43
+  B:
+  - 52
+  - 32
+  - 15
+  - 25
+  - 59
+  - 42
+  - 36
+  - 32
+  - 24
+  - 28
+  - 36
+  - 21
+  - 20
+  - 39
+  - 21
+  - 37
+  - 37
+  - 53
+  - 31
+  - 17
+  - 44
+  - 49
+  - 22
+  - 39
+  - 20
+  - 50
+  - 33
+  - 55
+  - 54
+  - 38
+utilities:
+  mix:
+  - type: ces
+    weight: 0.2
+    params:
+      rho: 0.41
+      wA: 0.53
+      wB: 0.47
+  - type: linear
+    weight: 0.2
+    params:
+      vA: 0.61
+      vB: 1.07
+  - type: quadratic
+    weight: 0.2
+    params:
+      A_star: 26.68
+      B_star: 20.39
+      sigma_A: 13.16
+      sigma_B: 8.98
+      gamma: 0.06
+  - type: translog
+    weight: 0.2
+    params:
+      alpha_0: 0.0
+      alpha_A: 0.53
+      alpha_B: 0.47
+      beta_AA: -0.07
+      beta_BB: -0.08
+      beta_AB: -0.01
+  - type: stone_geary
+    weight: 0.2
+    params:
+      alpha_A: 0.59
+      alpha_B: 0.41
+      gamma_A: 0.0
+      gamma_B: 0.0
+params:
+  spread: 0.0
+  vision_radius: 8
+  interaction_radius: 1
+  move_budget_per_tick: 1
+  dA_max: 5
+  forage_rate: 1
+  trade_cooldown_ticks: 3
+  beta: 0.95
+  epsilon: 1.0e-12
+  exchange_regime: barter_only
+  enable_resource_claiming: true
+  enforce_single_harvester: true
+  resource_growth_rate: 2
+  resource_max_amount: 6
+  resource_regen_cooldown: 5
+resource_seed:
+  density: 0.35
+  amount: 6
