@@ -1,0 +1,187 @@
+---
+alwaysApply: true
+description: Clarification of different Phase numbering schemes to prevent confusion
+---
+
+# Phase Numbering Clarity
+
+## ⚠️ IMPORTANT: Multiple Phase Numbering Schemes
+
+VMT uses **three independent "Phase" numbering systems**. Always specify which system you're referencing.
+
+## The Three Phase Systems
+
+### 1. Strategic Roadmap Phases (A-F)
+
+**Purpose**: High-level curriculum progression  
+**Document**: [3_strategic_roadmap.md](mdc:docs/3_strategic_roadmap.md)  
+**Format**: Use letters (Phase A, Phase B, etc.)
+
+```
+Phase A: Foraging & Barter Economy ✅ COMPLETE
+Phase B: Introduction of Money   📋 IN PROGRESS
+Phase C: Local Market Mechanisms  🔮 FUTURE
+Phase D: Production Economy       🔮 FUTURE
+Phase E: General Equilibrium      🔮 FUTURE
+Phase F: Advanced Topics          🔮 FUTURE
+```
+
+**When to reference**: Discussing long-term vision and pedagogical progression
+
+### 2. Money System Phases (1-6)
+
+**Purpose**: Money feature implementation sequence  
+**Document**: [money_SSOT_implementation_plan.md](mdc:docs/BIG/money_SSOT_implementation_plan.md)  
+**Format**: Always prefix with "Money Phase X"
+
+```
+Money Phase 1: Infrastructure             ✅ COMPLETE (2025-10-19)
+Money Phase 2: Monetary exchange basics   ✅ COMPLETE (2025-10-20)
+Money Phase 3: Mixed regimes              📋 CURRENT PRIORITY
+Money Phase 4: Polish & documentation     📊 NEXT (after Phase 3)
+Money Phase 5: Liquidity gating           ⏸️ TRACK 2 (deferred)
+Money Phase 6: KKT λ estimation           ⏸️ TRACK 2 (deferred)
+```
+
+**When to reference**: Discussing money system implementation work
+
+**Two-Track Approach** (per [ADR-001](mdc:docs/decisions/001-hybrid-money-modularization-sequencing.md)):
+- **Track 1 (Core)**: Phases 3 → 4 (production-ready quasilinear)
+- **Track 2 (Advanced)**: Phases 6 → 5 (research features, deferred)
+
+### 3. Scenario Generator Phases (1-3)
+
+**Purpose**: CLI tool development stages  
+**Document**: [scenario_generator_status.md](mdc:docs/implementation/scenario_generator_status.md)  
+**Format**: Always prefix with "Scenario Generator Phase X"
+
+```
+Scenario Generator Phase 1: CLI MVP                    ✅ COMPLETE (2025-10-21)
+Scenario Generator Phase 2: Exchange regimes + presets 📊 READY (after Money Phase 3)
+Scenario Generator Phase 3: Advanced features          🔮 FUTURE (based on feedback)
+```
+
+**When to reference**: Discussing scenario generation tool development
+
+### 4. Modularization Phases (1-4) - PROPOSED ONLY
+
+**Purpose**: Protocol refactoring implementation stages (if/when approved)  
+**Document**: [protocol_modularization_plan.md](mdc:docs/proposals/protocol_modularization_plan.md)  
+**Format**: Always prefix with "Modularization Phase X"  
+**Status**: ⏸️ DEFERRED until after Money Track 1 complete
+
+```
+Modularization Phase 1: Interfaces + wrappers  ⏸️ DEFERRED
+Modularization Phase 2: Validation            ⏸️ DEFERRED
+Modularization Phase 3: New protocols         ⏸️ DEFERRED
+Modularization Phase 4: Configuration         ⏸️ DEFERRED
+```
+
+**When to reference**: Only when discussing future refactoring plans
+
+## Required Prefixes
+
+**ALWAYS use these prefixes when referencing phases:**
+
+| System | Prefix | Example |
+|--------|--------|---------|
+| Strategic Roadmap | "Phase [Letter]" | "Phase B: Introduction of Money" |
+| Money Implementation | "Money Phase [Number]" | "Money Phase 3: Mixed regimes" |
+| Scenario Generator | "Scenario Generator Phase [Number]" | "Scenario Generator Phase 2" |
+| Modularization | "Modularization Phase [Number]" | "Modularization Phase 1" |
+
+## Common Confusions to Avoid
+
+### ❌ WRONG: "We're working on Phase 3"
+**Problem**: Which Phase 3? Money? Scenario Generator? Strategic?
+
+### ✅ CORRECT: "We're working on Money Phase 3 (mixed regimes)"
+**Why**: Clear system reference + descriptive name
+
+---
+
+### ❌ WRONG: "Phase 2 is complete"
+**Problem**: Ambiguous - Money Phase 2? Scenario Generator Phase 2?
+
+### ✅ CORRECT: "Money Phase 2 (monetary exchange) is complete"
+**Why**: Explicit system + feature description
+
+---
+
+### ❌ WRONG: "Next is Phase 4"
+**Problem**: Could be Strategic Phase D, Money Phase 4, or Modularization Phase 4
+
+### ✅ CORRECT: "Next is Money Phase 4 (polish & documentation)"
+**Why**: No ambiguity possible
+
+## Quick Status Check
+
+**Current Active Phases:**
+
+- **Strategic**: Phase B (Introduction of Money) - IN PROGRESS
+- **Money**: Phase 3 (Mixed regimes) - CURRENT PRIORITY
+- **Scenario Generator**: Phase 1 COMPLETE, Phase 2 READY (after Money Phase 3)
+- **Modularization**: All phases DEFERRED per ADR-001
+
+## When Writing Documentation
+
+**In commit messages:**
+```
+✅ GOOD: "Complete Money Phase 3: Mixed regimes implementation"
+❌ BAD:  "Complete Phase 3"
+```
+
+**In PR descriptions:**
+```
+✅ GOOD: "This PR implements Money Phase 3 (mixed regimes) per money_phase3_checklist.md"
+❌ BAD:  "Implements Phase 3 features"
+```
+
+**In issue titles:**
+```
+✅ GOOD: "[Money Phase 3] Implement money-first tie-breaking"
+❌ BAD:  "[Phase 3] Add tie-breaking"
+```
+
+**In conversation:**
+```
+✅ GOOD: "Should we start Money Phase 3 or wait for feedback?"
+❌ BAD:  "Should we start Phase 3 or wait?"
+```
+
+## Exception: When Context is Clear
+
+Within a **single-system** document, you may omit the prefix after establishing context:
+
+**Example** (in `money_phase3_checklist.md`):
+```markdown
+# Money Phase 3: Mixed Regimes
+
+This document covers Phase 3 implementation...
+[Context established, "Phase 3" now unambiguous within this doc]
+```
+
+**But**: Always use full prefix when referencing across systems or in general discussion.
+
+## Resolution Guide
+
+**If you see ambiguous "Phase X" reference:**
+
+1. Check document context - which system is being discussed?
+2. Check date - what was active at that time?
+3. Look for descriptive name - "mixed regimes" = Money Phase 3
+4. If still unclear, ask for clarification
+
+**Then**: Update to use proper prefix in your response
+
+## Resources
+
+**Full reconciliation guide**: [Quick Reference: Phase Numbering](mdc:docs/quick_reference.md#by-phase-number-reconciliation)
+
+**Strategic decision**: [ADR-001](mdc:docs/decisions/001-hybrid-money-modularization-sequencing.md)
+
+**Current priorities**: [strategic-priority.mdc](mdc:.cursor/rules/strategic-priority.mdc)
+
+---
+
+**Remember**: When in doubt, use the full prefix. "Money Phase 3" is always clearer than "Phase 3".

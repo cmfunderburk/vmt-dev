@@ -2,6 +2,11 @@
 
 This document is the authoritative guide for the VMT project. It contains the high-level vision, long-term feature roadmap, and a detailed, actionable plan for the immediate next steps.
 
+> **⚠️ Note on Phase Numbering**: This document uses "**Phases A-F**" for high-level curriculum progression. For detailed implementation plans, see:
+> - **Money System**: [Money SSOT Plan](BIG/money_SSOT_implementation_plan.md) (Money Phases 1-6)
+> - **Current Status**: [ADR-001](decisions/001-hybrid-money-modularization-sequencing.md) (strategic decision)
+> - **Quick Lookup**: [Quick Reference Guide](quick_reference.md#by-phase-number-reconciliation)
+
 ---
 
 ## Part A: The Vision - A Microeconomic Laboratory

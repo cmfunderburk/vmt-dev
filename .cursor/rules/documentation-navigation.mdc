@@ -1,0 +1,161 @@
+---
+alwaysApply: true
+description: Documentation organization and where to find information
+---
+
+# Documentation Organization (Updated 2025-10-21)
+
+## Quick Lookup: Use the Quick Reference Guide
+
+**Always start here**: [Quick Reference Guide](mdc:docs/quick_reference.md)
+
+The Quick Reference provides:
+- "I want to..." lookup table for common tasks
+- Document cross-references by type
+- Navigation by audience (Users, Educators, Researchers, Contributors)
+- **Phase numbering reconciliation** (prevents confusion)
+- Complete directory structure map
+
+## Documentation Directory Structure
+
+```
+docs/
+├── README.md                      # Documentation hub (start here for overview)
+├── quick_reference.md             # Fast lookup table (start here for specific info)
+│
+├── Core Documentation (1-4)
+│   ├── 1_project_overview.md     # Users: Features, installation, usage
+│   ├── 2_technical_manual.md     # Developers: Implementation details
+│   ├── 3_strategic_roadmap.md    # Contributors: Long-term vision
+│   └── 4_typing_overview.md      # Developers: Data contracts, telemetry
+│
+├── decisions/                     # Architecture Decision Records (ADRs)
+│   └── 001-hybrid-money-modularization-sequencing.md  ← Current strategy
+│
+├── BIG/                           # Money system documentation
+│   ├── money_SSOT_implementation_plan.md  # All 6 phases specification
+│   ├── money_implementation_strategy.md   # Two-track approach
+│   ├── money_phase3_checklist.md          # ← NEXT: Mixed regimes
+│   ├── money_phase4_checklist.md          # Polish & docs
+│   ├── money_phase5_checklist.md          # (Track 2: Liquidity gating)
+│   ├── money_phase6_checklist.md          # (Track 2: KKT λ estimation)
+│   ├── PHASE1_COMPLETION_SUMMARY.md       # ✅ Complete
+│   └── PHASE2_PR_DESCRIPTION.md           # ✅ Complete
+│
+├── implementation/                # Active implementation plans
+│   ├── scenario_generator_phase2_plan.md  # Ready after Money Phase 3
+│   └── scenario_generator_status.md       # Current progress
+│
+├── proposals/                     # Under consideration (DEFERRED)
+│   ├── protocol_modularization_plan.md         # Main plan
+│   ├── protocol_modularization_discussion.md   # Rationale
+│   └── protocol_modularization_v2_resolution.md
+│
+├── archive/                       # Completed/historical
+│   └── scenario_generator_phase1_*.md         # ✅ Complete
+│
+└── _audit/                        # Project audits
+    ├── 2025-10-21_comprehensive_documentation_audit.md
+    └── 2025-10-21_documentation_cleanup_summary.md
+```
+
+## Document Status Legend
+
+- ✅ **Complete** - Implementation finished, use for reference
+- 📋 **Next** - Approved for immediate implementation
+- 📊 **Ready** - Detailed plan exists, ready to implement after dependencies
+- ⏸️ **Deferred** - Waiting for prerequisite completion or strategic decision
+- 💬 **Discussion** - Under consideration, not approved for implementation
+- 🔮 **Future** - Planned but no detailed design yet
+
+## Common Lookup Patterns
+
+### "What should I implement next?"
+→ [ADR-001](mdc:docs/decisions/001-hybrid-money-modularization-sequencing.md)  
+→ [Money Phase 3 Checklist](mdc:docs/BIG/money_phase3_checklist.md)
+
+### "How does [feature] work?"
+→ [Technical Manual](mdc:docs/2_technical_manual.md)  
+→ [Type System](mdc:docs/4_typing_overview.md)
+
+### "What's the long-term vision?"
+→ [Strategic Roadmap](mdc:docs/3_strategic_roadmap.md) (Phases A-F)  
+→ [ADR-001](mdc:docs/decisions/001-hybrid-money-modularization-sequencing.md) (Current priorities)
+
+### "What are the money system phases?"
+→ [Money SSOT Plan](mdc:docs/BIG/money_SSOT_implementation_plan.md) (All 6 phases)  
+→ [Money Implementation Strategy](mdc:docs/BIG/money_implementation_strategy.md) (Two tracks)
+
+### "What's the status of [feature]?"
+→ [Quick Reference: Implementation Status](mdc:docs/quick_reference.md#implementation-status)
+
+### "I'm confused about phase numbers"
+→ [Quick Reference: Phase Numbering](mdc:docs/quick_reference.md#by-phase-number-reconciliation)
+
+## Phase Numbering (IMPORTANT)
+
+VMT uses **three different "Phase" numbering schemes**:
+
+1. **Strategic Roadmap Phases A-F** (curriculum progression)
+   - Phase A: Foraging & Barter ✅
+   - Phase B: Money (in progress)
+   - Phase C: Markets (future)
+   - etc.
+
+2. **Money Phases 1-6** (implementation sequence)
+   - Phase 1: Infrastructure ✅
+   - Phase 2: Monetary exchange ✅
+   - Phase 3: Mixed regimes 📋 ← CURRENT
+   - Phase 4: Polish & docs
+   - Phase 5: Liquidity gating (Track 2)
+   - Phase 6: KKT λ estimation (Track 2)
+
+3. **Scenario Generator Phases 1-3** (tool development)
+   - Phase 1: CLI MVP ✅
+   - Phase 2: Exchange regimes + presets 📊
+   - Phase 3: Advanced features 🔮
+
+**Always use context**: Say "Money Phase 3" not just "Phase 3"
+
+## When Referencing Documentation
+
+**DO:**
+- ✅ Use the Quick Reference Guide first
+- ✅ Link to specific sections when helpful
+- ✅ Specify which "Phase" system you're referencing
+- ✅ Check document dates (recent = 2025-10-20 or later)
+- ✅ Reference ADRs for strategic decisions
+
+**DON'T:**
+- ❌ Reference docs/tmp/ (no longer exists)
+- ❌ Say "Phase X" without context (Money? Scenario Gen? Strategic?)
+- ❌ Suggest reading all 18+ documents (use Quick Reference)
+- ❌ Reference deprecated documents without noting their status
+
+## Document Update Policy
+
+**When suggesting documentation updates:**
+
+1. **Core docs (1-4)**: Require careful review, impact many users
+2. **ADRs in decisions/**: Create new ADRs, don't modify existing (they're historical)
+3. **Implementation plans**: Update as work progresses
+4. **Proposals**: Update status when decisions made
+5. **Quick Reference**: Update when documentation structure changes
+
+## Finding the Right Document
+
+**Process for AI agents:**
+
+1. Check [Quick Reference Guide](mdc:docs/quick_reference.md) first
+2. If not found, check [docs/README.md](mdc:docs/README.md) for category
+3. If still unclear, ask user for clarification
+4. When found, provide direct link and brief context
+
+**Example Response:**
+> "For Money Phase 3 implementation, see the detailed checklist at 
+> [money_phase3_checklist.md](mdc:docs/BIG/money_phase3_checklist.md). 
+> This is the current priority per [ADR-001](mdc:docs/decisions/001-hybrid-money-modularization-sequencing.md)."
+
+---
+
+**Remember**: The Quick Reference Guide is your best starting point. It's comprehensive, fast, and designed specifically for quick lookups.
