@@ -1,6 +1,6 @@
 # VMT - Visualizing Microeconomic Theory
 
-[![Tests](https://img.shields.io/badge/tests-75%2B%2F75%2B%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-316%2B%20passing-brightgreen)]()
 [![Python](https://img.shields.io/badge/python-3.11-blue)]()
 [![GUI](https://img.shields.io/badge/GUI-PyQt5-green)]()
 
@@ -81,7 +81,12 @@ python main.py scenarios/single_agent_forage.yaml 123
 - **📊 Translog Utility Functions** - Flexible second-order approximation for empirical work
 - **🏠 Stone-Geary Utility Functions** - Subsistence constraints and hierarchical needs (LES foundation)
 - **💱 Generic Matching Algorithm** - Supports barter (A↔B) and monetary exchange (A↔M, B↔M)
-- **💰 Money System (Phases 1-2)** - Quasilinear utility with configurable exchange regimes
+- **💰 Money System (v1.0)** - Complete monetary economics simulation
+  - Four exchange regimes: `barter_only`, `money_only`, `mixed`, `mixed_liquidity_gated`
+  - Two money modes: `quasilinear` (simple) and `kkt_lambda` (advanced)
+  - Money-first tie-breaking in mixed economies
+  - Mode × regime interaction for temporal control
+  - Rich telemetry and analysis tools
 - **🤝 Trade Pairing** - Three-pass algorithm with mutual consent and surplus-based fallback
 - **💱 Price Search Algorithm** - Finds mutually beneficial prices despite integer rounding
 - **📈 Reservation Pricing** - True economic reservation prices (zero bid-ask spread default)
@@ -95,7 +100,7 @@ python main.py scenarios/single_agent_forage.yaml 123
 - **🎯 Partner Selection** - Distance-discounted surplus ranking with three-pass pairing algorithm
 
 ### Technical Excellence
-- **🔬 75+ Passing Tests** - Comprehensive coverage including pairing, money, and performance benchmarks
+- **🔬 316+ Passing Tests** - Comprehensive coverage including pairing, money system, and performance benchmarks
 - **🎮 Pygame Visualization** - Interactive real-time rendering with smart co-location and target arrows
 - **🖥️ GUI Launcher** - Browse scenarios and create custom ones through forms
 - **⚡ CLI Scenario Generator** - Generate valid scenarios in < 0.1s with random parameters

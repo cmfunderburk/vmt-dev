@@ -580,4 +580,15 @@ This section tracks major revisions to this type and data contract specification
     *   Extended telemetry schema with money fields and new tables `[IMPLEMENTED Phases 1-2]`
     *   Added tick_states, pairings, and preferences tables `[IMPLEMENTED]`
     *   Updated Money & Market Contracts section with Phase 1-2 implementation status
+*   **Money Phase 3: Mixed Regimes (2025-10-21):**
+    *   Marked `exchange_pair_type` as `[IMPLEMENTED Phase 3]` in trades table
+    *   Documented money-first tie-breaking algorithm
+    *   Documented mode × regime interaction (two-layer control)
+*   **Money Phase 4: Polish & Documentation (2025-10-21):**
+    *   Money system v1.0 complete (Phases 1-4)
+    *   Renderer enhancements: money labels, lambda heatmap, mode/regime overlay
+    *   Log viewer: Money tab with trade distribution analysis
+    *   5 demo scenarios in scenarios/demos/
+    *   User documentation: User Guide, Regime Comparison Guide
+    *   Technical reference: Money Implementation document
 ---

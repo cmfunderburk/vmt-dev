@@ -188,7 +188,7 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
 -   **Performance**: Reduces trade phase from O(N²) distance checks to O(P) where P = paired count (typically P ≤ N/2). Decision phase remains O(N·k) where k = average neighbors.
 -   **Pedagogical Note**: Agents can commit to distant partners and spend many ticks moving toward them while ignoring other opportunities. Once paired, they execute multiple sequential trades. This demonstrates opportunity cost of commitment and iterative bilateral exchange.
 
-#### Money System (Phases 1-3)
+#### Money System (v1.0 — Phases 1-4 Complete)
 -   **Money as Good**: Money holdings (`M`) are stored as integers in minor units (e.g., cents). The `money_scale` parameter converts between whole units and minor units (default: 1 = no conversion).
 -   **Exchange Regimes**: The `exchange_regime` parameter controls allowed exchange types:
     *   `"barter_only"` — Only A↔B trades (default, backward compatible with legacy scenarios)
@@ -225,12 +225,18 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
     *   `Inventory.M` defaults to 0
     *   `lambda_money` defaults to 1.0
     *   Legacy scenarios run identically with zero behavioral changes
+-   **Phase 4 Deliverables**: Money system v1.0 includes:
+    *   Renderer enhancements: money labels, lambda heatmap, mode/regime overlay
+    *   Log viewer: Money tab with trade distribution analysis
+    *   5 demo scenarios in `scenarios/demos/`
+    *   Comprehensive user documentation: [User Guide](../user_guide_money.md), [Regime Comparison](../regime_comparison.md)
+    *   Technical reference: [Money Implementation](../technical/money_implementation.md)
 
 ---
 
 ## 🔬 Testing and Validation
 
-The VMT engine is rigorously tested to ensure both technical correctness and theoretical soundness. The test suite (`tests/`) contains 75+ tests covering:
+The VMT engine is rigorously tested to ensure both technical correctness and theoretical soundness. The test suite (`tests/`) contains 316+ tests covering:
 -   **Core State**: Grid logic, agent creation, state management, pairing state
 -   **Utilities**: Correctness of UCES and ULinear calculations, especially at edge cases; money-aware API methods
 -   **Reservation Bounds**: Correctness of the zero-inventory guard
