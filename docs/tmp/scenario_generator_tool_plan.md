@@ -525,59 +525,44 @@ def generate_scenario(name, n_agents, grid_size, inventory_range,
 
 ---
 
-### Phase 2: Enhanced Parameterization
+### Phase 2: Exchange Regimes & Presets
 
-**Goal:** Add customization options and presets
+**Goal:** Add exchange regime support and scenario presets (keeping CLI simple)
 
-**Timeline:** 1-2 days
+**Status:** 📋 Ready for Implementation (see detailed plan in `docs/tmp/plans/scenario_generator_phase2_implementation.md`)
 
-**Design Decision - Mode Schedules:** Mode schedules (temporal cycling between forage/trade phases) are **NOT** supported in the CLI generator. They are considered a power-user feature and should be manually added to YAML files post-generation. This keeps the CLI simple and focused on the common case.
+**Timeline:** 1-2 days (~2-3 hours core work)
 
-**Features:**
-1. **Weighted utility mixes:**
+**Prerequisites:** 
+- ✅ VMT Money System Phase 1-2 complete
+- ✅ Scenario Generator Phase 1 complete
+
+**Scope (Simplified from Original Plan):**
+
+**INCLUDED in Phase 2:**
+1. **Exchange regime selection:**
    ```bash
-   --utilities ces:0.5,linear:0.3,quadratic:0.2
+   --exchange-regime {barter_only|money_only|mixed|mixed_liquidity_gated}
    ```
+   - Automatically generates M inventories when needed
+   - Sets default money parameters (money_mode, money_scale, lambda_money)
 
-2. **Custom parameter ranges:**
+2. **Scenario presets:**
    ```bash
-   --param-ranges config.json
-   # config.json specifies custom ranges for specific utility params
+   --preset {minimal|standard|large|money_demo|mixed_economy}
    ```
+   - Pre-configured parameter sets for common use cases
+   - Can be overridden with explicit flags
 
-3. **Simulation parameter overrides:**
-   ```bash
-   --movement 2 --interaction 2 --vision 10
-   ```
+**DEFERRED to Phase 3+:**
+- ❌ Weighted utility mixes (`--utilities ces:0.6,linear:0.4`)
+- ❌ Custom money inventory ranges (`--money-range`)
+- ❌ Money parameter overrides (`--lambda-money`, `--money-scale`)
+- ❌ Simulation parameter overrides (`--movement`, `--vision`, etc.)
+- ❌ Custom parameter ranges (`--param-ranges config.json`)
+- ❌ Parameter validation (`--validate` flag)
 
-4. **Exchange regime selection:**
-   ```bash
-   # Basic regimes (no money required)
-   --exchange-regime barter_only  # Default
-   
-   # Money regimes (generates M inventories)
-   --exchange-regime money_only
-   --exchange-regime mixed
-   --exchange-regime mixed_liquidity_gated
-   
-   # Money configuration (when using money regimes)
-   --money-range 100,500          # M inventory range
-   --money-scale 100              # Money scale (minor units)
-   --lambda-money 1.0             # Marginal utility of money
-   --money-mode quasilinear       # quasilinear | kkt_lambda
-   ```
-
-5. **Presets for common scenarios:**
-   ```bash
-   --preset quick_test  # Fast, small, simple
-   --preset full_demo   # Moderate complexity, all utilities
-   --preset performance # Large, optimized for benchmarking
-   ```
-
-6. **Parameter validation:**
-   ```bash
-   --validate  # Enable monotonicity and constraint checking (off by default in Phase 1)
-   ```
+**Rationale:** Keep CLI simple and focused on the two most-requested features. Advanced customization can wait for user feedback.
 
 **Example:**
 ```bash
@@ -938,21 +923,27 @@ python -m vmt_tools.generate_scenario "equal_mix" \
 ## Part 7: Success Criteria
 
 ### Phase 1 Complete When:
-- [ ] CLI script generates valid YAML scenarios
-- [ ] All 5 utility types supported with conservative defaults
-- [ ] Resources require explicit density/max/regen inputs
-- [ ] Stone-Geary uses gamma=0 by default
-- [ ] `--seed` flag enables reproducible generation
-- [ ] Generated scenarios load and run without errors
-- [ ] Generation time < 1 second per scenario
-- [ ] Documentation includes usage examples
+- [x] CLI script generates valid YAML scenarios
+- [x] All 5 utility types supported with conservative defaults
+- [x] Resources require explicit density/max/regen inputs
+- [x] Stone-Geary uses gamma=0 by default
+- [x] `--seed` flag enables reproducible generation
+- [x] Generated scenarios load and run without errors
+- [x] Generation time < 1 second per scenario
+- [x] Documentation includes usage examples
+
+**Status:** ✅ COMPLETE (2025-10-21)
 
 ### Phase 2 Complete When:
-- [ ] Weighted utility mixes supported (e.g., `ces:0.5,linear:0.5`)
-- [ ] Simulation parameter overrides work (`--movement`, `--vision`, etc.)
-- [ ] Exchange regime and mode schedule configurable
-- [ ] At least 3 presets defined and working
-- [ ] Custom parameter ranges via JSON config file
+- [ ] Exchange regime flag supports all 4 regimes
+- [ ] M inventories auto-generated when needed
+- [ ] Default money parameters set appropriately
+- [ ] At least 5 presets defined and working
+- [ ] Generated money scenarios load and run
+- [ ] Documentation updated with Phase 2 examples
+- [ ] Backward compatibility verified
+
+**Status:** 📋 Ready for Implementation
 
 ### Phase 3 Complete When:
 - [ ] `ScenarioGenerator` class importable from `vmt_tools`
