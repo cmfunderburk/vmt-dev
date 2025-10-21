@@ -1,0 +1,48 @@
+---
+alwaysApply: true
+---
+
+# Testing Workflow Preferences
+
+## Manual Testing Policy
+
+**DO NOT** automatically run scenario tests after making code changes. The user prefers to validate changes manually.
+
+### When Making Changes
+
+1. ✅ Make the requested code/scenario changes
+2. ✅ Explain what was changed and why
+3. ✅ Suggest specific test commands if helpful
+4. ❌ DO NOT run `python3 scripts/run_headless.py ...` automatically
+5. ❌ DO NOT run pytest automatically unless explicitly requested
+
+### Example Response Pattern
+
+```
+I've updated the scenario to set dA_max: 10. This should allow agents 
+to find viable trades with larger quantities.
+
+You can test this with:
+  python3 scripts/run_headless.py scenarios/demos/demo_02_barter_vs_money.yaml --seed 42 --max-ticks 40
+
+Then check if trades are occurring around tick 30.
+```
+
+### Exception
+
+If the user explicitly says:
+- "run the tests"
+- "test this"
+- "verify this works"
+- "execute scenario X"
+
+Then it's okay to run tests.
+
+## Database Management
+
+If accumulated telemetry data becomes problematic, suggest:
+```bash
+rm logs/telemetry.db  # User will do this themselves
+```
+
+Don't delete files automatically unless explicitly requested.

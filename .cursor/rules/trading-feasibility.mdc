@@ -1,0 +1,94 @@
+---
+description: "Trading feasibility constraints, dA_max tuning, and integer rounding issues in VMT barter trades"
+---
+
+# Trading Feasibility and Integer Rounding Constraints
+
+## Core Issue: Theoretical vs. Realizable Surplus
+
+**Problem**: Agents can calculate positive theoretical surplus but fail to execute trades due to integer-only trade quantities and inventory constraints.
+
+### Symptoms
+- Agents pair up (positive surplus calculated)
+- Trade immediately fails (no mutually beneficial integer quantities found)
+- Agents unpair with "trade_failed" reason
+- Pattern repeats every tick in `mode: both` - agents never fall back to foraging
+
+### Root Causes
+
+1. **Integer Rounding**: Continuous utility functions suggest fractional optimal trades, but only integer quantities allowed
+2. **Small dA_max**: Restricts search space to [1, dA_max], may miss viable trades
+3. **Extreme Inventory Imbalances**: Agents with 0-1 units of a good cannot participate effectively in barter
+
+## Example from Debugging
+
+**Scenario**: `demo_02_barter_vs_money.yaml` with seed 42, tick 30
+- Agent 4: A=9, B=1, ask/bid=3.00 (desperate for B, only has 1 to trade)
+- Agent 5: A=5, B=0 (literally cannot barter - needs B to buy B)
+- With `dA_max: 3`, search only tries: {1A↔1B, 2A↔1B, 3A↔1B}
+- But optimal trade might be 5A↔2B or larger, which is never explored
+
+**Result**: All agents paired and unpaired with "trade_failed" at tick 30, no trades occurred despite positive theoretical surplus
+
+## Guidelines for Scenario Design
+
+### 1. Setting dA_max
+
+**Rule of Thumb**: `dA_max ≥ max_starting_inventory / 2`
+
+```yaml
+# For scenarios with starting inventories ~10:
+params:
+  dA_max: 10  # Not 3 or 5
+
+# For scenarios with starting inventories ~20:
+params:
+  dA_max: 15  # Or even 20
+```
+
+**Rationale**: Extreme price ratios (3:1 or higher) require searching larger trade sizes
+
+### 2. Minimum Viable Inventories for Barter
+
+**Avoid**: Agents starting with 0 or 1 of a good in barter scenarios
+
+```yaml
+# BAD for barter_only:
+initial_inventories:
+  A: [8, 2, 0, 10, 5, 0, 7, 3, 0, 9]  # Three agents with A=0!
+  B: [0, 8, 10, 0, 3, 9, 0, 7, 5, 2]  # Five agents with B=0!
+
+# BETTER for barter_only:
+initial_inventories:
+  A: [8, 5, 3, 10, 5, 3, 7, 5, 3, 9]  # Min 3 of each
+  B: [3, 8, 10, 3, 3, 9, 3, 7, 5, 5]  # Everyone can participate
+```
+
+**Exception**: Use extreme imbalances intentionally in `barter_only` vs `money_only` comparisons to demonstrate barter's inefficiency (pedagogical value)
+
+### 3. Mode: Both Scenarios
+
+When using `mode: both`, agents should fall back to foraging when stuck in trade failure loops, but current implementation doesn't detect this well.
+
+**Workaround**: 
+- Ensure inventories allow barter participation (min 3 of each good)
+- Set appropriate `dA_max` 
+- Consider adding `trade_cooldown_ticks: 5` to prevent immediate re-pairing
+
+## Potential Code Fixes (Not Yet Implemented)
+
+1. **Inventory-feasibility-aware surplus**: Return 0 if neither agent has min inventory
+2. **Adaptive dA_max**: Expand search range for extreme price ratios
+3. **Consecutive failure tracking**: Force forage after N failed trade attempts
+4. **Minimum trade budget check**: Skip pairing if inventory below threshold
+
+## Related Files
+
+- [src/vmt_engine/systems/matching.py](mdc:src/vmt_engine/systems/matching.py) - `compute_surplus()`, `find_compensating_block()`
+- [src/vmt_engine/systems/trading.py](mdc:src/vmt_engine/systems/trading.py) - `_trade_generic()`, trade execution
+- [src/vmt_engine/systems/decision.py](mdc:src/vmt_engine/systems/decision.py) - Pairing algorithm, Pass 3b fallback logic
+- [src/scenarios/schema.py](mdc:src/scenarios/schema.py) - Default `dA_max: 5`
+
+## Testing Note
+
+When making changes to trading or pairing logic, allow the user to run manual validation tests rather than automatically executing scenarios.

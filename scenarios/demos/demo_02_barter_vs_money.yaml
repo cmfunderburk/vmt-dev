@@ -32,17 +32,32 @@ initial_inventories:
 utilities:
   mix:
     - type: ces
-      weight: 1.0
+      weight: 0.25
       params:
         rho: 0.5
         wA: 0.55
         wB: 0.45
-
+    - type: ces
+      weight: 0.25
+      params:
+        rho: -0.5
+        wA: 0.25
+        wB: 0.75
+    - type: linear
+      weight: 0.25
+      params:
+        vA: 0.5
+        vB: 0.5
+    - type: linear
+      weight: 0.25
+      params:
+        vA: 0.75
+        vB: 0.25
 params:
-  spread: 0.08
+  spread: 0.00
   vision_radius: 15
   interaction_radius: 1
-  move_budget_per_tick: 2
+  move_budget_per_tick: 1
   dA_max: 3
   forage_rate: 1
   

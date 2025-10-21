@@ -21,11 +21,15 @@ if TYPE_CHECKING:
 
 def compute_surplus(agent_i: 'Agent', agent_j: 'Agent') -> float:
     """
-    Compute best overlap between two agents' quotes.
+    Compute best overlap between two agents' quotes with inventory feasibility check.
     
     Returns max(overlap_dir1, overlap_dir2) where:
     - overlap_dir1 = agent_i buys A from agent_j (i.bid - j.ask)
     - overlap_dir2 = agent_j buys A from agent_i (j.bid - i.ask)
+    
+    INVENTORY FEASIBILITY: Returns 0 if neither agent has sufficient inventory
+    to execute even a 1-unit trade in either direction. This prevents futile
+    pairings when inventory constraints make theoretical surplus unrealizable.
     
     DEPRECATED: This function uses barter-only logic. For money-aware matching,
     use the generic matching primitives in Phase 2b.
@@ -35,7 +39,8 @@ def compute_surplus(agent_i: 'Agent', agent_j: 'Agent') -> float:
         agent_j: Second agent
         
     Returns:
-        Best overlap (positive indicates potential for trade)
+        Best overlap (positive indicates potential for trade), or 0 if no
+        direction is inventory-feasible
     """
     # Use dict.get() with default 0.0 for safety (money-aware API)
     bid_i = agent_i.quotes.get('bid_A_in_B', 0.0)
@@ -43,9 +48,26 @@ def compute_surplus(agent_i: 'Agent', agent_j: 'Agent') -> float:
     bid_j = agent_j.quotes.get('bid_A_in_B', 0.0)
     ask_j = agent_j.quotes.get('ask_A_in_B', 0.0)
     
-    overlap_dir1 = bid_i - ask_j  # i buys from j
-    overlap_dir2 = bid_j - ask_i  # j buys from i
-    return max(overlap_dir1, overlap_dir2)
+    # Calculate theoretical overlaps
+    overlap_dir1 = bid_i - ask_j  # i buys A from j
+    overlap_dir2 = bid_j - ask_i  # j buys A from i
+    
+    # Check inventory feasibility for each direction
+    # Direction 1: i buys A from j (j sells A for B, i pays with B)
+    dir1_feasible = (agent_j.inventory.A >= 1 and agent_i.inventory.B >= 1)
+    
+    # Direction 2: j buys A from i (i sells A for B, j pays with B)
+    dir2_feasible = (agent_i.inventory.A >= 1 and agent_j.inventory.B >= 1)
+    
+    # Only consider overlaps for feasible directions
+    feasible_overlaps = []
+    if dir1_feasible and overlap_dir1 > 0:
+        feasible_overlaps.append(overlap_dir1)
+    if dir2_feasible and overlap_dir2 > 0:
+        feasible_overlaps.append(overlap_dir2)
+    
+    # Return max feasible overlap, or 0 if none are feasible
+    return max(feasible_overlaps) if feasible_overlaps else 0.0
 
 
 def choose_partner(agent: 'Agent', neighbors: list[tuple[int, tuple[int, int]]], 
