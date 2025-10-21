@@ -1,25 +1,25 @@
 # vmt-dev - Token Analysis Report
 
-*Generated on 2025-10-21 17:57:04*
+*Generated on 2025-10-21 17:59:12*
 
 ## 📊 Executive Summary
 
 | Metric | Value |
 |--------|--------|
-| **Total Tokens** | 172.1K tokens |
-| **Total Files** | 109 files |
+| **Total Tokens** | 156.8K tokens |
+| **Total Files** | 106 files |
 | **Repository Size** | 0.8 MB |
-| **Average Tokens/File** | 1579 tokens |
+| **Average Tokens/File** | 1479 tokens |
 
 ## 📄 File Type Breakdown
 
 | File Type | Token Count | Percentage | Files |
 |-----------|-------------|------------|-------|
-| Python | 89.0K | 51.7% | 54 |
-| Markdown | 60.2K | 35.0% | 16 |
-| YAML | 19.9K | 11.6% | 30 |
-| Text | 2.2K | 1.3% | 3 |
-| Other | 556 | 0.3% | 4 |
+| Python | 89.0K | 56.8% | 54 |
+| Markdown | 44.9K | 28.6% | 12 |
+| YAML | 19.9K | 12.7% | 30 |
+| Text | 2.2K | 1.4% | 3 |
+| Other | 556 | 0.4% | 5 |
 | Build/Meta | 222 | 0.1% | 1 |
 | Config | 9 | 0.0% | 1 |
 
@@ -27,7 +27,6 @@
 
 | File | Tokens | Size |
 |------|--------|------|
-| `docs/proposals/protocol_modularization_plan.md` | 9.4K | 0.0 MB |
 | `src/vmt_pygame/renderer.py` | 8.8K | 0.0 MB |
 | `src/vmt_engine/systems/matching.py` | 8.1K | 0.0 MB |
 | `docs/4_typing_overview.md` | 7.2K | 0.0 MB |
@@ -38,7 +37,6 @@
 | `docs/2_technical_manual.md` | 5.2K | 0.0 MB |
 | `src/telemetry/db_loggers.py` | 4.9K | 0.0 MB |
 | `docs/REVIEW/1_critical_problems_architecture.md` | 4.1K | 0.0 MB |
-| `docs/proposals/protocol_modularization_discussion.md` | 4.0K | 0.0 MB |
 | `docs/1_project_overview.md` | 3.9K | 0.0 MB |
 | `src/vmt_log_viewer/viewer.py` | 3.9K | 0.0 MB |
 | `src/vmt_engine/systems/trading.py` | 3.8K | 0.0 MB |
@@ -47,6 +45,8 @@
 | `src/scenarios/schema.py` | 3.4K | 0.0 MB |
 | `scenarios/perf_exchange_only.yaml` | 3.1K | 0.0 MB |
 | `scenarios/perf_both_modes.yaml` | 3.1K | 0.0 MB |
+| `src/telemetry/database.py` | 2.8K | 0.0 MB |
+| `src/vmt_engine/simulation.py` | 2.8K | 0.0 MB |
 
 
 ## 🤖 LLM Context Analysis
@@ -55,24 +55,24 @@
 
 | Model | Context Window | Repo Coverage |
 |-------|---------------|---------------|
-| GPT-4 | ~128K tokens | 74.4% |
-| Claude 3 | ~200K tokens | 116.2% |
-| Claude 3.5 Sonnet | ~200K tokens | 116.2% |
-| Gemini 1.5 Pro | ~1M tokens | 580.9% |
+| GPT-4 | ~128K tokens | 81.6% |
+| Claude 3 | ~200K tokens | 127.6% |
+| Claude 3.5 Sonnet | ~200K tokens | 127.6% |
+| Gemini 1.5 Pro | ~1M tokens | 637.8% |
 
 ### Recommendations
 
-- **Full Repository**: 172.1K tokens fits in: Gemini 1.5 Pro (~1.0M)
+- **Full Repository**: 156.8K tokens fits in: Claude 3/3.5 (~200.0K), Gemini 1.5 Pro (~1.0M)
 - **Targeted Analysis**: Consider focusing on 40-60% of files for detailed reviews
 - **Code Reviews**: Use token counts to prioritize which files/modules to include
-- **Documentation**: 35.0% of tokens are documentation (substantial docs available)
+- **Documentation**: 28.6% of tokens are documentation (substantial docs available)
 
 
 ## 📈 Analysis Metadata
 
 - **Analysis Tool**: Repository Token Counter (full version with repotokens)
 - **Tokenization**: Accurate repotokens library
-- **Files Processed**: 109 code files
+- **Files Processed**: 106 code files
 - **Excluded**: Binary files, caches, logs, virtual environments
 - **Repository**: vmt-dev
 
