@@ -1,25 +1,25 @@
 # vmt-dev - Token Analysis Report
 
-*Generated on 2025-10-19 19:18:05*
+*Generated on 2025-10-21 15:01:48*
 
 ## 📊 Executive Summary
 
 | Metric | Value |
 |--------|--------|
-| **Total Tokens** | 148.7K tokens |
-| **Total Files** | 103 files |
-| **Repository Size** | 0.7 MB |
-| **Average Tokens/File** | 1443 tokens |
+| **Total Tokens** | 207.0K tokens |
+| **Total Files** | 127 files |
+| **Repository Size** | 0.9 MB |
+| **Average Tokens/File** | 1630 tokens |
 
 ## 📄 File Type Breakdown
 
 | File Type | Token Count | Percentage | Files |
 |-----------|-------------|------------|-------|
-| Markdown | 76.4K | 51.4% | 34 |
-| Python | 60.5K | 40.7% | 48 |
-| YAML | 8.8K | 5.9% | 9 |
-| Text | 2.2K | 1.5% | 3 |
-| Other | 544 | 0.4% | 7 |
+| Markdown | 96.0K | 46.4% | 34 |
+| Python | 88.2K | 42.6% | 54 |
+| YAML | 19.8K | 9.6% | 30 |
+| Text | 2.2K | 1.1% | 3 |
+| Other | 544 | 0.3% | 4 |
 | Build/Meta | 222 | 0.1% | 1 |
 | Config | 9 | 0.0% | 1 |
 
@@ -27,26 +27,26 @@
 
 | File | Tokens | Size |
 |------|--------|------|
-| `docs/BIG/PHASE2_PR_DESCRIPTION.md` | 9.7K | 0.0 MB |
-| `src/vmt_engine/systems/matching.py` | 7.2K | 0.0 MB |
+| `docs/proposals/protocol_modularization_plan.md` | 9.4K | 0.0 MB |
+| `src/vmt_pygame/renderer.py` | 8.8K | 0.0 MB |
+| `src/vmt_engine/systems/matching.py` | 7.8K | 0.0 MB |
+| `docs/4_typing_overview.md` | 7.2K | 0.0 MB |
+| `src/vmt_engine/econ/utility.py` | 6.3K | 0.0 MB |
 | `src/vmt_launcher/scenario_builder.py` | 6.2K | 0.0 MB |
-| `docs/BIG/money_SSOT_implementation_plan.md` | 5.7K | 0.0 MB |
-| `docs/BIG/money_phase3_checklist.md` | 5.5K | 0.0 MB |
-| `docs/BIG/money_phase6_checklist.md` | 5.2K | 0.0 MB |
-| `docs/BIG/money_phase4_checklist.md` | 4.7K | 0.0 MB |
-| `docs/BIG/money_phase5_checklist.md` | 4.3K | 0.0 MB |
-| `docs/4_typing_overview.md` | 4.0K | 0.0 MB |
-| `src/telemetry/db_loggers.py` | 3.9K | 0.0 MB |
-| `docs/performance_baseline_phase1_with_logging.md` | 3.6K | 0.0 MB |
-| `scenarios/perf_exchange_only.yaml` | 3.1K | 0.0 MB |
-| `scenarios/perf_both_modes.yaml` | 3.1K | 0.0 MB |
-| `src/vmt_pygame/renderer.py` | 3.0K | 0.0 MB |
-| `src/vmt_log_viewer/viewer.py` | 2.9K | 0.0 MB |
-| `.cursor/rules/scenarios-telemetry.mdc` | 2.9K | 0.0 MB |
-| `src/vmt_engine/econ/utility.py` | 2.8K | 0.0 MB |
-| `docs/BIG/money_telemetry_schema.md` | 2.7K | 0.0 MB |
-| `src/scenarios/schema.py` | 2.6K | 0.0 MB |
-| `src/vmt_engine/simulation.py` | 2.5K | 0.0 MB |
+| `docs/BIG/money_SSOT_implementation_plan.md` | 5.9K | 0.0 MB |
+| `docs/BIG/money_phase6_checklist.md` | 5.6K | 0.0 MB |
+| `docs/technical/money_implementation.md` | 5.4K | 0.0 MB |
+| `docs/2_technical_manual.md` | 5.2K | 0.0 MB |
+| `docs/user_guide_money.md` | 5.0K | 0.0 MB |
+| `src/telemetry/db_loggers.py` | 4.8K | 0.0 MB |
+| `docs/BIG/money_phase5_checklist.md` | 4.4K | 0.0 MB |
+| `docs/proposals/protocol_modularization_discussion.md` | 4.0K | 0.0 MB |
+| `docs/regime_comparison.md` | 4.0K | 0.0 MB |
+| `docs/1_project_overview.md` | 3.9K | 0.0 MB |
+| `src/vmt_log_viewer/viewer.py` | 3.9K | 0.0 MB |
+| `src/vmt_engine/systems/trading.py` | 3.8K | 0.0 MB |
+| `CHANGELOG.md` | 3.8K | 0.0 MB |
+| `src/scenarios/schema.py` | 3.4K | 0.0 MB |
 
 
 ## 🤖 LLM Context Analysis
@@ -55,25 +55,24 @@
 
 | Model | Context Window | Repo Coverage |
 |-------|---------------|---------------|
-| GPT-4 | ~128K tokens | 86.1% |
-| Claude 3 | ~200K tokens | 134.5% |
-| Claude 3.5 Sonnet | ~200K tokens | 134.5% |
-| Gemini 1.5 Pro | ~1M tokens | 672.6% |
+| GPT-4 | ~128K tokens | 61.8% |
+| Claude 3 | ~200K tokens | 96.6% |
+| Claude 3.5 Sonnet | ~200K tokens | 96.6% |
+| Gemini 1.5 Pro | ~1M tokens | 483.1% |
 
 ### Recommendations
 
-- **Full Repository**: 148.7K tokens fits in: Claude 3/3.5 (~200.0K), Gemini 1.5 Pro (~1.0M)
-- **Single-Context Analysis**: Entire codebase can be analyzed without chunking
-- **Tip**: For faster processing, consider focused analysis on specific modules
+- **Full Repository**: 207.0K tokens fits in: Gemini 1.5 Pro (~1.0M)
+- **Targeted Analysis**: Consider focusing on 40-60% of files for detailed reviews
 - **Code Reviews**: Use token counts to prioritize which files/modules to include
-- **Documentation**: 51.4% of tokens are documentation (substantial docs available)
+- **Documentation**: 46.4% of tokens are documentation (substantial docs available)
 
 
 ## 📈 Analysis Metadata
 
 - **Analysis Tool**: Repository Token Counter (full version with repotokens)
 - **Tokenization**: Accurate repotokens library
-- **Files Processed**: 103 code files
+- **Files Processed**: 127 code files
 - **Excluded**: Binary files, caches, logs, virtual environments
 - **Repository**: vmt-dev
 
