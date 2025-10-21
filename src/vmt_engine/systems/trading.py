@@ -9,6 +9,38 @@ if TYPE_CHECKING:
 class TradeSystem:
     """Phase 4: Agents trade with nearby partners."""
 
+    def _get_allowed_pairs(self, regime: str) -> list[str]:
+        """
+        Get allowed exchange pair types based on exchange regime.
+        
+        Returns pair identifiers from buyer's perspective:
+        - "A<->B": Barter (goods-for-goods)
+        - "A<->M": Buy good A with money
+        - "B<->M": Buy good B with money
+        
+        Args:
+            regime: Exchange regime string ("barter_only", "money_only", "mixed", "mixed_liquidity_gated")
+            
+        Returns:
+            List of allowed pair type strings. Order is deterministic for reproducibility.
+            
+        Raises:
+            ValueError: If regime is not recognized
+        """
+        if regime == "barter_only":
+            return ["A<->B"]
+        elif regime == "money_only":
+            return ["A<->M", "B<->M"]
+        elif regime in ["mixed", "mixed_liquidity_gated"]:
+            # All three exchange types allowed
+            # Order matters for deterministic tie-breaking (implemented in Phase 3c)
+            return ["A<->B", "A<->M", "B<->M"]
+        else:
+            raise ValueError(
+                f"Unknown exchange_regime: '{regime}'. "
+                f"Must be one of: 'barter_only', 'money_only', 'mixed', 'mixed_liquidity_gated'"
+            )
+
     def execute(self, sim: "Simulation") -> None:
         # Check if using money-aware matching (Phase 2+)
         exchange_regime = sim.params.get("exchange_regime", "barter_only")
