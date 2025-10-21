@@ -139,6 +139,7 @@ node_modules/
 # ---- LLM Counter ----
 
 # ---- Project-specific ----
+docs/REVIEW/4_architecture_diagram.md
 # Archive folder for old planning documents
 
 # Add any generated telemetry or snapshot directories here if created later
