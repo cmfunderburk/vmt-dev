@@ -188,19 +188,38 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
 -   **Performance**: Reduces trade phase from O(N²) distance checks to O(P) where P = paired count (typically P ≤ N/2). Decision phase remains O(N·k) where k = average neighbors.
 -   **Pedagogical Note**: Agents can commit to distant partners and spend many ticks moving toward them while ignoring other opportunities. Once paired, they execute multiple sequential trades. This demonstrates opportunity cost of commitment and iterative bilateral exchange.
 
-#### Money System (Phases 1-2)
+#### Money System (Phases 1-3)
 -   **Money as Good**: Money holdings (`M`) are stored as integers in minor units (e.g., cents). The `money_scale` parameter converts between whole units and minor units (default: 1 = no conversion).
 -   **Exchange Regimes**: The `exchange_regime` parameter controls allowed exchange types:
     *   `"barter_only"` — Only A↔B trades (default, backward compatible with legacy scenarios)
     *   `"money_only"` — Only A↔M and B↔M trades (goods for money)
-    *   `"mixed"` — All exchange pairs allowed; generic matching selects highest-surplus pair
-    *   `"mixed_liquidity_gated"` — Mixed with minimum quote depth requirement (Phase 3+)
--   **Quasilinear Utility** (Phases 1-2): U_total = U_goods(A, B) + λ·M, where:
+    *   `"mixed"` — All exchange pairs allowed (Phase 3); uses money-first tie-breaking when multiple pairs have equal surplus
+    *   `"mixed_liquidity_gated"` — Mixed with minimum quote depth requirement (future extension)
+-   **Quasilinear Utility** (Phases 1-3): U_total = U_goods(A, B) + λ·M, where:
     *   λ (`lambda_money`) is the marginal utility of money (default: 1.0)
     *   M is money holdings in minor units
-    *   Phase 1-2 uses fixed λ (no updates); Phase 3+ will implement adaptive λ (KKT mode)
--   **Generic Matching**: The `find_best_trade()` function evaluates all allowed exchange pairs and selects the pair with highest surplus. Each pair uses the same compensating block search as barter.
+    *   Phases 1-3 use fixed λ (quasilinear mode); future phases will implement adaptive λ (KKT mode)
+-   **Money-First Tie-Breaking** (Phase 3): When multiple trade types offer equal surplus in mixed regimes, the engine uses deterministic three-level sorting:
+    1.  **Total surplus** (descending) — Maximizes welfare
+    2.  **Pair type priority** (ascending) — Money-first policy:
+        *   Priority 0: A↔M (highest — monetary exchange for good A)
+        *   Priority 1: B↔M (middle — monetary exchange for good B)
+        *   Priority 2: A↔B (lowest — barter)
+    3.  **Agent pair ID** `(min_id, max_id)` (ascending) — Deterministic tie-breaker
+    *   Rationale: Money trades preferred when surplus equal due to liquidity advantages
+    *   Implementation: `TradeSystem._rank_trade_candidates()` in `src/vmt_engine/systems/trading.py`
+-   **Mode × Regime Interaction** (Phase 3): Two-layer control architecture:
+    *   **Temporal control** (`mode_schedule`): WHEN activities occur (forage/trade/both modes)
+    *   **Type control** (`exchange_regime`): WHAT bilateral exchanges are permitted
+    *   In forage mode, no trading occurs regardless of regime
+    *   In trade/both modes, allowed pairs determined by regime
+    *   Method: `Simulation._get_active_exchange_pairs()` combines both controls
+-   **Generic Matching**: 
+    *   `find_best_trade()` (Phases 1-2): Evaluates allowed pairs, returns first feasible trade
+    *   `find_all_feasible_trades()` (Phase 3): Returns ALL feasible trades for ranking in mixed regimes
+    *   Each pair uses the same compensating block search as barter
 -   **Money Transfers**: Successful money trades update inventories: `buyer.M -= dM`, `seller.M += dM`. Money transfers are recorded in the `trades.dM` telemetry field.
+-   **Telemetry Extensions** (Phase 3): The `exchange_pair_type` field logs which pair type was executed ("A<->B", "A<->M", or "B<->M"), enabling analysis of trade type distributions in mixed regimes.
 -   **Backward Compatibility**: All money fields default to preserve legacy behavior:
     *   `exchange_regime` defaults to `"barter_only"`
     *   `Inventory.M` defaults to 0

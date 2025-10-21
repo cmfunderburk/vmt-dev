@@ -389,7 +389,7 @@ Records every successful trade that occurs.
 *   `dM` (INTEGER): Money transfer amount (0 for barter) `[IMPLEMENTED Phase 2]`
 *   `price` (REAL): The price of the trade.
 *   `direction` (TEXT): String indicating who initiated the trade.
-*   `exchange_pair_type` (TEXT): Exchange pair ("A<->B", "A<->M", "B<->M") `[IMPLEMENTED Phase 2]`
+*   `exchange_pair_type` (TEXT): Exchange pair ("A<->B", "A<->M", "B<->M") `[IMPLEMENTED Phase 3]` — Properly logged with money-first tie-breaking in mixed regimes
 *   `buyer_lambda`, `seller_lambda` (REAL): Lambda values at trade time `[IMPLEMENTED Phase 2]`
 *   `buyer_surplus`, `seller_surplus` (REAL): Utility gains for each party `[IMPLEMENTED Phase 2]`
 
