@@ -209,25 +209,22 @@ python3 -m src.vmt_tools.generate_scenario money_test \
   --exchange-regime money_only
 ```
 
-**Current Status (Phase 1 - Complete):**
+**Current Status: Phase 2 Complete ✅ (2025-10-21)**
 - ✅ All 5 utility types with conservative parameter randomization
 - ✅ Deterministic generation with `--seed` flag
 - ✅ Automatic validation (schema-compliant YAML)
 - ✅ Generation time < 0.1 seconds per scenario
-- ✅ Comprehensive documentation in `src/vmt_tools/README.md`
-
-**Planned Extensions (Phase 2 - Ready for Implementation):**
-- 📋 Exchange regime selection (`--exchange-regime {barter_only|money_only|mixed}`)
-- 📋 Scenario presets (`--preset {minimal|standard|large|money_demo|mixed_economy}`)
-- 📋 Automatic money inventory generation for monetary economies
+- ✅ Exchange regime selection (`--exchange-regime {barter_only|money_only|mixed}`)
+- ✅ Scenario presets (`--preset {minimal|standard|large|money_demo|mixed_economy}`)
+- ✅ Automatic money inventory generation for monetary economies
 
 **Future Phases (Based on Feedback):**
-- 🔮 Weighted utility mixes (`--utilities ces:0.6,linear:0.4`)
-- 🔮 Custom money inventory ranges
-- 🔮 Parameter validation mode
-- 🔮 Unit test integration
+- 🔮 Phase 3: Weighted utility mixes (`--utilities ces:0.6,linear:0.4`)
+- 🔮 Phase 3: Custom money inventory ranges
+- 🔮 Phase 3: Parameter validation mode
+- 🔮 Phase 3: Unit test integration
 
-See `docs/tmp/plans/scenario_generator_tool_plan.md` for complete roadmap.
+See [`docs/guides/scenario_generator.md`](docs/guides/scenario_generator.md) for complete guide.
 
 ### Method 2: GUI Builder (Interactive)
 

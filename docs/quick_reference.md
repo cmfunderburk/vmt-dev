@@ -78,9 +78,9 @@
 - ⏸️ Phases 5-6: Deferred per [ADR-001](decisions/001-hybrid-money-modularization-sequencing.md)
 
 **Scenario Generator:**
-- ✅ Phase 1: [Archive](archive/) - Complete
-- 📋 **Phase 2**: [Plan](implementation/scenario_generator_phase2_plan.md) ← **READY**
-- 📊 [Status Document](implementation/scenario_generator_status.md)
+- ✅ Phase 1-2: COMPLETE (2025-10-21)
+- 📖 **Complete Guide**: [Scenario Generator Guide](guides/scenario_generator.md) ← **READ THIS**
+- 🔮 Phase 3: Future (based on user feedback)
 
 **Protocol Modularization:**
 - 💬 [Discussion](proposals/protocol_modularization_discussion.md)
