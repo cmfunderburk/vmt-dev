@@ -4,10 +4,57 @@ Parameter generation strategies for VMT scenario files.
 This module provides functions to generate random but valid parameters for
 all supported utility functions. Parameters are generated within conservative
 ranges that ensure well-behaved utility functions.
+
+Also includes preset configurations (Phase 2) for common use cases.
 """
 
 import random
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Optional
+
+
+# Preset configurations for common scenarios (Scenario Generator Phase 2)
+PRESETS = {
+    'minimal': {
+        'agents': 10,
+        'grid': 20,
+        'inventory_range': (10, 50),
+        'utilities': ['ces', 'linear'],
+        'resource_config': (0.3, 5, 1),
+        'exchange_regime': 'barter_only'
+    },
+    'standard': {
+        'agents': 30,
+        'grid': 40,
+        'inventory_range': (15, 60),
+        'utilities': ['ces', 'linear', 'quadratic', 'translog', 'stone_geary'],
+        'resource_config': (0.35, 6, 2),
+        'exchange_regime': 'barter_only'
+    },
+    'large': {
+        'agents': 80,
+        'grid': 80,
+        'inventory_range': (10, 100),
+        'utilities': ['ces', 'linear'],
+        'resource_config': (0.4, 8, 3),
+        'exchange_regime': 'barter_only'
+    },
+    'money_demo': {
+        'agents': 20,
+        'grid': 30,
+        'inventory_range': (10, 50),
+        'utilities': ['linear'],
+        'resource_config': (0.2, 5, 1),
+        'exchange_regime': 'money_only'
+    },
+    'mixed_economy': {
+        'agents': 40,
+        'grid': 50,
+        'inventory_range': (20, 80),
+        'utilities': ['ces', 'linear', 'quadratic'],
+        'resource_config': (0.3, 6, 2),
+        'exchange_regime': 'mixed'
+    }
+}
 
 
 def generate_utility_params(utility_type: str, inventory_range: Tuple[int, int]) -> Dict[str, float]:
@@ -104,6 +151,34 @@ def generate_inventories(n_agents: int, min_val: int, max_val: int) -> List[int]
         raise ValueError(f"max_val must be > min_val (got max={max_val}, min={min_val})")
     
     return [random.randint(min_val, max_val) for _ in range(n_agents)]
+
+
+def get_preset(preset_name: str) -> Dict:
+    """
+    Get preset configuration by name.
+    
+    Args:
+        preset_name: Name of the preset
+        
+    Returns:
+        Dictionary of preset parameters (copy, safe to modify)
+        
+    Raises:
+        ValueError: If preset_name is not recognized
+        
+    Available presets:
+        - minimal: Quick testing (10 agents, 20×20)
+        - standard: Default demonstration (30 agents, 40×40, all utility types)
+        - large: Performance testing (80 agents, 80×80)
+        - money_demo: Money-only economy (20 agents, money_only regime)
+        - mixed_economy: Hybrid barter + money (40 agents, mixed regime)
+    """
+    if preset_name not in PRESETS:
+        raise ValueError(
+            f"Unknown preset: {preset_name}. "
+            f"Available presets: {', '.join(sorted(PRESETS.keys()))}"
+        )
+    return PRESETS[preset_name].copy()
 
 
 def _uniform_excluding(min_val: float, max_val: float, excl_min: float, excl_max: float, max_tries: int = 100) -> float:

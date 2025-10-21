@@ -16,6 +16,7 @@ from typing import Optional
 import yaml
 
 from .scenario_builder import generate_scenario
+from .param_strategies import get_preset
 
 
 def main(argv: Optional[list] = None) -> int:
@@ -50,33 +51,39 @@ Examples:
         help="Scenario name (used in YAML and default filename)"
     )
     
-    # Required arguments
+    # Configuration arguments (required unless using --preset)
+    parser.add_argument(
+        "--preset",
+        choices=['minimal', 'standard', 'large', 'money_demo', 'mixed_economy'],
+        default=None,
+        help="Use a preset configuration (makes other args optional)"
+    )
     parser.add_argument(
         "--agents",
         type=int,
-        required=True,
-        help="Number of agents"
+        default=None,
+        help="Number of agents (required unless using --preset)"
     )
     parser.add_argument(
         "--grid",
         type=int,
-        required=True,
-        help="Grid size (NxN)"
+        default=None,
+        help="Grid size (NxN) (required unless using --preset)"
     )
     parser.add_argument(
         "--inventory-range",
-        required=True,
-        help="Initial inventory range as MIN,MAX (e.g., 10,50)"
+        default=None,
+        help="Initial inventory range as MIN,MAX (e.g., 10,50) (required unless using --preset)"
     )
     parser.add_argument(
         "--utilities",
-        required=True,
-        help="Comma-separated utility types (ces, linear, quadratic, translog, stone_geary)"
+        default=None,
+        help="Comma-separated utility types (ces, linear, quadratic, translog, stone_geary) (required unless using --preset)"
     )
     parser.add_argument(
         "--resources",
-        required=True,
-        help="Resource configuration as DENSITY,MAX_AMOUNT,REGEN_RATE (e.g., 0.3,5,1)"
+        default=None,
+        help="Resource configuration as DENSITY,MAX_AMOUNT,REGEN_RATE (e.g., 0.3,5,1) (required unless using --preset)"
     )
     
     # Optional arguments
@@ -102,34 +109,71 @@ Examples:
     args = parser.parse_args(argv)
     
     try:
+        # Load preset if specified
+        preset = None
+        if args.preset:
+            preset = get_preset(args.preset)
+        
+        # Determine final parameters (preset + overrides)
+        # Explicit arguments override preset values
+        if preset:
+            # Use preset values with explicit overrides
+            n_agents = args.agents if args.agents is not None else preset['agents']
+            grid_size = args.grid if args.grid is not None else preset['grid']
+            inv_range_str = args.inventory_range if args.inventory_range else None
+            utilities_str = args.utilities if args.utilities else None
+            resources_str = args.resources if args.resources else None
+            exchange_regime = args.exchange_regime if args.exchange_regime != 'barter_only' else preset['exchange_regime']
+        else:
+            # No preset: all arguments required
+            if not all([args.agents, args.grid, args.inventory_range, args.utilities, args.resources]):
+                print("Error: When not using --preset, all of --agents, --grid, --inventory-range, --utilities, and --resources are required", file=sys.stderr)
+                return 1
+            
+            n_agents = args.agents
+            grid_size = args.grid
+            inv_range_str = args.inventory_range
+            utilities_str = args.utilities
+            resources_str = args.resources
+            exchange_regime = args.exchange_regime
+        
         # Parse inventory range
-        try:
-            inv_parts = args.inventory_range.split(',')
-            if len(inv_parts) != 2:
-                raise ValueError("Expected format: MIN,MAX")
-            inv_min, inv_max = int(inv_parts[0]), int(inv_parts[1])
-        except ValueError as e:
-            print(f"Error parsing --inventory-range: {e}", file=sys.stderr)
-            print(f"Got: {args.inventory_range}", file=sys.stderr)
-            print(f"Expected format: MIN,MAX (e.g., 10,50)", file=sys.stderr)
-            return 1
+        if inv_range_str:
+            try:
+                inv_parts = inv_range_str.split(',')
+                if len(inv_parts) != 2:
+                    raise ValueError("Expected format: MIN,MAX")
+                inv_min, inv_max = int(inv_parts[0]), int(inv_parts[1])
+            except ValueError as e:
+                print(f"Error parsing --inventory-range: {e}", file=sys.stderr)
+                print(f"Got: {inv_range_str}", file=sys.stderr)
+                print(f"Expected format: MIN,MAX (e.g., 10,50)", file=sys.stderr)
+                return 1
+        else:
+            inv_min, inv_max = preset['inventory_range']
         
         # Parse utilities
-        utilities = [u.strip() for u in args.utilities.split(',')]
+        if utilities_str:
+            utilities = [u.strip() for u in utilities_str.split(',')]
+        else:
+            utilities = preset['utilities']
         
         # Parse resources
-        try:
-            res_parts = args.resources.split(',')
-            if len(res_parts) != 3:
-                raise ValueError("Expected format: DENSITY,MAX,REGEN")
-            density = float(res_parts[0])
-            max_amt = int(res_parts[1])
-            regen = int(res_parts[2])
-        except ValueError as e:
-            print(f"Error parsing --resources: {e}", file=sys.stderr)
-            print(f"Got: {args.resources}", file=sys.stderr)
-            print(f"Expected format: DENSITY,MAX,REGEN (e.g., 0.3,5,1)", file=sys.stderr)
-            return 1
+        if resources_str:
+            try:
+                res_parts = resources_str.split(',')
+                if len(res_parts) != 3:
+                    raise ValueError("Expected format: DENSITY,MAX,REGEN")
+                density = float(res_parts[0])
+                max_amt = int(res_parts[1])
+                regen = int(res_parts[2])
+            except ValueError as e:
+                print(f"Error parsing --resources: {e}", file=sys.stderr)
+                print(f"Got: {resources_str}", file=sys.stderr)
+                print(f"Expected format: DENSITY,MAX,REGEN (e.g., 0.3,5,1)", file=sys.stderr)
+                return 1
+        else:
+            density, max_amt, regen = preset['resource_config']
         
         # Set random seed if provided
         if args.seed is not None:
@@ -138,12 +182,12 @@ Examples:
         # Generate scenario
         scenario = generate_scenario(
             name=args.name,
-            n_agents=args.agents,
-            grid_size=args.grid,
+            n_agents=n_agents,
+            grid_size=grid_size,
             inventory_range=(inv_min, inv_max),
             utilities=utilities,
             resource_config=(density, max_amt, regen),
-            exchange_regime=args.exchange_regime
+            exchange_regime=exchange_regime
         )
         
         # Determine output path
@@ -165,11 +209,13 @@ Examples:
         
         # Success message
         print(f"✓ Generated {output_path}")
-        print(f"  - {args.agents} agents on {args.grid}×{args.grid} grid")
+        if args.preset:
+            print(f"  - Preset: {args.preset}")
+        print(f"  - {n_agents} agents on {grid_size}×{grid_size} grid")
         print(f"  - Utilities: {', '.join(utilities)}")
         print(f"  - Inventory range: [{inv_min}, {inv_max}]")
-        print(f"  - Exchange regime: {args.exchange_regime}")
-        if args.exchange_regime in ['money_only', 'mixed', 'mixed_liquidity_gated']:
+        print(f"  - Exchange regime: {exchange_regime}")
+        if exchange_regime in ['money_only', 'mixed', 'mixed_liquidity_gated']:
             print(f"  - Money inventories: generated (same range as goods)")
         print(f"  - Resources: density={density}, max={max_amt}, regen={regen}")
         print(f"  - Seed: {args.seed or 'random'}")
