@@ -81,6 +81,12 @@ Examples:
     
     # Optional arguments
     parser.add_argument(
+        "--exchange-regime",
+        choices=['barter_only', 'money_only', 'mixed', 'mixed_liquidity_gated'],
+        default='barter_only',
+        help="Exchange regime (default: barter_only)"
+    )
+    parser.add_argument(
         "--seed",
         type=int,
         default=None,
@@ -136,7 +142,8 @@ Examples:
             grid_size=args.grid,
             inventory_range=(inv_min, inv_max),
             utilities=utilities,
-            resource_config=(density, max_amt, regen)
+            resource_config=(density, max_amt, regen),
+            exchange_regime=args.exchange_regime
         )
         
         # Determine output path
@@ -161,6 +168,9 @@ Examples:
         print(f"  - {args.agents} agents on {args.grid}×{args.grid} grid")
         print(f"  - Utilities: {', '.join(utilities)}")
         print(f"  - Inventory range: [{inv_min}, {inv_max}]")
+        print(f"  - Exchange regime: {args.exchange_regime}")
+        if args.exchange_regime in ['money_only', 'mixed', 'mixed_liquidity_gated']:
+            print(f"  - Money inventories: generated (same range as goods)")
         print(f"  - Resources: density={density}, max={max_amt}, regen={regen}")
         print(f"  - Seed: {args.seed or 'random'}")
         

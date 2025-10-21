@@ -15,7 +15,8 @@ def generate_scenario(
     grid_size: int,
     inventory_range: Tuple[int, int],
     utilities: List[str],
-    resource_config: Tuple[float, int, int]
+    resource_config: Tuple[float, int, int],
+    exchange_regime: str = 'barter_only'
 ) -> Dict[str, Any]:
     """
     Generate a complete scenario dictionary.
@@ -27,6 +28,7 @@ def generate_scenario(
         inventory_range: (min, max) for initial inventories
         utilities: List of utility type names
         resource_config: (density, max_amount, regen_rate)
+        exchange_regime: Exchange regime type (default: 'barter_only')
         
     Returns:
         Complete scenario dictionary ready for YAML serialization
@@ -61,9 +63,28 @@ def generate_scenario(
                 f"Valid types: {', '.join(sorted(valid_utilities))}"
             )
     
+    # Validate exchange regime
+    valid_regimes = {'barter_only', 'money_only', 'mixed', 'mixed_liquidity_gated'}
+    if exchange_regime not in valid_regimes:
+        raise ValueError(
+            f"Unknown exchange_regime: {exchange_regime}. "
+            f"Valid types: {', '.join(sorted(valid_regimes))}"
+        )
+    
     # Generate inventories (integers)
     inventories_A = generate_inventories(n_agents, inv_min, inv_max)
     inventories_B = generate_inventories(n_agents, inv_min, inv_max)
+    
+    # Generate money inventories if regime requires it (Phase 2+)
+    initial_inventories = {
+        'A': inventories_A,
+        'B': inventories_B
+    }
+    
+    if exchange_regime in ['money_only', 'mixed', 'mixed_liquidity_gated']:
+        # Use same range as goods for money (users can edit YAML for custom amounts)
+        inventories_M = generate_inventories(n_agents, inv_min, inv_max)
+        initial_inventories['M'] = inventories_M
     
     # Generate utility mix
     utility_mix = []
@@ -96,10 +117,7 @@ def generate_scenario(
         'name': name,
         'N': grid_size,
         'agents': n_agents,
-        'initial_inventories': {
-            'A': inventories_A,
-            'B': inventories_B
-        },
+        'initial_inventories': initial_inventories,
         'utilities': {
             'mix': utility_mix
         },
@@ -113,7 +131,7 @@ def generate_scenario(
             'trade_cooldown_ticks': 3,
             'beta': 0.95,
             'epsilon': 1e-12,
-            'exchange_regime': 'barter_only',
+            'exchange_regime': exchange_regime,
             'enable_resource_claiming': True,
             'enforce_single_harvester': True,
             'resource_growth_rate': regen,
@@ -125,6 +143,14 @@ def generate_scenario(
             'amount': max_amt
         }
     }
+    
+    # Add money parameters if regime requires them (Phase 2+)
+    if exchange_regime in ['money_only', 'mixed', 'mixed_liquidity_gated']:
+        scenario['params'].update({
+            'money_mode': 'quasilinear',
+            'money_scale': 1,
+            'lambda_money': 1.0
+        })
     
     return scenario
 
