@@ -1,0 +1,83 @@
+schema_version: 1
+name: test_mixed_explicit
+N: 25
+agents: 15
+initial_inventories:
+  A:
+  - 22
+  - 22
+  - 16
+  - 29
+  - 15
+  - 17
+  - 17
+  - 14
+  - 34
+  - 12
+  - 18
+  - 33
+  - 22
+  - 26
+  - 31
+  B:
+  - 32
+  - 27
+  - 12
+  - 40
+  - 29
+  - 25
+  - 16
+  - 23
+  - 33
+  - 29
+  - 28
+  - 16
+  - 35
+  - 38
+  - 35
+  M:
+  - 21
+  - 36
+  - 22
+  - 37
+  - 31
+  - 16
+  - 14
+  - 24
+  - 31
+  - 15
+  - 37
+  - 28
+  - 20
+  - 12
+  - 40
+utilities:
+  mix:
+  - type: ces
+    weight: 1.0
+    params:
+      rho: 0.35
+      wA: 0.59
+      wB: 0.41
+params:
+  spread: 0.0
+  vision_radius: 8
+  interaction_radius: 1
+  move_budget_per_tick: 1
+  dA_max: 5
+  forage_rate: 1
+  trade_cooldown_ticks: 3
+  beta: 0.95
+  epsilon: 1.0e-12
+  exchange_regime: mixed
+  enable_resource_claiming: true
+  enforce_single_harvester: true
+  resource_growth_rate: 1
+  resource_max_amount: 4
+  resource_regen_cooldown: 5
+  money_mode: quasilinear
+  money_scale: 1
+  lambda_money: 1.0
+resource_seed:
+  density: 0.25
+  amount: 4
