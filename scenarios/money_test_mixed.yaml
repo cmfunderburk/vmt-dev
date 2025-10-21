@@ -1,0 +1,53 @@
+# Mixed Exchange Regime Test Scenario
+# Money Phase 3: Tests mixed regime allowing both barter (A↔B) and monetary (A↔M, B↔M) trades
+# Agents can choose between goods-for-goods and goods-for-money exchange
+
+schema_version: 1
+name: "Mixed Exchange Regime Test"
+N: 12
+agents: 8
+
+initial_inventories:
+  A: [10, 8, 6, 4, 2, 0, 5, 7]
+  B: [0, 2, 4, 6, 8, 10, 3, 5]
+  M: [50, 100, 150, 50, 100, 150, 75, 125]
+
+utilities:
+  mix:
+    - type: ces
+      weight: 1.0
+      params:
+        rho: 0.5
+        wA: 0.55
+        wB: 0.45
+
+params:
+  # Economic
+  spread: 0.1
+  dA_max: 4
+  epsilon: 0.001
+  
+  # Spatial (integers required)
+  vision_radius: 12
+  interaction_radius: 1
+  move_budget_per_tick: 1
+  
+  # Resources (minimal for this test)
+  forage_rate: 1
+  resource_growth_rate: 0
+  resource_regen_cooldown: 999
+  
+  # Trading
+  trade_cooldown_ticks: 3
+  beta: 0.95
+  
+  # Money system parameters - MIXED REGIME
+  exchange_regime: "mixed"       # Allows A↔M, B↔M, AND A↔B
+  money_mode: "quasilinear"
+  money_scale: 1
+  lambda_money: 1.0
+
+resource_seed:
+  density: 0.2
+  amount: 4
+

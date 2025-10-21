@@ -632,6 +632,62 @@ def find_compensating_block_generic(
     return None
 
 
+def find_all_feasible_trades(
+    agent_i: 'Agent',
+    agent_j: 'Agent',
+    exchange_regime: str,
+    params: dict[str, Any],
+    epsilon: float = 1e-9
+) -> list[tuple[str, tuple]]:
+    """
+    Find ALL mutually beneficial trades across allowed exchange pairs.
+    
+    Used in mixed regimes (Phase 3+) where multiple trade types may be
+    feasible simultaneously and tie-breaking is needed.
+    
+    Search strategy:
+    - Try all pairs allowed by regime: A<->B, A<->M, B<->M
+    - Return ALL feasible trades (not just first)
+    - Caller ranks and selects best trade
+    
+    Args:
+        agent_i: First agent
+        agent_j: Second agent
+        exchange_regime: "barter_only", "money_only", "mixed", or "mixed_liquidity_gated"
+        params: Simulation parameters
+        epsilon: Threshold for strict improvement
+        
+    Returns:
+        List of (pair_name, trade_tuple) for all feasible trades.
+        Empty list if no trades possible.
+        
+        Each trade_tuple is (dA_i, dB_i, dM_i, dA_j, dB_j, dM_j, surplus_i, surplus_j)
+        pair_name is one of: "A<->B", "A<->M", "B<->M"
+    """
+    # Determine which pairs to try based on regime
+    if exchange_regime == "barter_only":
+        candidate_pairs = ["A<->B"]
+    elif exchange_regime == "money_only":
+        candidate_pairs = ["A<->M", "B<->M"]
+    elif exchange_regime in ["mixed", "mixed_liquidity_gated"]:
+        candidate_pairs = ["A<->B", "A<->M", "B<->M"]
+    else:
+        # Unknown regime, default to barter
+        candidate_pairs = ["A<->B"]
+    
+    # Collect all feasible trades
+    feasible_trades = []
+    
+    for pair in candidate_pairs:
+        trade = find_compensating_block_generic(agent_i, agent_j, pair, params, epsilon)
+        
+        if trade is not None:
+            # Found a mutually beneficial trade - add to list
+            feasible_trades.append((pair, trade))
+    
+    return feasible_trades
+
+
 def find_best_trade(
     agent_i: 'Agent',
     agent_j: 'Agent',
@@ -651,6 +707,10 @@ def find_best_trade(
     - Agents act rationally: accept first trade found where ΔU > 0
     - No attempt to "maximize" or "optimize" across multiple opportunities
     - Deterministic ordering ensures reproducibility
+    
+    NOTE: This function is used for barter_only and money_only regimes.
+    For mixed regimes (Phase 3+), use find_all_feasible_trades() instead
+    to enable proper tie-breaking when multiple trade types are available.
     
     Args:
         agent_i: First agent
