@@ -192,13 +192,6 @@ class TestBackwardCompatibility:
         mu_tuple = utility.mu(10, 10)
         assert mu_tuple is not None
         assert len(mu_tuple) == 2
-    
-    def test_create_utility_warns_deprecation(self):
-        """create_utility() should emit DeprecationWarning."""
-        with pytest.warns(DeprecationWarning, match="create_utility.*deprecated"):
-            from src.vmt_engine.econ.utility import create_utility
-            utility = create_utility({'type': 'ces', 'params': {'rho': 0.5, 'wA': 0.6, 'wB': 0.4}})
-            assert utility is not None
 
 
 class TestMonotonicityAndSigns:

@@ -73,7 +73,12 @@ Determinism is the cornerstone of the VMT engine. Given the same scenario file a
 ### Economic Logic
 
 #### Utility Functions and Money-Aware API
--   **Utility Functions**: The engine supports `UCES` (Constant Elasticity of Substitution, including the Cobb-Douglas case) and `ULinear` (perfect substitutes) utility functions, defined in `src/vmt_engine/econ/utility.py`.
+-   **Utility Functions**: The engine supports five utility function classes, all defined in `src/vmt_engine/econ/utility.py`:
+    *   `UCES` — Constant Elasticity of Substitution (including Cobb-Douglas as a special case)
+    *   `ULinear` — Perfect substitutes (constant marginal utility)
+    *   `UQuadratic` — Bliss points and satiation (non-monotonic preferences)
+    *   `UTranslog` — Transcendental logarithmic (flexible second-order approximation)
+    *   `UStoneGeary` — Subsistence constraints (foundation of Linear Expenditure System)
 -   **Money-Aware API** (Phase 2+): The utility interface provides separate methods for goods and total utility:
     *   `u_goods(A, B)` — Utility from goods only (canonical method)
     *   `mu_A(A, B)`, `mu_B(A, B)` — Marginal utilities of goods A and B (∂U/∂A, ∂U/∂B)
@@ -89,6 +94,38 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
 -   **Utility Mix**: The `utilities.mix` section of a scenario file defines a list of one or more utility function configurations, each with a `type`, `params`, and a `weight`. The weights must sum to 1.0.
 -   **Probabilistic Assignment**: During simulation setup, each agent's utility function is independently chosen from this list via weighted random sampling (`numpy.random.Generator.choice`). This means that a scenario can define, for example, a population composed of 80% CES agents and 20% Linear agents, each with their own specific parameters. An agent is assigned exactly one utility function.
 -   **Initial Inventories**: Initial inventories can also be heterogeneous, specified either as a single value (all agents start the same) or as an explicit list of values, one for each agent.
+
+##### Utility Function Details
+
+**CES (Constant Elasticity of Substitution)**:
+- Parameters: `rho` (elasticity), `wA`, `wB` (weights)
+- Special case: When `rho → 0`, approaches Cobb-Douglas
+- Properties: Monotonic, convex preferences, constant elasticity of substitution
+- Use cases: Standard microeconomic analysis, variety-seeking behavior
+
+**Linear (Perfect Substitutes)**:
+- Parameters: `vA`, `vB` (per-unit values)
+- Properties: Constant marginal rate of substitution (MRS = vA/vB)
+- Use cases: Homogeneous goods, arbitrage scenarios, simple exchange
+
+**Quadratic (Bliss Points)**:
+- Parameters: `A_star`, `B_star` (bliss points), `sigma_A`, `sigma_B` (curvature), `gamma` (cross-curvature)
+- Properties: Non-monotonic (satiation beyond bliss points), can have negative marginal utility
+- Use cases: Demonstrations of satiation, gift economies, non-convex preferences
+- Special handling: Agents may refuse trades when saturated (MU ≤ 0)
+
+**Translog (Transcendental Logarithmic)**:
+- Parameters: `alpha_0` (constant), `alpha_A`, `alpha_B` (first-order), `beta_AA`, `beta_BB`, `beta_AB` (second-order)
+- Properties: Flexible functional form, variable elasticity of substitution, second-order Taylor approximation
+- Use cases: Empirical estimation, production function analysis, testing functional form assumptions
+- Special handling: Works in log-space for numerical stability, epsilon-shift for zero inventories
+
+**Stone-Geary (Subsistence Constraints)**:
+- Parameters: `alpha_A`, `alpha_B` (preference weights), `gamma_A`, `gamma_B` (subsistence levels)
+- Properties: Subsistence thresholds, hyperbolic marginal utility near subsistence, nests Cobb-Douglas
+- Use cases: Development economics, basic needs modeling, poverty analysis, LES demand systems
+- Special handling: Requires initial inventories > subsistence; agents trade desperately when close to subsistence
+- Important invariant: Scenarios must validate `initial_A > gamma_A` and `initial_B > gamma_B`
     
 #### Quotes and Trading
 -   **Quotes**: Agents maintain a dictionary of quotes (`Agent.quotes: dict[str, float]`) with keys for all active exchange pairs:

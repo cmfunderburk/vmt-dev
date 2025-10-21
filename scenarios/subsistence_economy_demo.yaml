@@ -1,0 +1,50 @@
+schema_version: 1
+name: "Subsistence Economy Demonstration"
+N: 25
+agents: 15
+
+# Heterogeneous initial endowments: some agents close to subsistence, others far above
+# Explicit list: agents 0-4 near subsistence, agents 5-14 comfortable
+initial_inventories:
+  A: [8, 9, 10, 12, 15, 20, 25, 30, 35, 40, 22, 28, 18, 32, 26]
+  B: [6, 7, 8, 10, 12, 15, 20, 25, 30, 35, 18, 22, 14, 28, 20]
+
+# All agents have same subsistence levels but start at different distances from them
+utilities:
+  mix:
+    - type: "stone_geary"
+      weight: 1.0
+      params:
+        alpha_A: 0.6
+        alpha_B: 0.4
+        gamma_A: 5.0   # Subsistence: need at least 5 units of A
+        gamma_B: 3.0   # Subsistence: need at least 3 units of B
+
+params:
+  spread: 0.1
+  vision_radius: 8
+  interaction_radius: 1
+  move_budget_per_tick: 1
+  dA_max: 5
+  forage_rate: 2
+  epsilon: 0.000000000001
+  beta: 0.95
+  resource_growth_rate: 1
+  resource_max_amount: 8
+  resource_regen_cooldown: 5
+  trade_cooldown_ticks: 5
+
+resource_seed:
+  density: 0.35
+  amount: 4
+
+# Expected behaviors:
+# - Agents with inventories close to (gamma_A, gamma_B) trade desperately
+# - These agents accept unfavorable prices to acquire goods
+# - Agents far above subsistence trade more selectively (like Cobb-Douglas)
+# - Market naturally segments into "subsistence traders" and "normal traders"
+# - MRS approaches infinity as agent approaches subsistence
+# - Visualizations should show agents clustering above subsistence thresholds
+# - Demonstrates hierarchy of needs and survival trading
+# - Models development economics scenarios (basic needs vs. optimization)
+

@@ -77,6 +77,9 @@ python main.py scenarios/single_agent_forage.yaml 123
 ### Economic Systems
 - **🎲 CES Utility Functions** - Constant elasticity of substitution (including Cobb-Douglas)
 - **📏 Linear Utility Functions** - Perfect substitutes
+- **🎯 Quadratic Utility Functions** - Bliss points and satiation behavior
+- **📊 Translog Utility Functions** - Flexible second-order approximation for empirical work
+- **🏠 Stone-Geary Utility Functions** - Subsistence constraints and hierarchical needs (LES foundation)
 - **💱 Generic Matching Algorithm** - Supports barter (A↔B) and monetary exchange (A↔M, B↔M)
 - **💰 Money System (Phases 1-2)** - Quasilinear utility with configurable exchange regimes
 - **🤝 Trade Pairing** - Three-pass algorithm with mutual consent and surplus-based fallback
@@ -112,7 +115,7 @@ python main.py scenarios/single_agent_forage.yaml 123
   - Organized inventory labels that remain readable
   - Pure visualization enhancement - simulation positions remain accurate for telemetry
 - **📍 Visual Clarity** - Co-located agents are always distinguishable, making trades and resource competition easy to observe
-- **🎨 Color-Coded Agents** - Green for CES utility, Purple for Linear utility
+- **🎨 Color-Coded Agents** - Green for CES, Purple for Linear, Blue for Quadratic, Orange for Translog, Red for Stone-Geary
 - **📊 Real-Time HUD** - Displays tick counter, agent count, total inventory, and recent trades
 
 ---
@@ -186,7 +189,7 @@ The easiest way to create custom scenarios is through the GUI:
    - **Basic Settings**: Name, grid size, agents, initial inventories
    - **Simulation Parameters**: Spread, vision, movement, trade parameters
    - **Resources**: Density, growth rate, regeneration cooldown
-   - **Utility Functions**: Define a population mix. You can add multiple utility function types (e.g., CES, Linear) with different parameters and weights. Each agent created for the simulation will be randomly assigned *one* of these utility functions according to the specified weights.
+   - **Utility Functions**: Define a population mix. You can add multiple utility function types (CES, Linear, Quadratic, Translog, Stone-Geary) with different parameters and weights. Each agent created for the simulation will be randomly assigned *one* of these utility functions according to the specified weights.
 4. **Click "Generate Scenario"**
 5. **Save the YAML file** (default: `scenarios/` folder)
 6. **New scenario automatically appears** in the launcher list
@@ -264,7 +267,7 @@ The `exchange_regime` parameter controls allowed exchange types:
 U_total = U_goods(A, B) + λ·M
 
 Where:
-- **U_goods** — Utility from goods (CES or Linear)
+- **U_goods** — Utility from goods (CES, Linear, Quadratic, Translog, or Stone-Geary)
 - **λ** (`lambda_money`) — Marginal utility of money (default: 1.0)
 - **M** — Money holdings in minor units (e.g., cents)
 
@@ -312,3 +315,24 @@ This simulation is designed for **teaching microeconomic theory** through visual
 3. **Regeneration rates** - Test sustainable foraging with different `resource_growth_rate`
 4. **Cooldown tuning** - How does `trade_cooldown_ticks` affect exploration?
 5. **Mixed populations** - Combine CES and Linear agents, analyze welfare
+
+### New Utility Function Demonstrations
+
+The following scenarios demonstrate the three new utility functions:
+
+1. **bliss_point_demo.yaml** - Quadratic utility with agents seeking optimal (bliss point) inventories
+   - Demonstrates satiation behavior and non-monotonic preferences
+   - Agents refuse trades when inventories exceed bliss points
+
+2. **translog_estimation_demo.yaml** - Mixed population with Translog and CES utilities
+   - Shows variable elasticity of substitution across inventory levels
+   - Useful for empirical estimation exercises and functional form comparisons
+
+3. **subsistence_economy_demo.yaml** - Stone-Geary utility with subsistence constraints
+   - Demonstrates desperate trading when agents are close to subsistence
+   - Shows market segmentation between subsistence and normal traders
+   - Models basic needs vs. discretionary consumption
+
+4. **mixed_utility_showcase.yaml** - All three new utilities in a heterogeneous population
+   - Demonstrates architectural flexibility
+   - Rich diversity of trading patterns and economic behaviors

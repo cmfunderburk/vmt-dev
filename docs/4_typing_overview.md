@@ -134,11 +134,48 @@ CESParams := { rho: float, wA: float > 0, wB: float > 0 }
 // Linear Parameters
 LinearParams := { vA: float > 0, vB: float > 0 }
 
+// Quadratic Parameters
+QuadraticParams := { 
+  A_star: float > 0,    // Bliss point for A
+  B_star: float > 0,    // Bliss point for B
+  sigma_A: float > 0,   // Curvature parameter for A
+  sigma_B: float > 0,   // Curvature parameter for B
+  gamma: float >= 0     // Cross-curvature (optional, default 0.0)
+}
+
+// Translog Parameters
+TranslogParams := { 
+  alpha_0: float,       // Constant term
+  alpha_A: float > 0,   // First-order coefficient for A
+  alpha_B: float > 0,   // First-order coefficient for B
+  beta_AA: float,       // Second-order coefficient for A
+  beta_BB: float,       // Second-order coefficient for B
+  beta_AB: float        // Cross-partial (interaction) coefficient
+}
+
+// Stone-Geary Parameters
+StoneGearyParams := {
+  alpha_A: float > 0,   // Preference weight for A
+  alpha_B: float > 0,   // Preference weight for B
+  gamma_A: float >= 0,  // Subsistence level for A
+  gamma_B: float >= 0   // Subsistence level for B
+}
+
 // Discriminated Union
 Utility :=
-  | { type: "ces",    params: CESParams }
-  | { type: "linear", params: LinearParams }
+  | { type: "ces",         params: CESParams }
+  | { type: "linear",      params: LinearParams }
+  | { type: "quadratic",   params: QuadraticParams }
+  | { type: "translog",    params: TranslogParams }
+  | { type: "stone_geary", params: StoneGearyParams }
 ```
+
+**Important Invariant for Stone-Geary**:
+In any scenario using Stone-Geary utility, initial inventories must satisfy:
+```
+initial_A > gamma_A  AND  initial_B > gamma_B
+```
+This constraint is validated during scenario loading to prevent agents from starting below subsistence.
 
 **Money-Aware Utility API** (Phase 2+):
 *   `u_goods(A: int, B: int) -> float`: Compute utility from goods only (canonical method)
@@ -236,16 +273,38 @@ initial_inventories:
 # The weights must sum to 1.0.
 utilities:
   mix:
-    - type: "ces" | "linear"
+    - type: "ces" | "linear" | "quadratic" | "translog" | "stone_geary"
       weight: float         # Proportion of agents to receive this utility function.
       params:
         # For type: "ces"
         rho: float          # Elasticity of substitution parameter (cannot be 1.0).
         wA: float           # Weight for good A (> 0).
         wB: float           # Weight for good B (> 0).
+        
         # For type: "linear"
         vA: float           # Value for good A (> 0).
         vB: float           # Value for good B (> 0).
+        
+        # For type: "quadratic"
+        A_star: float       # Bliss point for A (> 0).
+        B_star: float       # Bliss point for B (> 0).
+        sigma_A: float      # Curvature parameter for A (> 0).
+        sigma_B: float      # Curvature parameter for B (> 0).
+        gamma: float        # Cross-curvature parameter (>= 0, optional, default 0.0).
+        
+        # For type: "translog"
+        alpha_0: float      # Constant term.
+        alpha_A: float      # First-order coefficient for A (> 0).
+        alpha_B: float      # First-order coefficient for B (> 0).
+        beta_AA: float      # Second-order coefficient for A.
+        beta_BB: float      # Second-order coefficient for B.
+        beta_AB: float      # Cross-partial coefficient (interaction term).
+        
+        # For type: "stone_geary"
+        alpha_A: float      # Preference weight for A (> 0).
+        alpha_B: float      # Preference weight for B (> 0).
+        gamma_A: float      # Subsistence level for A (>= 0, must be < initial inventory).
+        gamma_B: float      # Subsistence level for B (>= 0, must be < initial inventory).
 
 # Defines the parameters governing simulation dynamics.
 # All values have defaults, but can be overridden here.

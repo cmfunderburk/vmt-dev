@@ -913,15 +913,33 @@ params:
 
 Update `create_utility()` in `src/vmt_engine/econ/utility.py`:
 
+**Note**: This function was previously marked as deprecated due to an aborted refactor. It is **NOT** deprecated - it serves an essential role in the YAML→Simulation pipeline and should be retained without deprecation warnings.
+
 ```python
 def create_utility(config: dict) -> Utility:
-    """Factory function to create utility from configuration."""
-    warnings.warn(
-        "create_utility() is deprecated. Use direct instantiation instead.",
-        DeprecationWarning,
-        stacklevel=2
-    )
+    """
+    Create utility instance from scenario configuration dictionary.
     
+    This is the standard factory function used by the scenario loading system
+    to dynamically instantiate utilities from YAML files. It maps string type
+    names ("ces", "linear", "quadratic", "translog", "stone_geary") to their
+    corresponding utility classes.
+    
+    For programmatic use when not loading from YAML, direct class instantiation
+    may be more explicit:
+        utility = UQuadratic(A_star=10.0, B_star=10.0, sigma_A=5.0, sigma_B=5.0)
+    
+    Args:
+        config: Dictionary with 'type' and 'params' keys
+            type: Utility type string (e.g., "quadratic", "translog")
+            params: Dict of parameters for the chosen utility type
+        
+    Returns:
+        Utility instance of the appropriate class
+        
+    Raises:
+        ValueError: If utility type is unknown
+    """
     utype = config['type']
     params = config['params']
     
@@ -938,6 +956,26 @@ def create_utility(config: dict) -> Utility:
     else:
         raise ValueError(f"Unknown utility type: {utype}")
 ```
+
+**Also update module exports** in `src/vmt_engine/econ/__init__.py`:
+
+```python
+"""
+Economics module - Utility functions and economic calculations.
+"""
+
+from .utility import (
+    Utility, UCES, ULinear, UQuadratic, UTranslog, UStoneGeary, 
+    create_utility, u_total
+)
+
+__all__ = [
+    'Utility', 'UCES', 'ULinear', 'UQuadratic', 'UTranslog', 'UStoneGeary',
+    'create_utility', 'u_total'
+]
+```
+
+This ensures all new utility classes are properly exported from the economics module.
 
 ---
 
@@ -1351,28 +1389,39 @@ resource_seed:
 
 ---
 
-### Phase 3: Edge Case Handling (Priority: Medium)
-1. **Quadratic**: Handle negative MU, undefined MRS, no-trade regions
-   - Agents with all MU ≤ 0 skip quote generation
-   - Return None from mrs_A_in_B() when at bliss point
-   - Reservation bounds handle satiation regions gracefully
-2. **Translog**: Handle zero inventories, numerical overflow protection
-   - Epsilon-shift consistently applied for A=0, B=0
-   - Cap ln(U) before exp() to prevent overflow (max 700)
-   - Test with very large and very small parameter values
-3. **Stone-Geary**: Handle subsistence boundary conditions
-   - Graceful handling when exactly at subsistence (epsilon-shift)
-   - Clear error messages for initial inventory violations
-   - Test desperate trading behavior when close to subsistence
-4. Add defensive checks in quoting system for invalid/None MRS
-5. Add telemetry warnings when agents refuse trades due to special conditions
+### Phase 3: Cleanup & Refinement (Priority: Medium)
+
+**PRIMARY TASK: Un-Deprecate Factory Function**
+1. Remove deprecation warning from `create_utility()` function
+   - Delete `warnings.warn()` call in utility.py
+   - Update docstring to clarify role in YAML→Simulation pipeline
+   - Document when direct instantiation is preferred (programmatic use)
+2. Update module exports in `econ/__init__.py`
+   - Export all new utility classes (UQuadratic, UTranslog, UStoneGeary)
+   - Export create_utility and u_total
+   - Update __all__ list
+
+**ADDITIONAL REFINEMENTS:**
+3. **Quadratic**: Enhance edge case handling
+   - Consider adding telemetry flag for satiation events
+   - Document no-trade scenarios more explicitly
+4. **Translog**: Add parameter guidance
+   - Document safe parameter ranges for goods [1, 1000]
+   - Add example "preset" parameter sets in docs
+5. **Stone-Geary**: Enhance subsistence handling
+   - Consider adding telemetry for "distance from subsistence"
+   - Document desperate trading patterns
 
 **Validation**: 
-- Edge case unit tests pass for all three utilities
-- Scenarios with extreme parameters run stably
-- Telemetry captures subsistence violations, satiation events, overflow warnings
+- All 257 tests pass with **zero deprecation warnings**
+- Factory function properly documented as essential framework component
+- Test output is clean and informative
 
-**Estimated effort**: 2-3 days
+**Estimated effort**: 1 day
+- Factory un-deprecation: 1-2 hours
+- Module exports update: 30 minutes
+- Documentation refinements: 2-3 hours
+- Testing and validation: 1-2 hours
 
 ---
 
@@ -1783,7 +1832,12 @@ The scenario loader should validate this constraint and reject configurations th
   - Added subsistence economy demo and mixed utility showcase scenarios
   - Incorporated detailed translog computational analysis and parameter guidance
   - Updated all phases, success criteria, and appendices for three-utility implementation
-- **Status**: Comprehensive planning document ready for review and approval before implementation begins
+- **2025-10-21 (Evening)**: Updated after Phases 1-2 implementation
+  - Clarified that `create_utility()` is NOT deprecated (aborted refactor artifact)
+  - Restructured Phase 3 to prioritize factory function cleanup
+  - Updated factory function documentation to reflect essential framework role
+- **Status**: Phases 1-2 complete (3 utilities implemented, 4 demos created, 257 tests passing)
+  - Phase 3 ready for implementation (un-deprecation and refinements)
 
 ---
 

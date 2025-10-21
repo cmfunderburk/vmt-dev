@@ -290,27 +290,359 @@ class ULinear(Utility):
         return (mrs, mrs)
 
 
+class UQuadratic(Utility):
+    """Quadratic utility with bliss points and satiation."""
+    
+    def __init__(self, A_star: float, B_star: float, 
+                 sigma_A: float, sigma_B: float, gamma: float = 0.0):
+        """
+        Initialize quadratic utility: U = -(A-A*)²/σ_A² - (B-B*)²/σ_B² - γ(A-A*)(B-B*)
+        
+        Args:
+            A_star: Bliss point for good A (> 0)
+            B_star: Bliss point for good B (> 0)
+            sigma_A: Curvature parameter for A (> 0)
+            sigma_B: Curvature parameter for B (> 0)
+            gamma: Cross-curvature parameter (>= 0, typically < 1)
+        
+        Raises:
+            ValueError: If parameters are invalid
+        """
+        if A_star <= 0 or B_star <= 0:
+            raise ValueError("Bliss points must be positive")
+        if sigma_A <= 0 or sigma_B <= 0:
+            raise ValueError("Curvature parameters must be positive")
+        if gamma < 0:
+            raise ValueError("Cross-curvature gamma must be non-negative")
+        
+        self.A_star = A_star
+        self.B_star = B_star
+        self.sigma_A = sigma_A
+        self.sigma_B = sigma_B
+        self.gamma = gamma
+    
+    def u(self, A: int, B: int) -> float:
+        """Compute quadratic utility with bliss points."""
+        dA = A - self.A_star
+        dB = B - self.B_star
+        return -(dA**2 / self.sigma_A**2) - (dB**2 / self.sigma_B**2) - self.gamma * dA * dB
+    
+    def mu_A(self, A: int, B: int) -> float:
+        """Marginal utility of A (can be negative beyond bliss point)."""
+        return -2 * (A - self.A_star) / (self.sigma_A**2) - self.gamma * (B - self.B_star)
+    
+    def mu_B(self, A: int, B: int) -> float:
+        """Marginal utility of B (can be negative beyond bliss point)."""
+        return -2 * (B - self.B_star) / (self.sigma_B**2) - self.gamma * (A - self.A_star)
+    
+    def mrs_A_in_B(self, A: int, B: int, eps: float = 1e-12) -> float | None:
+        """
+        Compute MRS for quadratic utility.
+        Returns None if denominator is near zero (at bliss point for B).
+        """
+        mu_A = self.mu_A(A, B)
+        mu_B = self.mu_B(A, B)
+        
+        if abs(mu_B) < eps:
+            return None  # Undefined MRS near bliss point
+        
+        return mu_A / mu_B
+    
+    def reservation_bounds_A_in_B(self, A: int, B: int, eps: float = 1e-12) -> tuple[float, float]:
+        """
+        Compute reservation bounds for quadratic utility.
+        
+        Special handling:
+        - If MU_A <= 0: Agent wants to reduce A → willing to sell at any positive price (p_min = eps)
+        - If MU_B <= 0: Agent wants to reduce B → willing to pay very high price (p_max = large)
+        - If both MU <= 0: Agent won't trade in this direction
+        """
+        mu_A = self.mu_A(A, B)
+        mu_B = self.mu_B(A, B)
+        
+        # If both marginal utilities are non-positive, no beneficial trade exists
+        if mu_A <= 0 and mu_B <= 0:
+            return (float('inf'), 0.0)  # No feasible trade: p_min > p_max
+        
+        # Standard case: both MU positive
+        if mu_A > 0 and mu_B > 0:
+            mrs = mu_A / mu_B
+            return (mrs, mrs)
+        
+        # Agent wants to give away A (MU_A <= 0)
+        if mu_A <= 0:
+            return (eps, eps)  # Willing to sell A at any small positive price
+        
+        # Agent wants to give away B (MU_B <= 0)
+        if mu_B <= 0:
+            return (1e6, 1e6)  # Willing to pay huge amount of B for A
+        
+        # Fallback (should not reach here)
+        mrs = self.mrs_A_in_B(A, B, eps)
+        if mrs is None:
+            return (1.0, 1.0)  # Neutral if undefined
+        return (mrs, mrs)
+
+
+class UTranslog(Utility):
+    """Translog (transcendental logarithmic) utility function."""
+    
+    def __init__(self, alpha_0: float, alpha_A: float, alpha_B: float,
+                 beta_AA: float, beta_BB: float, beta_AB: float):
+        """
+        Initialize translog utility:
+        ln U = α₀ + α_A·ln(A) + α_B·ln(B) + (1/2)β_AA·[ln(A)]² + (1/2)β_BB·[ln(B)]² + β_AB·ln(A)·ln(B)
+        
+        Args:
+            alpha_0: Constant term
+            alpha_A: First-order coefficient for A (> 0 for monotonicity)
+            alpha_B: First-order coefficient for B (> 0 for monotonicity)
+            beta_AA: Second-order coefficient for A
+            beta_BB: Second-order coefficient for B
+            beta_AB: Cross-partial coefficient (interaction term)
+        
+        Raises:
+            ValueError: If first-order coefficients are non-positive
+        """
+        if alpha_A <= 0 or alpha_B <= 0:
+            raise ValueError("First-order coefficients must be positive for monotonicity")
+        
+        self.alpha_0 = alpha_0
+        self.alpha_A = alpha_A
+        self.alpha_B = alpha_B
+        self.beta_AA = beta_AA
+        self.beta_BB = beta_BB
+        self.beta_AB = beta_AB
+    
+    def _ln_u(self, A: int, B: int, eps: float = 1e-12) -> float:
+        """
+        Compute ln(U) instead of U to avoid numerical overflow.
+        This is the canonical representation for translog.
+        """
+        # Zero-safe logarithms
+        ln_A = math.log(max(A, eps))
+        ln_B = math.log(max(B, eps))
+        
+        return (self.alpha_0 
+                + self.alpha_A * ln_A 
+                + self.alpha_B * ln_B
+                + 0.5 * self.beta_AA * ln_A**2
+                + 0.5 * self.beta_BB * ln_B**2
+                + self.beta_AB * ln_A * ln_B)
+    
+    def u(self, A: int, B: int) -> float:
+        """
+        Compute utility (exponential of ln U).
+        
+        Note: For very large ln_u, exp() can overflow. Consider capping or 
+        warning if ln_u > 700 (approx limit for float64).
+        """
+        ln_u = self._ln_u(A, B)
+        
+        # Overflow protection
+        if ln_u > 700:
+            warnings.warn(f"Translog ln(U) = {ln_u:.2f} exceeds safe exp() range. Capping at 700.")
+            ln_u = 700
+        
+        return math.exp(ln_u)
+    
+    def _d_ln_u_dA(self, A: int, B: int, eps: float = 1e-12) -> float:
+        """Compute ∂[ln U]/∂A = (α_A + β_AA·ln(A) + β_AB·ln(B)) / A"""
+        A_safe = max(A, eps)
+        B_safe = max(B, eps)
+        ln_A = math.log(A_safe)
+        ln_B = math.log(B_safe)
+        
+        return (self.alpha_A + self.beta_AA * ln_A + self.beta_AB * ln_B) / A_safe
+    
+    def _d_ln_u_dB(self, A: int, B: int, eps: float = 1e-12) -> float:
+        """Compute ∂[ln U]/∂B = (α_B + β_BB·ln(B) + β_AB·ln(A)) / B"""
+        A_safe = max(A, eps)
+        B_safe = max(B, eps)
+        ln_A = math.log(A_safe)
+        ln_B = math.log(B_safe)
+        
+        return (self.alpha_B + self.beta_BB * ln_B + self.beta_AB * ln_A) / B_safe
+    
+    def mu_A(self, A: int, B: int) -> float:
+        """
+        Marginal utility of A.
+        MU_A = U · ∂[ln U]/∂A
+        
+        For quoting/trading, we can work with ∂[ln U]/∂A directly,
+        but for consistency with the Utility interface, we return the full MU.
+        """
+        U = self.u(A, B)
+        d_ln_u = self._d_ln_u_dA(A, B)
+        return U * d_ln_u
+    
+    def mu_B(self, A: int, B: int) -> float:
+        """Marginal utility of B."""
+        U = self.u(A, B)
+        d_ln_u = self._d_ln_u_dB(A, B)
+        return U * d_ln_u
+    
+    def mrs_A_in_B(self, A: int, B: int, eps: float = 1e-12) -> float:
+        """
+        Compute MRS = MU_A / MU_B.
+        
+        Since MU_i = U · ∂[ln U]/∂i, the U cancels:
+        MRS = ∂[ln U]/∂A / ∂[ln U]/∂B
+        
+        This avoids computing exp() and is numerically stable.
+        """
+        d_ln_u_A = self._d_ln_u_dA(A, B, eps)
+        d_ln_u_B = self._d_ln_u_dB(A, B, eps)
+        
+        if abs(d_ln_u_B) < eps:
+            # Denominator near zero; use large default MRS
+            return 1e6 if d_ln_u_A > 0 else eps
+        
+        return d_ln_u_A / d_ln_u_B
+    
+    def reservation_bounds_A_in_B(self, A: int, B: int, eps: float = 1e-12) -> tuple[float, float]:
+        """
+        For translog with positive first-order coefficients, MRS is always well-defined and positive.
+        Reservation bounds are (mrs, mrs).
+        """
+        mrs = self.mrs_A_in_B(A, B, eps)
+        return (mrs, mrs)
+
+
+class UStoneGeary(Utility):
+    """Stone-Geary utility with subsistence constraints."""
+    
+    def __init__(self, alpha_A: float, alpha_B: float, 
+                 gamma_A: float, gamma_B: float):
+        """
+        Initialize Stone-Geary utility: U = α_A·ln(A - γ_A) + α_B·ln(B - γ_B)
+        
+        Args:
+            alpha_A: Preference weight for A (> 0)
+            alpha_B: Preference weight for B (> 0)
+            gamma_A: Subsistence level for A (>= 0)
+            gamma_B: Subsistence level for B (>= 0)
+        
+        Raises:
+            ValueError: If parameters are invalid
+        """
+        if alpha_A <= 0 or alpha_B <= 0:
+            raise ValueError("Preference weights must be positive")
+        if gamma_A < 0 or gamma_B < 0:
+            raise ValueError("Subsistence levels must be non-negative")
+        
+        self.alpha_A = alpha_A
+        self.alpha_B = alpha_B
+        self.gamma_A = gamma_A
+        self.gamma_B = gamma_B
+        
+        # Store epsilon for consistent zero-handling
+        self.epsilon = 1e-12
+    
+    def u(self, A: int, B: int) -> float:
+        """
+        Compute Stone-Geary utility.
+        
+        Uses epsilon-shift to handle A ≤ γ_A or B ≤ γ_B cases gracefully.
+        Returns very negative (but finite) utility when below subsistence.
+        """
+        A_above = max(A - self.gamma_A, self.epsilon)
+        B_above = max(B - self.gamma_B, self.epsilon)
+        
+        return self.alpha_A * math.log(A_above) + self.alpha_B * math.log(B_above)
+    
+    def mu_A(self, A: int, B: int) -> float:
+        """
+        Marginal utility of A: MU_A = α_A / (A - γ_A)
+        
+        Uses epsilon-shift for safety when A ≤ γ_A.
+        """
+        A_above = max(A - self.gamma_A, self.epsilon)
+        return self.alpha_A / A_above
+    
+    def mu_B(self, A: int, B: int) -> float:
+        """
+        Marginal utility of B: MU_B = α_B / (B - γ_B)
+        
+        Uses epsilon-shift for safety when B ≤ γ_B.
+        """
+        B_above = max(B - self.gamma_B, self.epsilon)
+        return self.alpha_B / B_above
+    
+    def mrs_A_in_B(self, A: int, B: int, eps: float = 1e-12) -> float:
+        """
+        Compute MRS for Stone-Geary utility.
+        
+        MRS = [α_A · (B - γ_B)] / [α_B · (A - γ_A)]
+        
+        Uses epsilon-shift to handle subsistence boundaries.
+        """
+        A_above = max(A - self.gamma_A, eps)
+        B_above = max(B - self.gamma_B, eps)
+        
+        return (self.alpha_A * B_above) / (self.alpha_B * A_above)
+    
+    def reservation_bounds_A_in_B(self, A: int, B: int, eps: float = 1e-12) -> tuple[float, float]:
+        """
+        Compute reservation bounds for Stone-Geary utility.
+        
+        Special handling for subsistence violations:
+        - If A ≤ γ_A: Agent desperate for A, willing to pay very high price
+        - If B ≤ γ_B: Agent cannot spare B, demands very high price for A
+        - Otherwise: Standard MRS-based bounds
+        """
+        # Check if below subsistence (with small tolerance for numerical safety)
+        below_A = (A - self.gamma_A) < eps
+        below_B = (B - self.gamma_B) < eps
+        
+        if below_A and below_B:
+            # Below subsistence in both: indeterminate, use neutral default
+            return (1.0, 1.0)
+        elif below_A:
+            # Below subsistence in A only: desperate buyer
+            return (1e6, 1e6)
+        elif below_B:
+            # Below subsistence in B only: cannot sell A (need to acquire B)
+            # Could also refuse trade: return (float('inf'), 0.0)
+            return (1e6, 1e6)
+        
+        # Normal case: both goods above subsistence
+        mrs = self.mrs_A_in_B(A, B, eps)
+        return (mrs, mrs)
+    
+    def is_above_subsistence(self, A: int, B: int, eps: float = 1e-12) -> bool:
+        """
+        Helper method to check if agent is above subsistence in both goods.
+        
+        Useful for decision logic or telemetry.
+        """
+        return (A - self.gamma_A) > eps and (B - self.gamma_B) > eps
+
+
 def create_utility(config: dict) -> Utility:
     """
-    Factory function to create utility from configuration.
+    Create utility instance from scenario configuration dictionary.
     
-    DEPRECATED: Direct instantiation (UCES, ULinear) is preferred for clarity.
+    This is the standard factory function used by the scenario loading system
+    to dynamically instantiate utilities from YAML files. It maps string type
+    names ("ces", "linear", "quadratic", "translog", "stone_geary") to their
+    corresponding utility classes.
+    
+    For programmatic use when not loading from YAML, direct class instantiation
+    may be more explicit:
+        utility = UQuadratic(A_star=10.0, B_star=10.0, sigma_A=5.0, sigma_B=5.0)
     
     Args:
         config: Dictionary with 'type' and 'params' keys
+            type: Utility type string (e.g., "quadratic", "translog")
+            params: Dict of parameters for the chosen utility type
         
     Returns:
-        Utility instance
+        Utility instance of the appropriate class
         
     Raises:
         ValueError: If utility type is unknown
     """
-    warnings.warn(
-        "create_utility() is deprecated. Use direct instantiation (UCES, ULinear) instead.",
-        DeprecationWarning,
-        stacklevel=2
-    )
-    
     utype = config['type']
     params = config['params']
     
@@ -318,6 +650,12 @@ def create_utility(config: dict) -> Utility:
         return UCES(**params)
     elif utype == 'linear':
         return ULinear(**params)
+    elif utype == 'quadratic':
+        return UQuadratic(**params)
+    elif utype == 'translog':
+        return UTranslog(**params)
+    elif utype == 'stone_geary':
+        return UStoneGeary(**params)
     else:
         raise ValueError(f"Unknown utility type: {utype}")
 

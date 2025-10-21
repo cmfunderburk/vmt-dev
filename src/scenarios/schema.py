@@ -10,7 +10,7 @@ from enum import Enum
 @dataclass
 class UtilityConfig:
     """Configuration for a utility function."""
-    type: Literal["ces", "linear"]
+    type: Literal["ces", "linear", "quadratic", "translog", "stone_geary"]
     weight: float
     params: dict[str, float]
 
@@ -251,6 +251,71 @@ class ScenarioConfig:
                     raise ValueError("Linear utility requires 'vA' and 'vB' parameters")
                 if util.params["vA"] <= 0 or util.params["vB"] <= 0:
                     raise ValueError("Linear utility values must be positive")
+            
+            elif util.type == "quadratic":
+                if "A_star" not in util.params or "B_star" not in util.params:
+                    raise ValueError("Quadratic utility requires 'A_star' and 'B_star' parameters")
+                if "sigma_A" not in util.params or "sigma_B" not in util.params:
+                    raise ValueError("Quadratic utility requires 'sigma_A' and 'sigma_B' parameters")
+                if util.params["A_star"] <= 0 or util.params["B_star"] <= 0:
+                    raise ValueError("Quadratic bliss points must be positive")
+                if util.params["sigma_A"] <= 0 or util.params["sigma_B"] <= 0:
+                    raise ValueError("Quadratic curvature parameters must be positive")
+                # gamma is optional, defaults to 0.0
+                if "gamma" in util.params and util.params["gamma"] < 0:
+                    raise ValueError("Quadratic cross-curvature gamma must be non-negative")
+            
+            elif util.type == "translog":
+                required = ["alpha_0", "alpha_A", "alpha_B", "beta_AA", "beta_BB", "beta_AB"]
+                for param in required:
+                    if param not in util.params:
+                        raise ValueError(f"Translog utility requires '{param}' parameter")
+                if util.params["alpha_A"] <= 0 or util.params["alpha_B"] <= 0:
+                    raise ValueError("Translog first-order coefficients (alpha_A, alpha_B) must be positive for monotonicity")
+            
+            elif util.type == "stone_geary":
+                if "alpha_A" not in util.params or "alpha_B" not in util.params:
+                    raise ValueError("Stone-Geary utility requires 'alpha_A' and 'alpha_B' parameters")
+                if "gamma_A" not in util.params or "gamma_B" not in util.params:
+                    raise ValueError("Stone-Geary utility requires 'gamma_A' and 'gamma_B' parameters")
+                if util.params["alpha_A"] <= 0 or util.params["alpha_B"] <= 0:
+                    raise ValueError("Stone-Geary preference weights must be positive")
+                if util.params["gamma_A"] < 0 or util.params["gamma_B"] < 0:
+                    raise ValueError("Stone-Geary subsistence levels must be non-negative")
+                
+                # Critical: Validate initial inventories > subsistence
+                gamma_A = util.params["gamma_A"]
+                gamma_B = util.params["gamma_B"]
+                
+                # Check A inventory
+                inv_A = self.initial_inventories.get('A')
+                if inv_A is not None:
+                    if isinstance(inv_A, int):
+                        if inv_A <= gamma_A:
+                            raise ValueError(
+                                f"Stone-Geary requires initial_inventories['A']={inv_A} > gamma_A={gamma_A}"
+                            )
+                    elif isinstance(inv_A, dict) and 'uniform_int' in inv_A:
+                        min_A = inv_A['uniform_int'][0]
+                        if min_A <= gamma_A:
+                            raise ValueError(
+                                f"Stone-Geary requires min(initial_inventories['A'])={min_A} > gamma_A={gamma_A}"
+                            )
+                
+                # Check B inventory
+                inv_B = self.initial_inventories.get('B')
+                if inv_B is not None:
+                    if isinstance(inv_B, int):
+                        if inv_B <= gamma_B:
+                            raise ValueError(
+                                f"Stone-Geary requires initial_inventories['B']={inv_B} > gamma_B={gamma_B}"
+                            )
+                    elif isinstance(inv_B, dict) and 'uniform_int' in inv_B:
+                        min_B = inv_B['uniform_int'][0]
+                        if min_B <= gamma_B:
+                            raise ValueError(
+                                f"Stone-Geary requires min(initial_inventories['B'])={min_B} > gamma_B={gamma_B}"
+                            )
         
         # Validate mode schedule if present
         if self.mode_schedule:
