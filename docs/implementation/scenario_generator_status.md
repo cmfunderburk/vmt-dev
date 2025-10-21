@@ -10,7 +10,7 @@
 | Phase | Status | Timeline | Documents |
 |-------|--------|----------|-----------|
 | Phase 1: CLI MVP | ✅ **COMPLETE** | ~2 hours (2025-10-21) | [Implementation Plan](scenario_generator_phase1_implementation.md), [Changelog](scenario_generator_phase1_changelog.md), [Gap Analysis](scenario_generator_phase1_gap_analysis.md) |
-| Phase 2: Exchange Regimes & Presets | 📋 Ready for Implementation | Est. 2-3 hours | [Implementation Plan](scenario_generator_phase2_implementation.md) |
+| Phase 2: Exchange Regimes & Presets | ✅ **COMPLETE** | ~1.5 hours (2025-10-21) | [Implementation Plan](scenario_generator_phase2_plan.md), [Completion Summary](SCENARIO_GENERATOR_PHASE2_COMPLETION.md) |
 | Phase 3: Advanced Features | 🔮 Future | TBD | To be planned based on user feedback |
 
 ---
@@ -53,7 +53,37 @@ python3 -m src.vmt_tools.generate_scenario my_test \
 
 ---
 
-## Phase 2 Plan (READY 📋)
+## Phase 2 Summary (COMPLETE ✅)
+
+### What Was Implemented
+
+**Feature 1: Exchange Regime Support**
+- `--exchange-regime` CLI flag with 4 choices
+- Automatic M inventory generation for money regimes
+- Default money parameters (quasilinear, λ=1.0)
+- Backward compatible (defaults to barter_only)
+
+**Feature 2: Preset System**
+- 5 presets: minimal, standard, large, money_demo, mixed_economy
+- `--preset` CLI flag
+- Preset override capability
+- Arguments optional when using preset
+
+### Validation Results
+- 10 test scenarios generated and validated
+- All scenarios pass schema validation
+- All scenarios run successfully (5 ticks)
+- Backward compatibility verified
+- No linter errors
+
+### Time Spent
+- Actual: ~1.5 hours
+- Estimated: 2-3 hours
+- Status: Ahead of schedule
+
+---
+
+## Phase 2 Plan (ARCHIVED)
 
 ### Scope
 
@@ -230,5 +260,5 @@ Answers will inform Phase 3 priorities.
 
 ---
 
-**Status Summary: Phase 1 Complete ✅ | Phase 2 Ready 📋 | Review in Progress 👀**
+**Status Summary: Phase 1 Complete ✅ | Phase 2 Complete ✅ | Ready for v1.0 Polish 🚀**
 
