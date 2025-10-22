@@ -100,6 +100,7 @@ class VMTRenderer:
         self.COLOR_YELLOW = (255, 255, 100)
         self.COLOR_ARROW_TRADE = (100, 255, 100)      # Green for trade targeting
         self.COLOR_ARROW_FORAGE = (255, 165, 0)       # Orange for forage targeting
+        self.COLOR_ARROW_IDLE_HOME = (173, 216, 230)  # Light blue for idle home targeting
         self.COLOR_IDLE_BORDER = (255, 100, 100)      # Red border for idle agents
         
         # Track trade events for visualization
@@ -160,6 +161,7 @@ class VMTRenderer:
         
         self.draw_grid()
         self.draw_resources()
+        self.draw_home_positions()
         
         # Draw agents with optional lambda heatmap coloring
         if self.show_lambda_heatmap:
@@ -230,6 +232,34 @@ class VMTRenderer:
                     True, self.COLOR_BLACK
                 )
                 self.screen.blit(label, (screen_x + 2, screen_y + 2))
+    
+    def draw_home_positions(self):
+        """Draw home position indicators for all agents."""
+        for agent in self.sim.agents:
+            if agent.home_pos is None:
+                continue
+                
+            x, y = agent.home_pos
+            screen_x, screen_y = self.to_screen_coords(x, y)
+            
+            # Skip if not visible
+            if not self.is_visible(screen_x, screen_y):
+                continue
+            
+            # Draw a small square in the corner of the home cell
+            home_size = max(3, self.cell_size // 8)
+            home_x = screen_x + self.cell_size - home_size - 2
+            home_y = screen_y + 2
+            
+            # Draw home indicator as a small square
+            pygame.draw.rect(
+                self.screen, self.COLOR_BLACK, 
+                (home_x, home_y, home_size, home_size)
+            )
+            pygame.draw.rect(
+                self.screen, self.COLOR_LIGHT_GRAY, 
+                (home_x + 1, home_y + 1, home_size - 2, home_size - 2)
+            )
     
     def group_agents_by_position(self) -> dict[tuple[int, int], list['Agent']]:
         """
@@ -545,7 +575,14 @@ class VMTRenderer:
         idle_agents = []
         
         for agent in self.sim.agents:
-            if agent.target_pos is None:
+            # Check if agent is idle (no target OR at home and targeting home)
+            is_idle = (agent.target_pos is None or 
+                      (agent.home_pos is not None and 
+                       agent.pos == agent.home_pos and 
+                       agent.target_pos == agent.home_pos and 
+                       agent.target_agent_id is None))
+            
+            if is_idle:
                 # Idle agent - track for border rendering
                 idle_agents.append(agent)
                 continue
@@ -553,6 +590,8 @@ class VMTRenderer:
             # Determine arrow type
             is_trade = agent.target_agent_id is not None
             is_forage = agent.target_agent_id is None
+            is_idle_home = (is_forage and agent.home_pos is not None and 
+                          agent.target_pos == agent.home_pos)
             
             # Skip if this arrow type is disabled
             if is_trade and not self.show_trade_arrows:
@@ -583,7 +622,12 @@ class VMTRenderer:
             )
             
             # Choose color based on target type
-            color = self.COLOR_ARROW_TRADE if is_trade else self.COLOR_ARROW_FORAGE
+            if is_trade:
+                color = self.COLOR_ARROW_TRADE
+            elif is_idle_home:
+                color = self.COLOR_ARROW_IDLE_HOME
+            else:
+                color = self.COLOR_ARROW_FORAGE
             
             # Draw arrow
             self.draw_arrow(agent_center, target_center, color, width=2)

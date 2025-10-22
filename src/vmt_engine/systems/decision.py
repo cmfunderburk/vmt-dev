@@ -182,9 +182,15 @@ class DecisionSystem:
             agent.is_foraging_committed = True
             agent.forage_target_pos = target
         else:
-            agent.target_pos = None
-            agent.target_agent_id = None
-            agent._decision_target_type = "idle"
+            # Idle fallback: return to home position
+            if agent.home_pos is not None:
+                agent.target_pos = agent.home_pos
+                agent.target_agent_id = None
+                agent._decision_target_type = "idle_home"
+            else:
+                agent.target_pos = None
+                agent.target_agent_id = None
+                agent._decision_target_type = "idle"
     
     def _evaluate_trade_vs_forage(self, agent: "Agent", view: dict, sim: "Simulation") -> None:
         """
@@ -243,10 +249,15 @@ class DecisionSystem:
             agent.is_foraging_committed = True
             agent.forage_target_pos = best_forage_target
         else:
-            # No good options (both scores <= 0)
-            agent.target_pos = None
-            agent.target_agent_id = None
-            agent._decision_target_type = "idle"
+            # No good options (both scores <= 0) - idle fallback to home
+            if agent.home_pos is not None:
+                agent.target_pos = agent.home_pos
+                agent.target_agent_id = None
+                agent._decision_target_type = "idle_home"
+            else:
+                agent.target_pos = None
+                agent.target_agent_id = None
+                agent._decision_target_type = "idle"
     
     def _pass2_mutual_consent(self, sim: "Simulation") -> None:
         """Pass 2: Establish pairings where both agents mutually prefer each other."""
@@ -391,9 +402,16 @@ class DecisionSystem:
                 view = agent.perception_cache
                 self._evaluate_forage_target(agent, view, sim)
             
-            # In "trade" mode, just stay idle (no foraging allowed)
+            # In "trade" mode, idle fallback to home (no foraging allowed)
             else:
-                agent._decision_target_type = "idle"
+                if agent.home_pos is not None:
+                    agent.target_pos = agent.home_pos
+                    agent.target_agent_id = None
+                    agent._decision_target_type = "idle_home"
+                else:
+                    agent.target_pos = None
+                    agent.target_agent_id = None
+                    agent._decision_target_type = "idle"
     
     def _pass4_log_decisions(self, sim: "Simulation") -> None:
         """Pass 4: Log all agent decisions with final pairing status."""

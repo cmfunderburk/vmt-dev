@@ -24,6 +24,7 @@ class Agent:
     quotes: dict[str, float] = field(default_factory=dict)  # Money-aware: dict of all exchange pairs
     vision_radius: int = 5
     move_budget_per_tick: int = 1
+    home_pos: Optional[Position] = None  # Initial position for idle fallback
     
     # Runtime state (not persisted)
     target_pos: Optional[Position] = field(default=None, repr=False)

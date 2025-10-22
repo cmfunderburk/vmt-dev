@@ -195,7 +195,8 @@ class Simulation:
                 utility=utility,
                 vision_radius=self.params['vision_radius'],
                 move_budget_per_tick=self.params['move_budget_per_tick'],
-                lambda_money=float(inv_lambda[i])  # Per-agent lambda from scenario
+                lambda_money=float(inv_lambda[i]),  # Per-agent lambda from scenario
+                home_pos=pos  # Set home position to initial position
             )
             
             # Initialize quotes
