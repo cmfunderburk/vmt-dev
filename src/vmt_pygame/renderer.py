@@ -82,9 +82,9 @@ class VMTRenderer:
         seed = simulation.seed
         pygame.display.set_caption(f"VMT v1 - {scenario_name} (seed: {seed})")
         
-        # Scale fonts proportionally (minimum 8px, maximum 14px for base, 6-10px for small)
-        base_font_size = max(8, min(14, self.cell_size // 4))
-        small_font_size = max(6, min(10, self.cell_size // 5))
+        # Scale fonts proportionally (minimum 10px, maximum 16px for base, 8-12px for small)
+        base_font_size = max(10, min(16, self.cell_size // 4))
+        small_font_size = max(8, min(12, self.cell_size // 5))
         self.font = pygame.font.SysFont('arial', base_font_size)
         self.small_font = pygame.font.SysFont('arial', small_font_size)
         
@@ -964,6 +964,15 @@ class VMTRenderer:
         agent_label = self.font.render(agent_text, True, self.COLOR_BLACK)
         self.screen.blit(agent_label, (10, hud_y + 20))
         
+        # Mode and exchange regime info
+        mode = self.sim.current_mode  # "forage", "trade", or "both"
+        exchange_regime = self.sim.params.get('exchange_regime', 'barter_only')
+        money_scale = self.sim.params.get('money_scale', 1)
+        
+        mode_text = f"Mode: {mode} | Regime: {exchange_regime} | Money Scale: {money_scale}"
+        mode_label = self.font.render(mode_text, True, self.COLOR_BLACK)
+        self.screen.blit(mode_label, (10, hud_y + 40))
+        
         # Total inventory across all agents
         total_A = sum(a.inventory.A for a in self.sim.agents)
         total_B = sum(a.inventory.B for a in self.sim.agents)
@@ -978,7 +987,7 @@ class VMTRenderer:
             inv_text = f"Total Inventory - A: {total_A}  B: {total_B}"
         
         inv_label = self.font.render(inv_text, True, self.COLOR_BLACK)
-        self.screen.blit(inv_label, (10, hud_y + 40))
+        self.screen.blit(inv_label, (10, hud_y + 60))
         
         # Controls (with scrolling if needed)
         if self.needs_scrolling:
@@ -986,7 +995,7 @@ class VMTRenderer:
         else:
             controls_text = "SPACE=Pause R=Reset S=Step ↑↓=Speed T/F/A/O=Arrows M/L/I=Money Q=Quit"
         controls_label = self.small_font.render(controls_text, True, self.COLOR_BLACK)
-        self.screen.blit(controls_label, (10, hud_y + 60))
+        self.screen.blit(controls_label, (10, hud_y + 80))
         
         # Arrow toggle status
         arrow_status_parts = []
@@ -1001,7 +1010,7 @@ class VMTRenderer:
             arrow_status = "Arrows: OFF"
         
         arrow_label = self.small_font.render(arrow_status, True, self.COLOR_BLACK)
-        self.screen.blit(arrow_label, (10, hud_y + 75))
+        self.screen.blit(arrow_label, (10, hud_y + 95))
         
         # Money visualization status
         money_viz_parts = []
@@ -1018,12 +1027,14 @@ class VMTRenderer:
             money_viz_status = "Money Viz: OFF"
         
         money_viz_label = self.small_font.render(money_viz_status, True, self.COLOR_BLACK)
-        self.screen.blit(money_viz_label, (200, hud_y + 75))
+        self.screen.blit(money_viz_label, (200, hud_y + 95))
 
-        # Recent trades (flexible format for barter and monetary)
+        # Recent trades (right-justified)
         trade_hud_y = hud_y
         trade_title = self.font.render("Recent Trades:", True, self.COLOR_BLACK)
-        self.screen.blit(trade_title, (250, trade_hud_y))
+        trade_title_width = trade_title.get_width()
+        trade_x_start = self.width - trade_title_width - 10  # 10px margin from right edge
+        self.screen.blit(trade_title, (trade_x_start, trade_hud_y))
         
         for i, trade in enumerate(reversed(self.recent_trades)):
             if i >= 5: break
@@ -1053,7 +1064,9 @@ class VMTRenderer:
                 trade_text = f"T{tick}: {buyer} buys {dA}A from {seller} for {dB}B @ {price:.2f}"
             
             trade_label = self.small_font.render(trade_text, True, self.COLOR_BLACK)
-            self.screen.blit(trade_label, (250, trade_hud_y + 20 + i * 15))
+            trade_label_width = trade_label.get_width()
+            trade_x = self.width - trade_label_width - 10  # Right-justify each trade line
+            self.screen.blit(trade_label, (trade_x, trade_hud_y + 20 + i * 15))
     
     def add_trade_indicator(self, pos: tuple[int, int]):
         """Add a trade indicator at the given position."""
