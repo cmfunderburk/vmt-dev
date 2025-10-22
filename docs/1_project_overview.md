@@ -389,3 +389,35 @@ The following scenarios demonstrate the three new utility functions:
 4. **mixed_utility_showcase.yaml** - All three new utilities in a heterogeneous population
    - Demonstrates architectural flexibility
    - Rich diversity of trading patterns and economic behaviors
+
+---
+
+## 📚 Documentation
+
+VMT includes comprehensive documentation for developers, researchers, and users:
+
+### Core Documentation
+
+- **[Project Overview](./1_project_overview.md)** (this document) - Quick start, features, and high-level architecture
+- **[Technical Manual](./2_technical_manual.md)** - Detailed implementation, algorithms, and system design
+- **[Scenario Configuration Guide](./scenario_configuration_guide.md)** - Complete reference for creating YAML scenarios
+- **[Type Specifications](./4_typing_overview.md)** - Language-agnostic type contracts and data schemas
+- **[Strategic Roadmap](./3_strategic_roadmap.md)** - Future plans and enhancement priorities
+
+### Getting Started
+
+- **New to VMT?** Start with [Project Overview](./1_project_overview.md) and run `python launcher.py`
+- **Creating scenarios?** See [Scenario Configuration Guide](./scenario_configuration_guide.md)
+- **Understanding internals?** Read [Technical Manual](./2_technical_manual.md)
+- **Analyzing data?** Check [Type Specifications](./4_typing_overview.md) for telemetry schema
+
+### Demo Scenarios
+
+The `scenarios/demos/` directory contains annotated pedagogical scenarios:
+
+1. **demo_01_simple_money.yaml** - Why money? (double coincidence of wants)
+2. **demo_02_barter_vs_money.yaml** - Direct comparison of exchange systems
+3. **demo_03_mixed_regime.yaml** - Hybrid economy (barter + money coexistence)
+4. **demo_04_mode_schedule.yaml** - Temporal control (forage/trade cycles)
+5. **demo_05_liquidity_zones.yaml** - Market thickness and spatial variation
+6. **demo_06_money_aware_pairing.yaml** - Money-aware pairing mechanics
