@@ -1,0 +1,52 @@
+---
+alwaysApply: true
+description: VMT Economic Models and Utility Functions
+---
+
+# VMT Economic Models
+
+## Utility Functions (5 Types)
+
+All utilities implement money-aware API in [src/vmt_engine/econ/utility.py](mdc:src/vmt_engine/econ/utility.py):
+
+1. **CES (Constant Elasticity of Substitution)**
+   - Includes Cobb-Douglas as special case (ρ→0)
+   - MRS = (w_A/w_B)(A/B)^(ρ-1)
+   - Handles zero-inventory with epsilon guards
+
+2. **Linear (Perfect Substitutes)**
+   - U = v_A·A + v_B·B
+   - Constant MRS = v_A/v_B
+   - Simplest case for teaching
+
+3. **Quadratic (Bliss Points)**
+   - U = -[(A-Ā)²/σ_A² + (B-B̄)²/σ_B² + γ(A-Ā)(B-B̄)]
+   - Non-monotonic preferences
+   - Satiation behavior
+
+4. **Translog (Flexible Form)**
+   - U = exp[α₀ + α_A ln A + α_B ln B + ½β terms]
+   - Uses max(A,ε) for log safety
+   - Second-order approximation
+
+5. **Stone-Geary (LES Foundation)**
+   - U = α_A ln(A-γ_A) + α_B ln(B-γ_B)
+   - Subsistence constraints (γ_A, γ_B)
+   - Below subsistence → extreme reservation prices
+
+## Money System
+
+- **Quasilinear Utility:** U_total = U_goods(A,B) + λ·M
+- **Exchange Regimes:**
+  - `barter_only`: A↔B trades only
+  - `money_only`: A↔M, B↔M trades only  
+  - `mixed`: All trade types allowed
+  - `mixed_liquidity_gated`: **[DEFERRED]** - Planned for future
+- **Money-Aware Pairing:** Uses `estimate_money_aware_surplus()` for money/mixed regimes
+
+## Reservation Prices
+
+- **Definition:** Minimum price to accept (ask) vs maximum to pay (bid)
+- **Calculation:** Based on MRS = MU_A/MU_B
+- **Zero-Inventory Handling:** Epsilon guards prevent infinite MRS
+- **Quote Generation:** [src/vmt_engine/systems/quotes.py](mdc:src/vmt_engine/systems/quotes.py)

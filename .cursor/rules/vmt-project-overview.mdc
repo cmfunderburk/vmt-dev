@@ -1,0 +1,51 @@
+---
+alwaysApply: true
+description: VMT Project Overview and Core Architecture
+---
+
+# VMT - Visualizing Microeconomic Theory
+
+**Core Purpose:** A spatial agent-based simulation for teaching and researching microeconomic behavior through visualization.
+
+## Project Structure
+
+```
+vmt-dev/
+├── src/
+│   ├── vmt_engine/          # Core simulation engine (7-phase tick cycle)
+│   ├── vmt_launcher/        # PyQt6 GUI launcher application  
+│   ├── vmt_pygame/          # PyGame visualization and rendering
+│   ├── vmt_tools/           # Scenario builder and utilities
+│   ├── telemetry/           # SQLite logging system
+│   └── scenarios/           # Scenario schema and loading
+├── scenarios/               # Pre-built YAML scenario files
+│   └── demos/               # Tutorial and demo scenarios
+├── tests/                   # 316+ comprehensive test suite
+├── docs/                    # Full documentation
+├── launcher.py              # GUI entry point
+└── main.py                  # CLI entry point
+```
+
+## Key Entry Points
+
+- **GUI:** [launcher.py](mdc:launcher.py) - PyQt6-based scenario browser and launcher
+- **CLI:** [main.py](mdc:main.py) - Headless simulation runner
+- **Core Engine:** [src/vmt_engine/](mdc:src/vmt_engine/) - 7-phase simulation engine
+- **Documentation:** [docs/1_project_overview.md](mdc:docs/1_project_overview.md) - Comprehensive project guide
+
+## Core Features
+
+- **Spatial Foraging:** Agents move on N×N grid collecting resources
+- **Bilateral Trading:** Barter and monetary exchange with reservation-price negotiation
+- **Rich Utility Functions:** Linear, quadratic, CES, Stone-Geary, translog
+- **Money-Aware Pairing:** Smart matching for trading agents (P0 resolved 2025-10-22)
+- **Real-Time Visualization:** PyGame display with agent states
+- **Comprehensive Telemetry:** SQLite database logging for analysis
+- **Deterministic:** Reproducible simulations with seed control
+
+## Technology Stack
+
+- **Python 3.11+** with PyQt6 (GUI) and PyGame (visualization)
+- **SQLite** for telemetry logging (99% compression over CSV)
+- **NumPy** for numerical calculations
+- **No external APIs** - fully offline tool

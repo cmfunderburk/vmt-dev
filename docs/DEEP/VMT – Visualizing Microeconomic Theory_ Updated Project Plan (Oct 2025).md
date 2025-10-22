@@ -112,20 +112,21 @@ load scenarios in headless mode.
 
 4. Risk Radar (top concerns)
 
-      - R-01: Pairing vs Money Consistency. Description: Currently, the DecisionSystem still ranks potential
+      - R-01: ~~Pairing vs Money Consistency~~ **[RESOLVED 2025-10-22]**. Description: ~~Currently, the DecisionSystem still ranks potential
         trade partners using barter-only surplus (ignoring money) 6 . In a money or mixed regime, this can
         select suboptimal pairs, obscuring the liquidity advantage of money. Impact: High (misleading
         educational outcomes) | Likelihood: Medium. Mitigation: Rework neighbor-scoring to use money-
-        aware surplus when money is enabled 6 .
+        aware surplus when money is enabled 6 .~~
+        **Status:** Money-aware pairing implemented via `estimate_money_aware_surplus()` function.
+        All money/mixed regimes now use money-aware surplus calculation during Decision phase.
+        Backward compatibility preserved for barter_only regime.
       - R-02: Documentation & Guidance Gaps. Description: Several user guides referenced in README are
         not yet written (e.g. user_guide_money.md, regime_comparison.md) 11 . This may confuse new
-        users and instructors. Impact: Medium | Likelihood: High. Mitigation: Prioritize writing or stubbing
-        missing guides and fixing broken links before release 11 . Provide in-app help text (the GUI has built-
+        users and instructors. Impact: Medium | Likelihood: High. Mitigation: **Update references to reflect current status** - missing guides will be created by developer as needed. Provide in-app help text (the GUI has built-
         in tooltips).
       - R-03: Performance and Scalability. Description: If many agents or high tick counts are used, the
         simulation might slow or exceed 30 FPS. The pairing system is O(P) per tick (P = paired count), and
-        spatial indexing is used for efficiency 12 . Impact: High | Likelihood: Medium. Mitigation: Rigorously
-        benchmark with 500+ agents. The code is optimized (spatial indexing, commitment of pairs to
+        spatial indexing is used for efficiency 12 . Impact: High | Likelihood: Medium. Mitigation: **PENDING DEVELOPER ACTION** - Create standard performance benchmark scenarios. The code is optimized (spatial indexing, commitment of pairs to
         reduce repeated work 13 ). If needed, implement further partitioning or LOD rendering.
       - R-04: System Complexity for Learners. Description: The growing number of parameters (multiple
         utility types, exchange regimes, modes) may overwhelm new users. Impact: Medium | Likelihood:
@@ -137,7 +138,7 @@ load scenarios in headless mode.
         comments, as planned) and quick-reference guide. Use clear, consistent UI icons (already done) and
         comprehensive validation errors.
 
-(Note: The primary architectural misalignment is R-01, which directly affects teaching clarity 14 . Other risks are
+(Note: ~~The primary architectural misalignment is R-01, which directly affects teaching clarity 14 .~~ R-01 has been resolved. Other risks are
 mitigated by planned documentation and optimization.)
 
 
@@ -304,9 +305,8 @@ structure was enforced after refactoring to align with initial plans.
         integration, performance) and tagged so critical paths are always validated.
       - CI/CD: A GitHub Actions workflow runs tests, linters, and builds. Documentation builds (MkDocs or
         Sphinx) are validated for link consistency.
-      - Release Management: We follow Semantic Versioning. After polishing, the project will be tagged
-        v0.0.1 (pre-release) with a CHANGELOG. (Badges and README have been updated to reflect PyQt6
-        and the new version 23 .)
+      - Release Management: **DEFERRED** - No SemVer versioning until developer manually pushes 0.0.1 prerelease. Use date-based and descriptive name tracking for commits. (Badges and README have been updated to reflect PyQt6
+        and current status 23 .)
 
 14. Implementation Roadmap (Next Steps)
 
@@ -314,19 +314,16 @@ The immediate plan is to close the gaps between the current code and the origina
 
 
       - Phase A (Current) – Finalize Barter+Money Engine:
-      - Fix Pairing Metric: Adjust the DecisionSystem to use money-aware surplus ranking when the regime
-        is money_only or mixed 6 24 . This ensures demonstrable liquidity benefits.
-      - Complete Mixed Regime Logic: Implement the intended gating for "mixed_liquidity_gated"
-       (currently it silently falls back to barter). Add tests for this regime.
+      - ~~Fix Pairing Metric: Adjust the DecisionSystem to use money-aware surplus ranking when the regime
+        is money_only or mixed 6 24 . This ensures demonstrable liquidity benefits.~~ **[COMPLETED 2025-10-22]**
+      - Complete Mixed Regime Logic: **DEFERRED** - Implement the intended gating for "mixed_liquidity_gated"
+       (currently it silently falls back to barter). Add tests for this regime. **Status: Planned for future development.**
 
 
 
                                                           6
-     - User Documentation: Write or stub the missing guides referenced in README: User Guide for Money
-       System, Regime Comparison, Technical Money Implementation, Quick Reference, and Scenario Generator
-       Guide 11 . These will aid instructors and developers.
-     - Release Prep: Switch versioning to v0.0.1 (as per the review recommendation) 23 . Harmonize
-       badges and announce a pre-release. Ensure all dependencies (PyQt6, Pygame, etc.) are up to date.
+     - User Documentation: **Update references** to reflect current status - missing guides will be created by developer as needed. These will aid instructors and developers.
+     - Release Prep: **DEFERRED** - No SemVer versioning until developer manually pushes 0.0.1 prerelease. Use date-based and descriptive name tracking for commits. Ensure all dependencies (PyQt6, Pygame, etc.) are up to date.
 
      - UI/UX Polish: Refine the scenario builder forms for clarity, add helpful default values, and ensure
        any new money parameters have on-screen documentation. Update demos to highlight new

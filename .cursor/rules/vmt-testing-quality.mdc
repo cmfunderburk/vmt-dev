@@ -1,0 +1,63 @@
+---
+alwaysApply: true
+description: VMT Testing Strategy and Quality Assurance
+---
+
+# VMT Testing Strategy
+
+## Test Suite Overview
+
+- **Total Tests:** 316+ comprehensive tests
+- **Framework:** pytest
+- **Coverage Goal:** >90% code coverage
+- **Location:** [tests/](mdc:tests/) directory
+
+## Test Categories
+
+### Core Functionality Tests
+- **Money Integration:** [tests/test_money_phase1_integration.py](mdc:tests/test_money_phase1_integration.py)
+- **Mixed Regime:** [tests/test_mixed_regime_integration.py](mdc:tests/test_mixed_regime_integration.py)
+- **Matching Logic:** [tests/test_matching_money.py](mdc:tests/test_matching_money.py)
+- **Pairing Money-Aware:** [tests/test_pairing_money_aware.py](mdc:tests/test_pairing_money_aware.py)
+
+### Determinism Tests
+- **Barter Regression:** [tests/test_barter_integration.py](mdc:tests/test_barter_integration.py)
+- **Bit-Identical Results:** Same seed → identical outcomes
+- **Reproducibility:** Multiple runs with same parameters
+
+### Performance Tests
+- **Benchmark Scenarios:** Performance with increasing agent counts
+- **TPS Measurement:** Ticks-per-second benchmarks
+- **Memory Usage:** Resource consumption tracking
+
+## Quality Assurance
+
+### Code Quality Tools
+- **Formatting:** Black (project-wide)
+- **Linting:** Ruff (Flake8/Mypy)
+- **Type Checking:** Mypy (100% type coverage goal)
+- **Pre-commit Hooks:** Automated formatting/linting
+
+### CI/CD Pipeline
+- **GitHub Actions:** Automated test runs
+- **Multi-Platform:** Linux, macOS, Windows
+- **Dependency Management:** requirements.txt + requirements-dev.txt
+
+## Running Tests
+
+```bash
+# Full test suite
+pytest
+
+# Specific test file
+pytest tests/test_money_phase1_integration.py
+
+# With coverage
+pytest --cov=src/vmt_engine
+```
+
+## Test Data
+
+- **Scenarios:** Use [scenarios/](mdc:scenarios/) for integration tests
+- **Deterministic:** All tests use fixed seeds
+- **Isolated:** Each test runs in clean environment

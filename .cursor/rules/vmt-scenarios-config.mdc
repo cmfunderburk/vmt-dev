@@ -1,0 +1,59 @@
+---
+alwaysApply: true
+description: VMT Scenario Configuration and YAML Schema
+---
+
+# VMT Scenario Configuration
+
+## Scenario Files
+
+- **Location:** [scenarios/](mdc:scenarios/) directory
+- **Format:** YAML configuration files
+- **Schema:** Defined in [src/scenarios/schema.py](mdc:src/scenarios/schema.py)
+- **Loader:** [src/scenarios/loader.py](mdc:src/scenarios/loader.py)
+
+## Key Configuration Sections
+
+### Basic Parameters
+```yaml
+grid_size: 40                    # N×N grid
+agent_count: 20                  # Number of agents
+max_steps: 200                   # Simulation length
+seed: 42                        # Random seed for reproducibility
+```
+
+### Exchange Regimes
+```yaml
+params:
+  exchange_regime: "mixed"       # barter_only | money_only | mixed | mixed_liquidity_gated
+  mode_schedule: "both"         # trade | forage | both
+```
+
+### Agent Configuration
+```yaml
+initial_inventories:
+  A: [10, 5, 8]                 # Starting goods A
+  B: [5, 10, 7]                 # Starting goods B  
+  M: [100, 50, 75]              # Starting money (if money regime)
+
+utilities:
+  mix:
+    - type: "CES"
+      params: {rho: 0.5, w_A: 0.6, w_B: 0.4}
+      weight: 0.7
+    - type: "Linear" 
+      params: {v_A: 1.0, v_B: 0.8}
+      weight: 0.3
+```
+
+## Demo Scenarios
+
+- **Foundational:** [scenarios/demos/demo_01_foundational_barter.yaml](mdc:scenarios/demos/demo_01_foundational_barter.yaml)
+- **Money System:** [scenarios/demos/demo_06_money_aware_pairing.yaml](mdc:scenarios/demos/demo_06_money_aware_pairing.yaml)
+- **Large Scale:** [scenarios/large_100_agents.yaml](mdc:scenarios/large_100_agents.yaml)
+
+## Scenario Builder
+
+- **GUI Builder:** Available in PyQt6 launcher
+- **CLI Builder:** [src/vmt_tools/scenario_builder.py](mdc:src/vmt_tools/scenario_builder.py)
+- **Validation:** Automatic schema validation on load
