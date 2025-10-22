@@ -173,7 +173,6 @@ class VMTRenderer:
         self.draw_money_labels()
         self.draw_money_sparkles()
         self.draw_trade_indicators()
-        self.draw_mode_regime_overlay()
         self.draw_hud()
         
         pygame.display.flip()
@@ -395,9 +394,41 @@ class VMTRenderer:
                 return self.COLOR_GREEN
             elif utility_type == "ULinear":
                 return self.COLOR_PURPLE
+            elif utility_type == "UQuadratic":
+                return self.COLOR_BLUE
+            elif utility_type == "UTranslog":
+                return (255, 140, 0)  # Dark orange
+            elif utility_type == "UStoneGeary":
+                return (255, 20, 147)  # Deep pink
             else:
                 return self.COLOR_YELLOW
         return self.COLOR_BLACK
+    
+    def get_utility_type_label(self, agent: 'Agent') -> str:
+        """
+        Get 2-3 letter label for agent's utility type.
+        
+        Args:
+            agent: The agent to get label for
+            
+        Returns:
+            Short string label (e.g., "CES", "LIN", "QUA", "TRL", "SG")
+        """
+        if agent.utility:
+            utility_type = agent.utility.__class__.__name__
+            if utility_type == "UCES":
+                return "CES"
+            elif utility_type == "ULinear":
+                return "LIN"
+            elif utility_type == "UQuadratic":
+                return "QUA"
+            elif utility_type == "UTranslog":
+                return "TRL"
+            elif utility_type == "UStoneGeary":
+                return "SG"
+            else:
+                return "???"
+        return "???"
     
     def draw_group_inventory_labels(
         self,
@@ -510,11 +541,28 @@ class VMTRenderer:
                     max(1, radius // 5)
                 )
                 
-                # Draw agent ID (if space permits)
+                # Draw agent ID and utility type label (if space permits)
                 if radius >= 5 and self.cell_size >= 15:
+                    # Draw agent ID on first line
                     id_label = self.small_font.render(str(agent.id), True, self.COLOR_BLACK)
-                    id_rect = id_label.get_rect(center=(px, py))
+                    id_height = id_label.get_height()
+                    
+                    # Get utility type label
+                    util_type = self.get_utility_type_label(agent)
+                    util_label = self.small_font.render(util_type, True, self.COLOR_BLACK)
+                    util_height = util_label.get_height()
+                    
+                    # Calculate total height and starting y position to center both lines
+                    total_height = id_height + util_height
+                    start_y = py - total_height // 2
+                    
+                    # Draw ID label
+                    id_rect = id_label.get_rect(center=(px, start_y + id_height // 2))
                     self.screen.blit(id_label, id_rect)
+                    
+                    # Draw utility type label below ID
+                    util_rect = util_label.get_rect(center=(px, start_y + id_height + util_height // 2))
+                    self.screen.blit(util_label, util_rect)
             
             # Draw inventory labels below the entire group
             # Disabled to reduce visual clutter - inventory inspection feature coming soon
@@ -868,85 +916,28 @@ class VMTRenderer:
                     max(1, radius // 5)
                 )
                 
-                # Draw agent ID (if space permits)
+                # Draw agent ID and utility type label (if space permits)
                 if radius >= 5 and self.cell_size >= 15:
+                    # Draw agent ID on first line
                     id_label = self.small_font.render(str(agent.id), True, self.COLOR_BLACK)
-                    id_rect = id_label.get_rect(center=(px, py))
+                    id_height = id_label.get_height()
+                    
+                    # Get utility type label
+                    util_type = self.get_utility_type_label(agent)
+                    util_label = self.small_font.render(util_type, True, self.COLOR_BLACK)
+                    util_height = util_label.get_height()
+                    
+                    # Calculate total height and starting y position to center both lines
+                    total_height = id_height + util_height
+                    start_y = py - total_height // 2
+                    
+                    # Draw ID label
+                    id_rect = id_label.get_rect(center=(px, start_y + id_height // 2))
                     self.screen.blit(id_label, id_rect)
-    
-    def draw_mode_regime_overlay(self):
-        """Draw mode/regime information overlay in top-left corner."""
-        if not self.show_mode_regime_overlay:
-            return
-        
-        # Get current mode and regime
-        current_mode = getattr(self.sim, 'current_mode', 'both')
-        exchange_regime = self.sim.params.get('exchange_regime', 'barter_only')
-        
-        # Get active exchange pairs
-        active_pairs = []
-        if hasattr(self.sim, '_get_active_exchange_pairs'):
-            active_pairs = self.sim._get_active_exchange_pairs()
-        
-        # Background panel
-        panel_width = 250
-        panel_height = 100
-        panel_margin = 10
-        
-        # Draw semi-transparent background
-        overlay_surface = pygame.Surface((panel_width, panel_height))
-        overlay_surface.set_alpha(220)
-        overlay_surface.fill(self.COLOR_LIGHT_GRAY)
-        self.screen.blit(overlay_surface, (panel_margin, panel_margin))
-        
-        # Draw border
-        pygame.draw.rect(
-            self.screen, self.COLOR_BLACK,
-            (panel_margin, panel_margin, panel_width, panel_height),
-            2
-        )
-        
-        # Mode text with color coding
-        mode_colors = {
-            'forage': self.COLOR_GREEN,
-            'trade': self.COLOR_BLUE,
-            'both': self.COLOR_PURPLE
-        }
-        mode_color = mode_colors.get(current_mode, self.COLOR_BLACK)
-        
-        mode_text = f"Mode: {current_mode.upper()}"
-        mode_label = self.font.render(mode_text, True, mode_color)
-        self.screen.blit(mode_label, (panel_margin + 10, panel_margin + 10))
-        
-        # Regime text with color coding
-        regime_colors = {
-            'barter_only': (100, 200, 100),
-            'money_only': self.COLOR_GOLD,
-            'mixed': (150, 100, 255),
-            'mixed_liquidity_gated': (50, 50, 200)
-        }
-        regime_color = regime_colors.get(exchange_regime, self.COLOR_BLACK)
-        
-        regime_text = f"Regime: {exchange_regime}"
-        regime_label = self.font.render(regime_text, True, regime_color)
-        self.screen.blit(regime_label, (panel_margin + 10, panel_margin + 35))
-        
-        # Active pairs text
-        if active_pairs:
-            pairs_text = f"Active: {', '.join(active_pairs)}"
-        else:
-            pairs_text = "Active: None"
-        
-        pairs_label = self.small_font.render(pairs_text, True, self.COLOR_BLACK)
-        self.screen.blit(pairs_label, (panel_margin + 10, panel_margin + 60))
-        
-        # Show lambda info if in KKT mode
-        money_mode = self.sim.params.get('money_mode', 'quasilinear')
-        if money_mode == 'kkt_lambda':
-            avg_lambda = sum(a.lambda_money for a in self.sim.agents if hasattr(a, 'lambda_money')) / len(self.sim.agents)
-            lambda_text = f"Avg λ: {avg_lambda:.2f}"
-            lambda_label = self.small_font.render(lambda_text, True, self.COLOR_BLACK)
-            self.screen.blit(lambda_label, (panel_margin + 10, panel_margin + 80))
+                    
+                    # Draw utility type label below ID
+                    util_rect = util_label.get_rect(center=(px, start_y + id_height + util_height // 2))
+                    self.screen.blit(util_label, util_rect)
     
     def draw_trade_indicators(self):
         """Draw indicators for recent trades."""
