@@ -105,8 +105,8 @@ This directory contains comprehensive reference materials for creating VMT simul
 - **Mode Schedule:** `mode_schedule` (entire section optional)
 
 ### Implementation Status
-- **Fully Implemented:** All basic parameters, money system (barter_only, money_only, mixed), mode scheduling
-- **Planned:** `mixed_liquidity_gated` regime, `liquidity_gate` parameters, distribution syntax
+- **Fully Implemented:** All basic parameters, money system (barter_only, money_only, mixed), quasilinear mode, mode scheduling
+- **Planned:** `kkt_lambda` mode, `mixed_liquidity_gated` regime, `liquidity_gate` parameters, distribution syntax
 - **Recommended:** Use heterogeneous `lambda_money` values for monetary trading scenarios
 
 ## Common Scenarios

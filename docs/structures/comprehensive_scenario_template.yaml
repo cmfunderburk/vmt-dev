@@ -102,7 +102,7 @@ params:
   interaction_radius: 1            # Manhattan distance for trading, default: 1, range: ≥ 0
                                    # Typical: 1 (adjacent cells), should be ≤ vision_radius
   
-  move_budget_per_tick: 2          # Maximum Manhattan distance per tick, default: 1, range: > 0
+  move_budget_per_tick: 1          # Maximum Manhattan distance per tick, default: 1, range: > 0
                                    # Typical: 1-3, rule of thumb: ≈ vision_radius/5
   
   spread: 0.05                     # Bid-ask spread factor, default: 0.0, range: ≥ 0
@@ -164,7 +164,7 @@ params:
                                    # NOTE: "mixed_liquidity_gated" is PLANNED but not yet implemented
   
   money_mode: "quasilinear"        # Money utility mode, default: "quasilinear", range: see below
-                                   # Options: "quasilinear" (fixed λ), "kkt_lambda" (endogenous λ)
+                                   # Options: "quasilinear" (fixed λ), "kkt_lambda" (endogenous λ - PLANNED)
   
   money_scale: 1                   # Money scale factor (minor units), default: 1, range: ≥ 1
                                    # Typical: 1 (no scaling), 10 (dimes), 100 (cents), 1000 (mills)
@@ -175,10 +175,12 @@ params:
   
   lambda_update_rate: 0.2          # λ update smoothing factor, default: 0.2, range: [0, 1]
                                    # Typical: 0.1-0.3, ignored if money_mode = "quasilinear"
+                                   # NOTE: Only used if money_mode = "kkt_lambda" (PLANNED)
   
   lambda_bounds:                   # λ value bounds for kkt_lambda mode, default: {lambda_min: 1e-6, lambda_max: 1e6}
     lambda_min: 1e-6               # Minimum λ value, range: > 0, must be < lambda_max
     lambda_max: 1e6                # Maximum λ value, range: > lambda_min
+                                   # NOTE: Only used if money_mode = "kkt_lambda" (PLANNED)
   
   liquidity_gate:                  # Configuration for mixed_liquidity_gated regime
     min_quotes: 3                  # Min monetary quotes to disable barter, default: 3, range: ≥ 0
@@ -255,8 +257,8 @@ mode_schedule:
 # - mixed_liquidity_gated: Barter fallback when money market thin (PLANNED, not yet implemented)
 
 # Money Mode Guidelines:
-# - quasilinear: Fixed λ, simple and pedagogical
-# - kkt_lambda: Endogenous λ, more realistic but complex
+# - quasilinear: Fixed λ, simple and pedagogical (IMPLEMENTED)
+# - kkt_lambda: Endogenous λ, more realistic but complex (PLANNED)
 
 # Heterogeneous Lambda Guidelines:
 # - Use initial_inventories.lambda_money: [λ1, λ2, λ3, ...] for agent-specific values
@@ -288,12 +290,14 @@ mode_schedule:
 # - All resource claiming parameters (enable_resource_claiming, enforce_single_harvester)
 # - All economic parameters (epsilon, beta)
 # - Money system: barter_only, money_only, mixed regimes
-# - Money system: quasilinear and kkt_lambda modes
+# - Money system: quasilinear mode (kkt_lambda planned)
 # - Money system: money_scale, lambda_money, lambda_update_rate, lambda_bounds
 # - Resource seeding (density, amount)
 # - Mode scheduling (global_cycle type)
 
 # PLANNED BUT NOT YET IMPLEMENTED:
+# - kkt_lambda money mode (endogenous λ estimation)
+# - lambda_update_rate and lambda_bounds (for kkt_lambda mode)
 # - mixed_liquidity_gated exchange regime
 # - liquidity_gate parameters
 # - earn_money_enabled functionality
@@ -325,7 +329,8 @@ mode_schedule:
 #    - "mixed_liquidity_gated" is planned but not yet implemented
 
 # 7. Invalid Money Mode:
-#    - Only "quasilinear", "kkt_lambda" are valid
+#    - Only "quasilinear" is currently implemented
+#    - "kkt_lambda" is planned but not yet implemented
 
 # 8. Invalid Mode Schedule Type:
 #    - Only "global_cycle" is currently implemented

@@ -70,12 +70,12 @@
 | Parameter | Type | Default | Range | Typical Values | Notes |
 |-----------|------|---------|-------|----------------|-------|
 | `exchange_regime` | string | "barter_only" | See below | "mixed" | Trade type control (mixed_liquidity_gated planned) |
-| `money_mode` | string | "quasilinear" | See below | "quasilinear" | Money utility mode |
+| `money_mode` | string | "quasilinear" | See below | "quasilinear" | Money utility mode (kkt_lambda planned) |
 | `money_scale` | int | 1 | ≥ 1 | 1, 10, 100 | Money scale factor |
 | `lambda_money` | float | 1.0 | > 0 | 0.1-5.0 | Fixed λ value |
-| `lambda_update_rate` | float | 0.2 | [0, 1] | 0.1-0.3 | λ update smoothing |
-| `lambda_bounds.lambda_min` | float | 1e-6 | > 0 | 0.01-1.0 | Minimum λ |
-| `lambda_bounds.lambda_max` | float | 1e6 | > lambda_min | 10-1000 | Maximum λ |
+| `lambda_update_rate` | float | 0.2 | [0, 1] | 0.1-0.3 | λ update smoothing (kkt_lambda mode only) |
+| `lambda_bounds.lambda_min` | float | 1e-6 | > 0 | 0.01-1.0 | Minimum λ (kkt_lambda mode only) |
+| `lambda_bounds.lambda_max` | float | 1e6 | > lambda_min | 10-1000 | Maximum λ (kkt_lambda mode only) |
 | `liquidity_gate.min_quotes` | int | 3 | ≥ 0 | 3-5 | Min quotes for thick market (PLANNED) |
 | `earn_money_enabled` | bool | false | true/false | false | Placeholder (unused) |
 
@@ -90,10 +90,10 @@
 
 ### Money Mode Values
 
-| Value | Description | λ Behavior | Use Case |
-|-------|-------------|------------|----------|
-| `quasilinear` | Fixed λ | Constant | Pedagogical, simple |
-| `kkt_lambda` | Endogenous λ | Updates from prices | Research, realistic |
+| Value | Description | λ Behavior | Use Case | Status |
+|-------|-------------|------------|----------|--------|
+| `quasilinear` | Fixed λ | Constant | Pedagogical, simple | Implemented |
+| `kkt_lambda` | Endogenous λ | Updates from prices | Research, realistic | Planned |
 
 ## Resource Seeding (Required)
 
@@ -220,7 +220,7 @@ initial_inventories:
 - [ ] Stone-Geary inventories above subsistence
 - [ ] CES rho ≠ 1.0
 - [ ] Valid exchange regime (barter_only, money_only, mixed - mixed_liquidity_gated planned)
-- [ ] Valid money mode
+- [ ] Valid money mode (quasilinear implemented, kkt_lambda planned)
 - [ ] Resource density [0, 1]
 - [ ] Mode schedule ticks > 0
 - [ ] **For monetary trading: Use heterogeneous lambda_money values**
