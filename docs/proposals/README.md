@@ -7,6 +7,7 @@ This directory contains **strategic proposals and discussion documents** for maj
 - **[Protocol Modularization](protocol_modularization_plan.md)** - Refactor Decision phase for extensible protocol architecture
   - [Discussion Document](protocol_modularization_discussion.md) - Strategic rationale and benefits
   - [v2 Resolution](protocol_modularization_v2_resolution.md) - Resolved design issues
+  - [v3 Plan (current)](protocol_modularization_plan_v3.md) - Updated to align with current engine (mode schedule, money-aware trading, telemetry)
 
 ## Status
 
