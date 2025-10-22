@@ -1,0 +1,371 @@
+# VMT Comprehensive Scenario Template
+# This file demonstrates ALL available parameters with their valid ranges and typical values
+# Use this as a reference when creating new scenarios
+
+# =============================================================================
+# TOP-LEVEL METADATA (Required)
+# =============================================================================
+
+schema_version: 1                    # REQUIRED: Always 1 for current implementation
+name: "Comprehensive Example"        # REQUIRED: Human-readable scenario name
+N: 20                               # REQUIRED: Grid size (N×N), typical: 10-40, range: > 0
+agents: 15                          # REQUIRED: Number of agents, typical: 5-50, range: > 0
+
+# =============================================================================
+# INITIAL INVENTORIES (Required)
+# =============================================================================
+
+initial_inventories:
+  # Good A - REQUIRED: Starting endowment of first tradeable good
+  A: 10                             # Fixed integer: all agents get same amount, range: ≥ 0
+  # A: [10, 5, 0, 8, 2]            # List: heterogeneous agents, length must equal 'agents'
+  # A: {uniform_int: [5, 15]}       # Distribution: planned feature, not widely used
+  
+  # Good B - REQUIRED: Starting endowment of second tradeable good  
+  B: 10                             # Fixed integer: all agents get same amount, range: ≥ 0
+  # B: [0, 5, 10, 2, 8]             # List: heterogeneous agents, length must equal 'agents'
+  # B: {uniform_int: [5, 15]}       # Distribution: planned feature, not widely used
+  
+  # Money (M) - REQUIRED for monetary regimes, optional for barter_only
+  M: 100                            # Fixed integer: all agents get same amount, range: ≥ 0
+  # M: [100, 50, 75, 200, 25]       # List: heterogeneous money holdings, length must equal 'agents'
+  # M: {uniform_int: [50, 150]}     # Distribution: planned feature, not widely used
+  
+  # Per-agent lambda values (optional) - overrides params.lambda_money
+  # RECOMMENDED: Use heterogeneous λ values to create trading opportunities
+  lambda_money: [1.0, 2.0, 0.5, 1.5, 0.8]  # List: agent-specific λ values, range: > 0, length must equal 'agents'
+
+# =============================================================================
+# UTILITY FUNCTIONS (Required)
+# =============================================================================
+
+utilities:
+  mix:
+    # CES (Constant Elasticity of Substitution) - Most flexible utility
+    - type: "ces"
+      weight: 0.4                   # Weight in mix, range: > 0, sum must = 1.0
+      params:
+        rho: 0.5                    # Elasticity parameter, range: ≠ 1.0, typical: -1.0 to 0.9
+        wA: 0.6                     # Weight for good A, range: > 0, typical: 0.1-0.9
+        wB: 0.4                     # Weight for good B, range: > 0, typical: 0.1-0.9
+    
+    # Linear (Perfect Substitutes) - Simple baseline utility
+    - type: "linear"
+      weight: 0.3                   # Weight in mix, range: > 0, sum must = 1.0
+      params:
+        vA: 2.0                     # Value of good A, range: > 0, typical: 0.5-5.0
+        vB: 1.5                     # Value of good B, range: > 0, typical: 0.5-5.0
+    
+    # Quadratic (Bliss Point) - Non-monotonic preferences with satiation
+    - type: "quadratic"
+      weight: 0.2                   # Weight in mix, range: > 0, sum must = 1.0
+      params:
+        A_star: 20.0                # Bliss point for A, range: > 0, typical: 10-50
+        B_star: 15.0                # Bliss point for B, range: > 0, typical: 10-50
+        sigma_A: 0.5                # Curvature for A, range: > 0, typical: 0.1-2.0
+        sigma_B: 0.5                # Curvature for B, range: > 0, typical: 0.1-2.0
+        gamma: 0.1                  # Cross-curvature, range: ≥ 0, typical: 0.0-0.5
+    
+    # Translog (Transcendental Logarithmic) - Flexible functional form
+    - type: "translog"
+      weight: 0.1                   # Weight in mix, range: > 0, sum must = 1.0
+      params:
+        alpha_0: 0.0                # Constant term, range: any, typical: 0.0-2.0
+        alpha_A: 0.5                # First-order coefficient A, range: > 0, typical: 0.1-1.0
+        alpha_B: 0.5                # First-order coefficient B, range: > 0, typical: 0.1-1.0
+        beta_AA: -0.1               # Second-order coefficient A, range: any, typical: -0.5 to 0.0
+        beta_BB: -0.1               # Second-order coefficient B, range: any, typical: -0.5 to 0.0
+        beta_AB: 0.05               # Cross-partial term, range: any, typical: -0.2 to 0.2
+    
+    # Stone-Geary (Subsistence) - Non-homothetic preferences with subsistence levels
+    # NOTE: Initial inventories MUST satisfy A > gamma_A AND B > gamma_B for all agents
+    - type: "stone_geary"
+      weight: 0.0                   # Weight in mix, range: > 0, sum must = 1.0
+      params:
+        alpha_A: 0.6                # Preference weight A, range: > 0, typical: 0.1-0.9
+        alpha_B: 0.4                # Preference weight B, range: > 0, typical: 0.1-0.9
+        gamma_A: 5.0                # Subsistence level A, range: ≥ 0, typical: 0-20
+        gamma_B: 3.0                # Subsistence level B, range: ≥ 0, typical: 0-20
+
+# =============================================================================
+# SIMULATION PARAMETERS (All Optional - have sensible defaults)
+# =============================================================================
+
+params:
+  # -------------------------------------------------------------------------
+  # SPATIAL PARAMETERS
+  # -------------------------------------------------------------------------
+  
+  vision_radius: 10                 # Manhattan distance agents can perceive, default: 5, range: ≥ 0
+                                   # Typical: N/4 to N/2 for local markets, N for global information
+  
+  interaction_radius: 1            # Manhattan distance for trading, default: 1, range: ≥ 0
+                                   # Typical: 1 (adjacent cells), should be ≤ vision_radius
+  
+  move_budget_per_tick: 2          # Maximum Manhattan distance per tick, default: 1, range: > 0
+                                   # Typical: 1-3, rule of thumb: ≈ vision_radius/5
+  
+  spread: 0.05                     # Bid-ask spread factor, default: 0.0, range: ≥ 0
+                                   # Typical: 0.0 (no spread), 0.05-0.15 (realistic), 0.3+ (high friction)
+  
+  # -------------------------------------------------------------------------
+  # TRADING PARAMETERS
+  # -------------------------------------------------------------------------
+  
+  dA_max: 5                        # Maximum trade size to search, default: 5, range: > 0
+                                   # Typical: 1-3 (small), 5-10 (moderate), 20+ (large)
+  
+  trade_cooldown_ticks: 5          # Cooldown after failed trade, default: 5, range: ≥ 0
+                                   # Typical: 5-10, 0 (no cooldown), > 20 (long cooldown)
+  
+  # -------------------------------------------------------------------------
+  # FORAGING PARAMETERS
+  # -------------------------------------------------------------------------
+  
+  forage_rate: 2                   # Max resource harvest per tick, default: 1, range: > 0
+                                   # Typical: 1-3, should be ≤ resource_max_amount for multi-tick harvesting
+  
+  resource_growth_rate: 1          # Resource regeneration per tick, default: 0, range: ≥ 0
+                                   # Typical: 0 (no regeneration), 1-2 (slow), ≥ forage_rate (sustainable)
+  
+  resource_max_amount: 8           # Max resource per cell, default: 5, range: > 0
+                                   # Typical: 5-10, should be > forage_rate for multi-harvest cells
+  
+  resource_regen_cooldown: 5        # Ticks before depleted cell regenerates, default: 5, range: ≥ 0
+                                   # Typical: 5-10, 0 (immediate), >> move_budget (forces movement)
+  
+  # -------------------------------------------------------------------------
+  # RESOURCE CLAIMING SYSTEM
+  # -------------------------------------------------------------------------
+  
+  enable_resource_claiming: true    # Enable resource claiming system, default: true, range: true/false
+                                   # Recommendation: true for realistic simulations
+  
+  enforce_single_harvester: true    # Only one agent harvests per cell per tick, default: true, range: true/false
+                                   # Recommendation: true for realistic simulations
+  
+  # -------------------------------------------------------------------------
+  # ECONOMIC PARAMETERS
+  # -------------------------------------------------------------------------
+  
+  epsilon: 1e-12                   # Numerical stability constant, default: 1e-12, range: > 0
+                                   # Typical: 1e-9 to 1e-15, use default unless numerical issues
+  
+  beta: 0.95                       # Distance discount factor, default: 0.95, range: (0, 1]
+                                   # Typical: 0.8-0.95, 1.0 (no distance penalty), 0.5 (strong locality)
+  
+  # -------------------------------------------------------------------------
+  # MONEY SYSTEM PARAMETERS
+  # -------------------------------------------------------------------------
+  
+  exchange_regime: "mixed"          # Trade type control, default: "barter_only", range: see below
+                                   # Options: "barter_only", "money_only", "mixed", "mixed_liquidity_gated"
+                                   # Note: money_only, mixed, mixed_liquidity_gated require M in initial_inventories
+                                   # NOTE: "mixed_liquidity_gated" is PLANNED but not yet implemented
+  
+  money_mode: "quasilinear"        # Money utility mode, default: "quasilinear", range: see below
+                                   # Options: "quasilinear" (fixed λ), "kkt_lambda" (endogenous λ)
+  
+  money_scale: 1                   # Money scale factor (minor units), default: 1, range: ≥ 1
+                                   # Typical: 1 (no scaling), 10 (dimes), 100 (cents), 1000 (mills)
+  
+  lambda_money: 1.0                # Fixed marginal utility of money, default: 1.0, range: > 0
+                                   # Typical: 0.1-5.0, higher = values money more, ignored if money_mode = "kkt_lambda"
+                                   # NOTE: Can be overridden by initial_inventories.lambda_money for heterogeneous agents
+  
+  lambda_update_rate: 0.2          # λ update smoothing factor, default: 0.2, range: [0, 1]
+                                   # Typical: 0.1-0.3, ignored if money_mode = "quasilinear"
+  
+  lambda_bounds:                   # λ value bounds for kkt_lambda mode, default: {lambda_min: 1e-6, lambda_max: 1e6}
+    lambda_min: 1e-6               # Minimum λ value, range: > 0, must be < lambda_max
+    lambda_max: 1e6                # Maximum λ value, range: > lambda_min
+  
+  liquidity_gate:                  # Configuration for mixed_liquidity_gated regime
+    min_quotes: 3                  # Min monetary quotes to disable barter, default: 3, range: ≥ 0
+                                   # Typical: 3-5, 0 (never allow barter), >> agents (always allow barter)
+                                   # NOTE: mixed_liquidity_gated regime is PLANNED but not yet implemented
+  
+  earn_money_enabled: false        # Placeholder for future features, default: false, range: true/false
+                                   # Currently unused, leave as false
+
+# =============================================================================
+# RESOURCE SEEDING (Required)
+# =============================================================================
+
+resource_seed:
+  density: 0.3                     # Probability of resource per cell, range: [0, 1]
+                                   # Typical: 0.1-0.3 (sparse), 0.5 (half cells), 1.0 (all cells)
+  
+  amount: 5                        # Resource amount per seeded cell, range: > 0
+                                   # Typical: 3-10, should be > forage_rate for multi-harvest
+  # amount: {uniform_int: [3, 7]}  # Distribution: planned feature, not widely used
+
+# =============================================================================
+# MODE SCHEDULE (Optional - if omitted, agents are in "both" mode)
+# =============================================================================
+
+mode_schedule:
+  type: "global_cycle"              # Scheduling pattern, range: "global_cycle" (only implemented)
+                                   # Future: "agent_specific", "spatial_zones"
+  
+  forage_ticks: 15                 # Duration of forage mode, range: > 0
+                                   # Typical: 10-30, longer = more resource accumulation
+  
+  trade_ticks: 20                  # Duration of trade mode, range: > 0
+                                   # Typical: 15-40, longer = more trading opportunities
+  
+  start_mode: "forage"             # Initial mode, range: "forage", "trade", default: "forage"
+                                   # "forage" (start with resource gathering), "trade" (start with trading)
+
+# =============================================================================
+# PARAMETER SELECTION GUIDELINES
+# =============================================================================
+
+# Vision Radius Guidelines:
+# - Global information: vision_radius = N
+# - Local markets: vision_radius = N/4 to N/2  
+# - Extreme locality: vision_radius = 1-5
+
+# Move Budget Guidelines:
+# - Slow economy: move_budget_per_tick = 1
+# - Moderate: move_budget_per_tick = 2-3
+# - Fast (large grids): move_budget_per_tick = N/10
+# - Rule of thumb: move_budget ≈ vision_radius / 5
+
+# Trade Size Guidelines:
+# - Small trades: dA_max = 1-3
+# - Typical: dA_max = 5-10
+# - Large trades: dA_max = 20+
+# - Constraint: should be ≤ typical inventory levels / 2
+
+# Resource Density Guidelines:
+# - Resource-poor: density = 0.1-0.2
+# - Moderate: density = 0.3-0.4
+# - Resource-rich: density = 0.5+
+
+# Spread Guidelines:
+# - No transaction costs: spread = 0.0
+# - Realistic: spread = 0.05-0.15
+# - High friction: spread = 0.3+
+
+# Exchange Regime Guidelines:
+# - barter_only: Traditional barter economy (backward compatible)
+# - money_only: Pure monetary economy (requires M in inventories)
+# - mixed: All trade types allowed (requires M in inventories)
+# - mixed_liquidity_gated: Barter fallback when money market thin (PLANNED, not yet implemented)
+
+# Money Mode Guidelines:
+# - quasilinear: Fixed λ, simple and pedagogical
+# - kkt_lambda: Endogenous λ, more realistic but complex
+
+# Heterogeneous Lambda Guidelines:
+# - Use initial_inventories.lambda_money: [λ1, λ2, λ3, ...] for agent-specific values
+# - High λ agents: value money more → lower ask prices in M → willing to sell goods for less money
+# - Low λ agents: value money less → higher bid prices in M → demand more money for goods
+# - Creates profitable monetary trading opportunities between agents with different λ values
+# - Typical range: 0.1-5.0, with 2-3x variation between agents for good trading dynamics
+
+# Utility Mix Guidelines:
+# - Single type: weight = 1.0 for one utility
+# - Multiple types: weights must sum to 1.0
+# - CES: Most flexible, good for general use
+# - Linear: Simple baseline, perfect substitutes
+# - Quadratic: Non-monotonic, shows satiation
+# - Translog: Flexible functional form, good for estimation
+# - Stone-Geary: Non-homothetic, subsistence constraints
+
+# =============================================================================
+# IMPLEMENTATION STATUS
+# =============================================================================
+
+# FULLY IMPLEMENTED FEATURES:
+# - All top-level parameters (schema_version, name, N, agents)
+# - All initial inventory types (A, B, M, lambda_money)
+# - All utility functions (CES, Linear, Quadratic, Translog, Stone-Geary)
+# - All spatial parameters (vision_radius, interaction_radius, move_budget_per_tick, spread)
+# - All trading parameters (dA_max, trade_cooldown_ticks)
+# - All foraging parameters (forage_rate, resource_growth_rate, resource_max_amount, resource_regen_cooldown)
+# - All resource claiming parameters (enable_resource_claiming, enforce_single_harvester)
+# - All economic parameters (epsilon, beta)
+# - Money system: barter_only, money_only, mixed regimes
+# - Money system: quasilinear and kkt_lambda modes
+# - Money system: money_scale, lambda_money, lambda_update_rate, lambda_bounds
+# - Resource seeding (density, amount)
+# - Mode scheduling (global_cycle type)
+
+# PLANNED BUT NOT YET IMPLEMENTED:
+# - mixed_liquidity_gated exchange regime
+# - liquidity_gate parameters
+# - earn_money_enabled functionality
+# - Distribution syntax for inventories and resources
+# - Agent-specific and spatial_zones mode scheduling types
+
+# =============================================================================
+# COMMON VALIDATION ERRORS TO AVOID
+# =============================================================================
+
+# 1. Missing Money in Monetary Regimes:
+#    - exchange_regime: money_only/mixed requires M in initial_inventories
+#    - mixed_liquidity_gated is planned but not yet implemented
+
+# 2. Utility Weights Don't Sum to 1.0:
+#    - All weights in utilities.mix must sum exactly to 1.0 (within 1e-6 tolerance)
+
+# 3. Stone-Geary Below Subsistence:
+#    - Initial inventories must satisfy A > gamma_A AND B > gamma_B for all agents
+
+# 4. List Length Mismatch:
+#    - If using lists for inventories, length must equal 'agents' count
+
+# 5. CES with rho = 1.0:
+#    - rho cannot equal 1.0 (mathematical singularity), use 0.999 or 1.001
+
+# 6. Invalid Exchange Regime:
+#    - Only "barter_only", "money_only", "mixed" are currently implemented
+#    - "mixed_liquidity_gated" is planned but not yet implemented
+
+# 7. Invalid Money Mode:
+#    - Only "quasilinear", "kkt_lambda" are valid
+
+# 8. Invalid Mode Schedule Type:
+#    - Only "global_cycle" is currently implemented
+
+# 9. Missing Heterogeneous Lambda for Monetary Trading:
+#    - For monetary scenarios, use initial_inventories.lambda_money: [λ1, λ2, ...] 
+#    - Homogeneous λ values (all agents same) → few monetary trades
+#    - Heterogeneous λ values → more trading opportunities and realistic dynamics
+
+# =============================================================================
+# REPRODUCIBILITY NOTES
+# =============================================================================
+
+# Use seeds for reproducible experiments:
+# python launcher.py scenarios/my_scenario.yaml --seed 42
+
+# Deterministic elements (same seed → same results):
+# - Agent movement
+# - Trade order (sorted by agent ID)  
+# - Pairing algorithm
+
+# Stochastic elements (seed-controlled):
+# - Initial agent positions (if not specified)
+# - Resource placement (based on density)
+# - Utility assignment (based on weight proportions)
+
+# =============================================================================
+# PERFORMANCE CONSIDERATIONS
+# =============================================================================
+
+# Grid processing: O(N²) per tick for resource regeneration and rendering
+# Vision computation: O(agents × vision_radius²) per tick
+# Trade search: O(dA_max × prices) per trade attempt
+# Recommended agent density: 1-10% of cells (agents/N²)
+
+# Large scenarios (N=40+, agents=50+):
+# - Use smaller vision_radius for performance
+# - Consider mode_schedule to reduce computation
+# - Monitor memory usage for long runs
+
+# =============================================================================
+# END OF COMPREHENSIVE TEMPLATE
+# =============================================================================
