@@ -1,25 +1,25 @@
 # vmt-dev - Token Analysis Report
 
-*Generated on 2025-10-21 17:59:12*
+*Generated on 2025-10-22 09:34:46*
 
 ## 📊 Executive Summary
 
 | Metric | Value |
 |--------|--------|
-| **Total Tokens** | 156.8K tokens |
-| **Total Files** | 106 files |
-| **Repository Size** | 0.8 MB |
-| **Average Tokens/File** | 1479 tokens |
+| **Total Tokens** | 199.2K tokens |
+| **Total Files** | 118 files |
+| **Repository Size** | 0.9 MB |
+| **Average Tokens/File** | 1688 tokens |
 
 ## 📄 File Type Breakdown
 
 | File Type | Token Count | Percentage | Files |
 |-----------|-------------|------------|-------|
-| Python | 89.0K | 56.8% | 54 |
-| Markdown | 44.9K | 28.6% | 12 |
-| YAML | 19.9K | 12.7% | 30 |
-| Text | 2.2K | 1.4% | 3 |
-| Other | 556 | 0.4% | 5 |
+| Python | 95.6K | 48.0% | 54 |
+| Markdown | 69.8K | 35.0% | 21 |
+| YAML | 30.9K | 15.5% | 35 |
+| Text | 2.2K | 1.1% | 3 |
+| Other | 556 | 0.3% | 3 |
 | Build/Meta | 222 | 0.1% | 1 |
 | Config | 9 | 0.0% | 1 |
 
@@ -27,26 +27,26 @@
 
 | File | Tokens | Size |
 |------|--------|------|
+| `docs/scenario_configuration_guide.md` | 15.5K | 0.0 MB |
+| `src/vmt_engine/systems/matching.py` | 13.0K | 0.1 MB |
+| `docs/DEEP/research_gpt_project_overview.md` | 9.3K | 0.0 MB |
 | `src/vmt_pygame/renderer.py` | 8.8K | 0.0 MB |
-| `src/vmt_engine/systems/matching.py` | 8.1K | 0.0 MB |
 | `docs/4_typing_overview.md` | 7.2K | 0.0 MB |
 | `src/vmt_engine/econ/utility.py` | 6.3K | 0.0 MB |
 | `src/vmt_launcher/scenario_builder.py` | 6.2K | 0.0 MB |
-| `docs/REVIEW/2_documentation_consolidation.md` | 6.2K | 0.0 MB |
-| `docs/REVIEW/0_master_summary.md` | 5.9K | 0.0 MB |
-| `docs/2_technical_manual.md` | 5.2K | 0.0 MB |
+| `docs/2_technical_manual.md` | 6.0K | 0.0 MB |
+| `docs/DEEP/economic_logic_research_prompt.md` | 5.6K | 0.0 MB |
 | `src/telemetry/db_loggers.py` | 4.9K | 0.0 MB |
-| `docs/REVIEW/1_critical_problems_architecture.md` | 4.1K | 0.0 MB |
-| `docs/1_project_overview.md` | 3.9K | 0.0 MB |
+| `src/vmt_engine/systems/decision.py` | 4.9K | 0.0 MB |
+| `docs/1_project_overview.md` | 4.3K | 0.0 MB |
 | `src/vmt_log_viewer/viewer.py` | 3.9K | 0.0 MB |
+| `CHANGELOG.md` | 3.9K | 0.0 MB |
 | `src/vmt_engine/systems/trading.py` | 3.8K | 0.0 MB |
-| `CHANGELOG.md` | 3.8K | 0.0 MB |
-| `src/vmt_engine/systems/decision.py` | 3.6K | 0.0 MB |
-| `src/scenarios/schema.py` | 3.4K | 0.0 MB |
+| `src/scenarios/schema.py` | 3.5K | 0.0 MB |
+| `scenarios/big_test_money.yaml` | 3.3K | 0.0 MB |
+| `scenarios/perf_both_modes.yaml` | 3.3K | 0.0 MB |
+| `docs/REVIEW/2025-10-21_architecture_and_docs_review.md` | 3.1K | 0.0 MB |
 | `scenarios/perf_exchange_only.yaml` | 3.1K | 0.0 MB |
-| `scenarios/perf_both_modes.yaml` | 3.1K | 0.0 MB |
-| `src/telemetry/database.py` | 2.8K | 0.0 MB |
-| `src/vmt_engine/simulation.py` | 2.8K | 0.0 MB |
 
 
 ## 🤖 LLM Context Analysis
@@ -55,24 +55,24 @@
 
 | Model | Context Window | Repo Coverage |
 |-------|---------------|---------------|
-| GPT-4 | ~128K tokens | 81.6% |
-| Claude 3 | ~200K tokens | 127.6% |
-| Claude 3.5 Sonnet | ~200K tokens | 127.6% |
-| Gemini 1.5 Pro | ~1M tokens | 637.8% |
+| GPT-4 | ~128K tokens | 64.3% |
+| Claude 3 | ~200K tokens | 100.4% |
+| Claude 3.5 Sonnet | ~200K tokens | 100.4% |
+| Gemini 1.5 Pro | ~1M tokens | 502.0% |
 
 ### Recommendations
 
-- **Full Repository**: 156.8K tokens fits in: Claude 3/3.5 (~200.0K), Gemini 1.5 Pro (~1.0M)
+- **Full Repository**: 199.2K tokens fits in: Gemini 1.5 Pro (~1.0M)
 - **Targeted Analysis**: Consider focusing on 40-60% of files for detailed reviews
 - **Code Reviews**: Use token counts to prioritize which files/modules to include
-- **Documentation**: 28.6% of tokens are documentation (substantial docs available)
+- **Documentation**: 35.0% of tokens are documentation (substantial docs available)
 
 
 ## 📈 Analysis Metadata
 
 - **Analysis Tool**: Repository Token Counter (full version with repotokens)
 - **Tokenization**: Accurate repotokens library
-- **Files Processed**: 106 code files
+- **Files Processed**: 118 code files
 - **Excluded**: Binary files, caches, logs, virtual environments
 - **Repository**: vmt-dev
 

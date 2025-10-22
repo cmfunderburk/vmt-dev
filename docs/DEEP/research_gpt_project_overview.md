@@ -42,7 +42,7 @@ For example, in forage mode no trading occurs at all (active exchange pairs = "[
 
 ## II. High-Priority Issues
 
-### P0: Pairing–Trading Mismatch (Barter vs Money) **[RESOLVED]**
+### P0: Pairing–Trading Mismatch (Barter vs Money) **[COMPLETE - HIGH CONFIDENCE]**
 
 **Issue:** In the Decision phase, agents rank neighbors using barter-only surplus even if money trades are allowed. The code calls `compute_surplus(agent_i, agent_j)`, which considers only A↔B trade prices (it pulls `bid_A_in_B` / `ask_A_in_B` from each agent's quotes). In contrast, the Trading phase (Phase 4) uses the generic money-aware matching (`find_best_trade`, `find_all_feasible_trades`) that considers both barter and monetary trades. This misalignment means an agent might pair with a neighbor who offers high barter gains but cannot trade under a money regime, while overlooking another neighbor with a viable money trade.
 
@@ -373,12 +373,16 @@ Deaton & Muellbauer define U = α_A ln(A–γ_A) + α_B ln(B–γ_B). Our implem
 
 ## VI. Pedagogical Impact
 
-### 1. Pairing Confusion
-**Scenario:** Consider a money-only demo: Agent A sees two neighbors X and Y. In barter terms, X might offer a high A↔B surplus, but X cannot trade money (perhaps X has no money to pay). Y offers a trade A↔M with positive surplus. The current pairing picks X (highest barter-surplus). The student sees Agent A paired with X and then "nothing happens" (no feasible trade in money mode). 
+### 1. Pairing Confusion **[RESOLVED - P0]**
+**Original Problem:** In money-only demos, agents would pair based on barter surplus even when monetary trades were the only viable option. Students would see agents paired with partners they couldn't actually trade with, leading to confusion: "Why pick X if no trade occurs?"
 
-**Student Question:** "Why pick X if no trade occurs?" 
+**P0 Resolution:** Money-aware pairing now evaluates all exchange pairs (A↔B, A↔M, B↔M) during the Decision phase, ensuring agents pair with partners they can actually trade with. The system:
+- Uses `estimate_money_aware_surplus()` for money/mixed regimes
+- Checks inventory feasibility (agents must have money for monetary trades)
+- Implements money-first tie-breaking when surplus is equal
+- Preserves barter_only behavior unchanged
 
-If pairing were money-aware, A would pick Y and successfully trade. Fixing this makes the lesson clear: "Agents pick partners considering money trades, so money removes double-coincidence-of-wants."
+**Pedagogical Impact:** Students now see consistent behavior where agents pair with viable trading partners, making the lesson clear: "Agents pick partners considering money trades, so money removes double-coincidence-of-wants." The demo scenario `demo_06_money_aware_pairing.yaml` demonstrates this with agents having different money valuations (lambda values) creating attractive monetary trading opportunities.
 
 ### 2. Zero-Inventory Quotes
 If an agent has (A=0,B=0), currently its quotes might be extreme or neutral (e.g., Stone-Geary yields p=1 by default). This could look like "Agent refuses any trade" when in reality it is maximally desperate. We should ensure the visualization/logging clarifies these cases. For example, show "Bid price = ∞" or "very high" if appropriate, or at least annotate that agent is at subsistence. 
