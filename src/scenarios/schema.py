@@ -151,6 +151,14 @@ class ScenarioParams:
     Placeholder for future features where agents can earn money through activities
     other than trade (e.g., labor, production). Currently unused.
     """
+    
+    # --- Telemetry parameters ---
+    log_preferences: bool = False
+    """
+    If True, log all agent preference rankings to the preferences table in the
+    telemetry database. This provides detailed insight into pairing decisions but
+    increases database size. Default is False for standard simulations.
+    """
 
     def validate(self) -> None:
         """Validate simulation parameters."""

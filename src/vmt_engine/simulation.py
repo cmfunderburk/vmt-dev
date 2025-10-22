@@ -64,6 +64,8 @@ class Simulation:
             'lambda_bounds': scenario_config.params.lambda_bounds,
             'liquidity_gate': scenario_config.params.liquidity_gate,
             'earn_money_enabled': scenario_config.params.earn_money_enabled,
+            # Telemetry parameters
+            'log_preferences': scenario_config.params.log_preferences,
         }
         
         # Mode tracking - initialize based on schedule if present
@@ -143,6 +145,11 @@ class Simulation:
         if isinstance(inv_lambda, (int, float)):
             inv_lambda = [float(inv_lambda)] * n_agents
         
+        # Scale money inventory by money_scale (liquidity adjustment)
+        # This ensures that when prices are scaled up, agents have proportionally more money
+        money_scale = self.params['money_scale']
+        inv_M = [m * money_scale for m in inv_M]
+        
         if len(inv_A) != n_agents or len(inv_B) != n_agents:
             raise ValueError(f"Initial inventory lists must match agent count {n_agents}")
         if isinstance(inv_M, list) and len(inv_M) != n_agents:
@@ -199,8 +206,13 @@ class Simulation:
                 home_pos=pos  # Set home position to initial position
             )
             
-            # Initialize quotes
-            agent.quotes = compute_quotes(agent, self.params['spread'], self.params['epsilon'])
+            # Initialize quotes (including money_scale for monetary regimes)
+            agent.quotes = compute_quotes(
+                agent, 
+                self.params['spread'], 
+                self.params['epsilon'],
+                money_scale=self.params['money_scale']
+            )
             agent.inventory_changed = False
             
             self.agents.append(agent)

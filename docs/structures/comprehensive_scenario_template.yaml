@@ -118,6 +118,11 @@ params:
   trade_cooldown_ticks: 5          # Cooldown after failed trade, default: 5, range: ≥ 0
                                    # Typical: 5-10, 0 (no cooldown), > 20 (long cooldown)
   
+  trade_execution_mode: "minimum"  # Trade batch size strategy, default: "minimum", range: see below
+                                   # Options: "minimum" (smallest beneficial trade, pedagogical),
+                                   #          "maximum" (largest beneficial trade at price, efficient)
+                                   # Typical: "minimum" for teaching, "maximum" for faster convergence
+  
   # -------------------------------------------------------------------------
   # FORAGING PARAMETERS
   # -------------------------------------------------------------------------
@@ -168,6 +173,9 @@ params:
   
   money_scale: 1                   # Money scale factor (minor units), default: 1, range: ≥ 1
                                    # Typical: 1 (no scaling), 10 (dimes), 100 (cents), 1000 (mills)
+                                   # IMPORTANT: Multiplies BOTH initial M inventory AND prices proportionally
+                                   # Example: M: 200 with money_scale: 1000 → agents start with 200,000 units
+                                   # Purpose: Increases liquidity and price precision, not just display units
   
   lambda_money: 1.0                # Fixed marginal utility of money, default: 1.0, range: > 0
                                    # Typical: 0.1-5.0, higher = values money more, ignored if money_mode = "kkt_lambda"
@@ -189,6 +197,14 @@ params:
   
   earn_money_enabled: false        # Placeholder for future features, default: false, range: true/false
                                    # Currently unused, leave as false
+  
+  # -------------------------------------------------------------------------
+  # TELEMETRY PARAMETERS (Optional)
+  # -------------------------------------------------------------------------
+  
+  log_preferences: true            # Log agent preference rankings to database, default: false, range: true/false
+                                   # Typical: false (standard runs), true (detailed analysis of pairing behavior)
+                                   # Note: Increases database size, primarily for research/debugging
 
 # =============================================================================
 # RESOURCE SEEDING (Required)
@@ -240,6 +256,17 @@ mode_schedule:
 # - Large trades: dA_max = 20+
 # - Constraint: should be ≤ typical inventory levels / 2
 
+# Trade Execution Mode Guidelines:
+# - minimum: Execute smallest mutually beneficial trade (pedagogical, backward compatible)
+#   - More trade events, gradual convergence
+#   - Better for teaching trade mechanics and observing incremental adjustments
+#   - Default mode for backward compatibility
+# - maximum: Execute largest mutually beneficial trade at chosen price (efficient)
+#   - Fewer but larger trades, faster convergence
+#   - Better for large-scale simulations and reaching equilibrium quickly
+#   - Requires larger dA_max to be effective
+# - Both modes reach same equilibrium, differ only in convergence speed
+
 # Resource Density Guidelines:
 # - Resource-poor: density = 0.1-0.2
 # - Moderate: density = 0.3-0.4
@@ -259,6 +286,20 @@ mode_schedule:
 # Money Mode Guidelines:
 # - quasilinear: Fixed λ, simple and pedagogical (IMPLEMENTED)
 # - kkt_lambda: Endogenous λ, more realistic but complex (PLANNED)
+
+# Money Scale Guidelines:
+# - money_scale multiplies BOTH initial M inventory AND all monetary prices
+# - Example: M: 200, money_scale: 1000 → agents get 200,000 units, prices scale 1000x
+# - Purchasing power (M / price) remains constant across different money_scale values
+# - When to increase money_scale:
+#   1. Reduce integer rounding errors in trade calculations (main benefit)
+#   2. Allow finer price granularity (1/1000th precision vs 1/1 precision)
+#   3. Increase liquidity when prices would otherwise be < 1 unit
+# - Typical values:
+#   - money_scale: 1 → Whole units (simple, but prone to rounding errors)
+#   - money_scale: 100 → Cents (good balance, matches USD/EUR)
+#   - money_scale: 1000 → Mills (best precision, recommended for large simulations)
+# - Rule of thumb: Use money_scale ≥ 100 for scenarios with heterogeneous λ values
 
 # Heterogeneous Lambda Guidelines:
 # - Use initial_inventories.lambda_money: [λ1, λ2, λ3, ...] for agent-specific values
@@ -285,13 +326,14 @@ mode_schedule:
 # - All initial inventory types (A, B, M, lambda_money)
 # - All utility functions (CES, Linear, Quadratic, Translog, Stone-Geary)
 # - All spatial parameters (vision_radius, interaction_radius, move_budget_per_tick, spread)
-# - All trading parameters (dA_max, trade_cooldown_ticks)
+# - All trading parameters (dA_max, trade_cooldown_ticks, trade_execution_mode)
 # - All foraging parameters (forage_rate, resource_growth_rate, resource_max_amount, resource_regen_cooldown)
 # - All resource claiming parameters (enable_resource_claiming, enforce_single_harvester)
 # - All economic parameters (epsilon, beta)
 # - Money system: barter_only, money_only, mixed regimes
 # - Money system: quasilinear mode (kkt_lambda planned)
 # - Money system: money_scale, lambda_money, lambda_update_rate, lambda_bounds
+# - Telemetry parameters: log_preferences (optional)
 # - Resource seeding (density, amount)
 # - Mode scheduling (global_cycle type)
 

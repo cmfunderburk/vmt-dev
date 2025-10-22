@@ -615,12 +615,10 @@ class VMTRenderer:
     
     def draw_target_arrows(self):
         """Draw arrows showing agent movement targets and highlight idle agents."""
-        arrows_enabled = self.show_trade_arrows or self.show_forage_arrows
-        if not arrows_enabled:
-            return  # Early exit if all arrows disabled
-        
-        # Track idle agents for border rendering
+        # Track idle agents for border rendering (shown regardless of arrow settings)
         idle_agents = []
+        
+        arrows_enabled = self.show_trade_arrows or self.show_forage_arrows
         
         for agent in self.sim.agents:
             # Check if agent is idle (no target OR at home and targeting home)
@@ -633,6 +631,10 @@ class VMTRenderer:
             if is_idle:
                 # Idle agent - track for border rendering
                 idle_agents.append(agent)
+                continue
+            
+            # Skip arrow rendering if all arrows disabled
+            if not arrows_enabled:
                 continue
             
             # Determine arrow type
@@ -968,8 +970,9 @@ class VMTRenderer:
         mode = self.sim.current_mode  # "forage", "trade", or "both"
         exchange_regime = self.sim.params.get('exchange_regime', 'barter_only')
         money_scale = self.sim.params.get('money_scale', 1)
+        trade_execution_mode = self.sim.params.get('trade_execution_mode', 'minimum')
         
-        mode_text = f"Mode: {mode} | Regime: {exchange_regime} | Money Scale: {money_scale}"
+        mode_text = f"Mode: {mode} | Regime: {exchange_regime} | Money Scale: {money_scale} | Trade Execution Mode: {trade_execution_mode}"
         mode_label = self.font.render(mode_text, True, self.COLOR_BLACK)
         self.screen.blit(mode_label, (10, hud_y + 40))
         
@@ -978,11 +981,18 @@ class VMTRenderer:
         total_B = sum(a.inventory.B for a in self.sim.agents)
         total_M = sum(a.inventory.M for a in self.sim.agents)
         
-        # Show money if any agent has it or money system is active
+        # Show average money if any agent has it or money system is active
         has_money = total_M > 0 or self.sim.params.get('exchange_regime') in ('money_only', 'mixed')
+        average_money = total_M / len(self.sim.agents) if has_money else 0
         
         if has_money:
-            inv_text = f"Total Inventory - A: {total_A}  B: {total_B}  $: {total_M}"
+            # Format money with explicit comma separators (locale-independent)
+            money_str = f"{average_money:,.2f}".replace(',', ',')  # Ensure comma separator
+            # Alternative: use manual formatting if locale issues persist
+            money_int = int(average_money)
+            money_dec = f"{average_money - money_int:.2f}"[1:]  # Get decimal part with leading dot
+            money_formatted = f"{money_int:,}{money_dec}"
+            inv_text = f"Total Inventory - A: {total_A}  B: {total_B}  Average$: {money_formatted}"
         else:
             inv_text = f"Total Inventory - A: {total_A}  B: {total_B}"
         

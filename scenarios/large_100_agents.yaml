@@ -480,17 +480,18 @@ utilities:
       gamma_B: 0
 params:
   spread: 0.1
-  vision_radius: 10
+  vision_radius: 20
   interaction_radius: 1
   move_budget_per_tick: 1
-  dA_max: 50
+  dA_max: 5000
+  trade_execution_mode: minimum
   forage_rate: 1
-  trade_cooldown_ticks: 5
+  trade_cooldown_ticks: 200
   beta: 0.95
   epsilon: 1.0e-12
-  exchange_regime: money_only
+  exchange_regime: mixed
   money_mode: quasilinear
-  money_scale: 1
+  money_scale: 100
   lambda_money: 1.0
   enable_resource_claiming: true
   enforce_single_harvester: true
