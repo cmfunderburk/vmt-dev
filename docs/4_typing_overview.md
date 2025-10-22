@@ -467,28 +467,28 @@ This part outlines planned extensions to the type system and provides reference 
 
 This section documents the money system implementation and plans for centralized markets.
 
-#### 7.1 Core Monetary Concepts `[IMPLEMENTED Phases 1-2]`
+#### 7.1 Core Monetary Concepts `[IMPLEMENTED]`
 *   **Numéraire (Money):** Good with identifier `"M"`, stored as `Inventory.M: int` in minor units (e.g., cents)
 *   **Exchange Regimes:** `exchange_regime` parameter controls allowed exchange types:
-    *   `"barter_only"`: Only A↔B trades (default, backward compatible)
-    *   `"money_only"`: Only A↔M and B↔M trades
-    *   `"mixed"`: All exchange pairs allowed
-    *   `"mixed_liquidity_gated"`: Mixed with minimum quote depth requirement
-*   **Quasilinear Utility:** Phase 2 uses U_total = U_goods(A, B) + λ·M where λ = marginal utility of money
+    *   `"barter_only"`: Only A↔B trades (default, backward compatible) `[IMPLEMENTED]`
+    *   `"money_only"`: Only A↔M and B↔M trades `[IMPLEMENTED]`
+    *   `"mixed"`: All exchange pairs allowed `[IMPLEMENTED]`
+    *   `"mixed_liquidity_gated"`: Mixed with minimum quote depth requirement `[PLANNED]`
+*   **Quasilinear Utility:** Current implementation uses U_total = U_goods(A, B) + λ·M where λ = marginal utility of money `[IMPLEMENTED]`
 *   **Lambda Management:** 
-    *   Phase 1-2: Fixed λ (quasilinear mode)
-    *   Phase 3+: Adaptive λ (KKT mode) estimated from neighbor prices
-*   **Money Scale:** `money_scale` converts between whole units and minor units (default: 1 = no conversion)
+    *   Fixed λ (quasilinear mode) with per-agent heterogeneity `[IMPLEMENTED]`
+    *   Adaptive λ (KKT mode) estimated from neighbor prices `[PLANNED]`
+*   **Money Scale:** `money_scale` converts between whole units and minor units (default: 1 = no conversion) `[IMPLEMENTED]`
 
-#### 7.2 Bilateral Money Exchange `[IMPLEMENTED Phase 2]`
-Phase 2 implements decentralized bilateral money exchange:
+#### 7.2 Bilateral Money Exchange `[IMPLEMENTED]`
+Current implementation provides decentralized bilateral money exchange:
 *   Agents trade goods (A or B) for money (M) with adjacent partners
 *   Generic matching algorithm selects best exchange pair (A↔M, B↔M, or A↔B)
 *   Quotes computed for all active exchange pairs based on marginal utilities
 *   Same pairing and compensating block logic as barter
 *   Money transfers recorded in `trades.dM` telemetry field
 
-#### 7.3 Market Maker & Order Book `[PLANNED Phase 4+]`
+#### 7.3 Market Maker & Order Book `[PLANNED]`
 A new type of entity, the `MarketMakerAgent`, will be introduced to facilitate centralized exchange.
 
 ```text
@@ -510,7 +510,7 @@ OrderBook := {
 }
 ```
 
-#### 7.4 New Simulation Phases `[PLANNED Phase 4+]`
+#### 7.4 New Simulation Phases `[PLANNED]`
 The introduction of a market will require new phases in the tick cycle, such as:
 *   `OrderPlacement`
 *   `MarketClearing`
@@ -580,15 +580,16 @@ This section tracks major revisions to this type and data contract specification
     *   Extended telemetry schema with money fields and new tables `[IMPLEMENTED Phases 1-2]`
     *   Added tick_states, pairings, and preferences tables `[IMPLEMENTED]`
     *   Updated Money & Market Contracts section with Phase 1-2 implementation status
-*   **Money Phase 3: Mixed Regimes (2025-10-21):**
-    *   Marked `exchange_pair_type` as `[IMPLEMENTED Phase 3]` in trades table
+*   **Money System Implementation (2025-10-21):**
+    *   Core money system complete: quasilinear utility, three exchange regimes
+    *   Marked `exchange_pair_type` as `[IMPLEMENTED]` in trades table
     *   Documented money-first tie-breaking algorithm
     *   Documented mode × regime interaction (two-layer control)
-*   **Money Phase 4: Polish & Documentation (2025-10-21):**
-    *   Money system v1.0 complete (Phases 1-4)
-    *   Renderer enhancements: money labels, lambda heatmap, mode/regime overlay
-    *   Log viewer: Money tab with trade distribution analysis
-    *   5 demo scenarios in scenarios/demos/
-    *   User documentation: User Guide, Regime Comparison Guide
-    *   Technical reference: Money Implementation document
+    *   Money-aware pairing and matching algorithms
+    *   Comprehensive telemetry and demo scenarios
+*   **Implementation Status Clarification (2025-01-27):**
+    *   Clarified that kkt_lambda mode is `[PLANNED]`, not implemented
+    *   Clarified that mixed_liquidity_gated regime is `[PLANNED]`, not implemented
+    *   Updated all documents to reflect actual implementation status
+    *   Documented protocol modularization requirement before Phase C
 ---

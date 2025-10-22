@@ -5,7 +5,7 @@ description: VMT Development Workflow and Best Practices
 
 # VMT Development Workflow
 
-## Project Status (Updated 2025-10-22)
+## Project Status (Updated 2025-01-27)
 
 ### Completed Features
 - ✅ **P0 Money-Aware Pairing** - Resolved pairing-trading mismatch
@@ -16,10 +16,11 @@ description: VMT Development Workflow and Best Practices
 - ✅ **PyQt6 GUI** - Scenario browser and launcher
 - ✅ **316+ Tests** - Comprehensive test coverage
 
-### Deferred Features
-- 🔄 **Mixed Liquidity Gated** - Planned for future development
-- 🔄 **Performance Benchmarks** - Pending developer action
-- 🔄 **Missing Documentation** - Will be created as needed
+### Planned Features
+- 🔄 **KKT Lambda Mode** - Endogenous λ estimation from market prices
+- 🔄 **Mixed Liquidity Gated** - Barter fallback when money market thin
+- 🔄 **Protocol Modularization** - Refactor DecisionSystem for extensibility
+- 🔄 **Phase C Market Mechanisms** - Posted-price markets and auctions
 
 ## Development Guidelines
 
@@ -39,6 +40,12 @@ description: VMT Development Workflow and Best Practices
 - **7-Phase Order:** Never change phase sequence
 - **Backward Compatibility:** Preserve existing behavior
 - **Performance Trade-offs:** Acceptable for pedagogical scale
+
+### Current Development Priority
+- **Protocol Modularization:** Refactor monolithic DecisionSystem before Phase C
+- **Critical Need:** Current architecture cannot support advanced market mechanisms
+- **Approach:** Extract search and matching logic into protocol interfaces
+- **Timeline:** 2-3 months before proceeding with Phase C market features
 
 ## Key Development Files
 
@@ -68,5 +75,6 @@ mypy src/
 
 - **Project Overview:** [docs/1_project_overview.md](mdc:docs/1_project_overview.md)
 - **Technical Manual:** [docs/2_technical_manual.md](mdc:docs/2_technical_manual.md)
+- **Strategic Roadmap:** [docs/3_strategic_roadmap.md](mdc:docs/3_strategic_roadmap.md)
 - **Scenario Guide:** [docs/scenario_configuration_guide.md](mdc:docs/scenario_configuration_guide.md)
-- **Research Analysis:** [docs/DEEP/research_gpt_project_overview.md](mdc:docs/DEEP/research_gpt_project_overview.md)
+- **Parameter Reference:** [docs/structures/parameter_quick_reference.md](mdc:docs/structures/parameter_quick_reference.md)

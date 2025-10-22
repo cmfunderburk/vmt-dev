@@ -1,152 +1,293 @@
 # VMT Strategic Roadmap
 
-This document is the authoritative guide for the VMT project. It contains the high-level vision, long-term feature roadmap, and a detailed, actionable plan for the immediate next steps.
-
-> **⚠️ Note on Phase Numbering**: This document uses "**Phases A-F**" for high-level curriculum progression. For detailed implementation plans, see:
-> - **Money System**: [Money SSOT Plan](BIG/money_SSOT_implementation_plan.md) (Money Phases 1-6)
-> - **Current Status**: [ADR-001](decisions/001-hybrid-money-modularization-sequencing.md) (strategic decision)
-> - **Quick Lookup**: [Quick Reference Guide](quick_reference.md#by-phase-number-reconciliation)
+This document provides the authoritative guide for the VMT project's current status, completed achievements, and future development priorities.
 
 ---
 
-## Part A: The Vision - A Microeconomic Laboratory
+## Current Implementation Status (2025-01-27)
 
-The VMT (Visualizing Microeconomic Theory) project is a **computational laboratory** for exploring economic principles. It is built on the paradigm of Agent-Based Computational Economics (ACE), a "bottom-up culture-dish approach" where complex, system-level patterns emerge from the localized interactions of autonomous agents.
+### ✅ **Phase A: Foraging & Barter Economy (COMPLETE)**
+**Status:** Fully implemented and production-ready
 
-The core philosophy is **"visualization-first."** Instead of static equations on a page, users get an interactive, simulation-driven environment to experiment with economic concepts. By manipulating parameters and observing agent behavior, users can see phenomena like market equilibrium and gains from trade emerge organically, fostering a deeper and more intuitive understanding.
+**Achievements:**
+- **7-Phase Deterministic Engine** - Robust simulation loop with strict phase ordering
+- **5 Utility Functions** - CES, Linear, Quadratic, Translog, Stone-Geary with full parameter support
+- **Spatial Dynamics** - Vision radius, movement budgets, resource claiming, foraging mechanics
+- **Bilateral Trading** - Reservation-price-based negotiation with deterministic outcomes
+- **Comprehensive Testing** - 316+ tests with deterministic validation
+- **PyQt6 GUI** - Scenario browser, launcher, and log viewer
+- **SQLite Telemetry** - Comprehensive logging with 99% compression over CSV
 
-The platform is designed to support two primary modes of use:
--   **Educational Mode**: Agents behave as the perfectly rational, utility-maximizing actors found in textbooks, allowing for the clear demonstration of canonical theories.
--   **Research Mode**: Rationality can be treated as a tunable parameter. Users can introduce bounded rationality, learning heuristics, or stochasticity to explore the boundaries of neoclassical models and ask novel research questions.
+### ✅ **Phase B: Money System (COMPLETE)**
+**Status:** Fully implemented with P0 money-aware pairing resolved (2025-10-22)
 
-## Part B: Long-Term Roadmap
+**Achievements:**
+- **Quasilinear Utility Model** - U_total = U_goods(A,B) + λ·M
+- **Exchange Regimes** - `barter_only`, `money_only`, `mixed` (all trade types)
+- **Heterogeneous Lambda Values** - Agent-specific money preferences for realistic trading
+- **Money-Aware Pairing** - Smart matching algorithm for optimal trade selection
+- **Mode Scheduling** - Temporal control with global cycle patterns
+- **Money Scale Support** - Fractional prices (cents, dimes, etc.)
+- **Comprehensive Integration** - All money features tested and validated
 
-The long-term vision is to expand VMT step-by-step into a comprehensive microeconomic simulation platform that mirrors the progression of a standard graduate curriculum.
+### 🔄 **Phase C: Market Mechanisms (PLANNED)**
+**Status:** Next major development priority
 
-1.  **Phase A — Foraging & Barter Economy (Complete)**: The current state. A robust simulation of a two-good exchange economy with resource foraging and bilateral barter. This covers foundational concepts like utility maximization and gains from trade.
-
-2.  **Phase B — Introduction of Money**: Transform the barter system by introducing a medium of exchange ("money") and explicit budget constraints. This enables the study of consumer choice and price systems.
-
-3.  **Phase C — Local Market Mechanisms**: Graduate from bilateral negotiation to many-to-many trade. Implement posted-price markets or simple auctions where a market-clearing price can emerge from the collective behavior of a group of agents. This introduces supply and demand dynamics.
-
-4.  **Production Economy**: Introduce "Firm" agents that use inputs (like labor, supplied by consumer agents) to produce goods according to production functions. This enables the study of producer theory, supply curves, and factor markets.
-
-5.  **General Equilibrium & Welfare**: Simulate a multi-market economy where prices for goods and factors adjust to clear all markets simultaneously. This allows for the study of general equilibrium, welfare theorems, and market efficiency.
-
-6.  **Advanced Topics**: Introduce modules for more advanced concepts, including:
-    -   **Game Theory**: Explicitly model strategic interaction with matrix and repeated games.
-    -   **Asymmetric Information**: Simulate markets with adverse selection ("lemons market") or moral hazard.
-    -   **Mechanism Design**: Explore auctions, voting systems, and other designed mechanisms.
-
-## Part C: Immediate Roadmap & Checklist (Phase A Polish → Phase C Market Prototype)
-
-This section provides a concrete, step-by-step implementation plan for the next development cycle.
-
----
-
-### **Milestone 1: Phase A Polish (The Foundation)**
-
-**Goal**: Solidify the current Phase A barter engine. Ensure it is stable, well-documented, and provides a trusted foundation for all future features.
-
-**Checklist:**
-- [ ] **Core Engine Documentation:**
-    - **Action:** Create `vmt_engine/README.md`.
-    - **Details:** Write a technical overview of the 7-phase tick cycle and the responsibility of each system.
-- [ ] **Code Clarity Pass:**
-    - **Action:** Add explanatory comments to `matching.py`, `quotes.py`, and `utility.py`.
-    - **Details:** Explain the "why" behind non-obvious logic (e.g., deterministic tie-breaking, the zero-inventory guard).
-- [ ] **Foundational Scenario:**
-    - **Action:** Create `scenarios/foundational_barter_demo.yaml`.
-    - **Details:** Create a heavily-commented 3-4 agent scenario that serves as an executable tutorial.
-- [ ] **Integration Test:**
-    - **Action:** Create `tests/test_barter_integration.py`.
-    - **Details:** Write a test that runs the foundational demo and asserts deterministic outcomes (final inventories, number of trades).
+**Planned Features:**
+- **Posted-Price Markets** - Many-to-many trade with market-clearing prices
+- **Local Market Detection** - Connected components for group trading
+- **Supply & Demand Dynamics** - Emergent price discovery mechanisms
 
 ---
 
-### **Milestone 2: Phase A→B Mode Toggles (The Easy Win)**
+## Long-Term Vision
 
-**Goal**: Create alternating "forage-only" and "trade-only" windows to create emergent budget constraints.
+The VMT project aims to become a comprehensive microeconomic simulation platform that mirrors the progression of a standard graduate curriculum.
 
-**Checklist:**
-- [ ] **Modify Schema:**
-    - **Action:** Add a `mode_schedule` dataclass to `scenarios/schema.py`.
-    - **Details:** Should support `type: "global_cycle"`, `forage_ticks: int`, `trade_ticks: int`.
-- [ ] **Modify Engine Loop:**
-    - **Action:** In `vmt_engine/simulation.py`, determine `current_mode` based on the tick and schedule.
-    - **Details:** Conditionally skip the `trade_phase()` or `forage_phase()` based on the current mode.
-- [ ] **Modify Telemetry:**
-    - **Action:** Add a `mode_changes` table to the database.
-    - **Details:** Log `(tick, new_mode)` on every change. Add a `mode` column to the `decisions` log.
+### **Educational Philosophy**
+- **Visualization-First** - Interactive, simulation-driven environment for economic concepts
+- **Deterministic Reproducibility** - Same seed → identical results for reliable teaching
+- **Pedagogical Clarity** - Clear demonstration of canonical economic theories
+- **Research Flexibility** - Tunable parameters for exploring model boundaries
 
----
-
-### **Milestone 3: Phase B — Introduce Money (The Core Refactor)**
-
-**Goal**: Introduce money (M) as a tradable asset using the quasilinear utility model: `U_total = U_goods(A, B) + λ * M`. This requires refactoring the trade system to support generic good-to-good trades.
-
-**Checklist:**
-- [ ] **Update Core State (`state.py`):**
-    - **Action:** Add `M: int = 0` to `Inventory`.
-    - **Action:** Refactor `Quote` to hold quotes for all pairs (`A-B`, `A-M`, `B-M`).
-- [ ] **Update Schema (`schema.py`):**
-    - **Action:** Add `lambda_money: float` to `ScenarioParams`. Allow `M` in `initial_inventories`.
-- [ ] **Refactor Utility Engine (`utility.py`):**
-    - **Action:** Rename `u` to `u_goods`. Add a new `u_total(A, B, M)` method that includes the `λ * M` term.
-    - **Action:** Add new `reservation_bounds` methods for money pairs (e.g., `reservation_bounds_A_in_M`).
-- [ ] **Refactor Quote System (`quotes.py`):**
-    - **Action:** Update `compute_quotes` to calculate and store quotes for all three trade pairs.
-- [ ] **Refactor Matching System (`matching.py`):**
-    - **Action:** Generalize `compute_surplus` to find the best surplus across all three pairs.
-    - **Action:** Parameterize `find_compensating_block` and `execute_trade` to handle generic trades (e.g., `(good_to_buy, good_to_pay)`).
-- [ ] **Update Tests:**
-    - **Action:** Create `tests/test_money_quasilinear.py`.
-    - **Action:** Update existing trade tests to use the new refactored, generic matching functions.
+### **Target Curriculum Progression**
+1. **Phase A** ✅ - Foraging & Barter Economy (Complete)
+2. **Phase B** ✅ - Introduction of Money (Complete)  
+3. **Phase C** 🔄 - Local Market Mechanisms (Planned)
+4. **Phase D** 📋 - Production Economy (Future)
+5. **Phase E** 📋 - General Equilibrium & Welfare (Future)
+6. **Phase F** 📋 - Advanced Topics (Future)
 
 ---
 
-### **Milestone 4: Visualization Enhancements**
+## Immediate Development Priorities
 
-**Goal**: Improve visual clarity and user experience in Pygame renderer.
+### **Priority 1: Protocol Modularization Refactor (Next 2-3 months)**
+
+**Goal:** Refactor the monolithic `DecisionSystem` into modular protocols to support advanced market mechanisms.
+
+**Critical Need:** The current `DecisionSystem` is monolithic and tightly coupled, making it impossible to implement the advanced market mechanisms planned for Phase C. The codebase needs significant refactoring before proceeding.
+
+**Technical Approach:**
+- **Protocol Interfaces** - Create `SearchProtocol` and `MatchingProtocol` abstractions
+- **Legacy Wrappers** - Maintain existing behavior while extracting logic
+- **Incremental Extraction** - Preserve telemetry and determinism throughout
+- **Registry System** - Enable protocol selection via configuration
+
+**Success Criteria:**
+- [ ] All existing scenarios produce identical telemetry (bitwise identical)
+- [ ] No performance regression >10%
+- [ ] Protocol interfaces support multiple algorithms
+- [ ] YAML configuration for protocol selection
+- [ ] Comprehensive test coverage for new modules
+
+**Implementation Phases:**
+1. **Phase 1 (3-5 days)** - Interfaces + Legacy wrappers + Delegation
+2. **Phase 2 (1-2 weeks)** - Extract logic into standalone implementations
+3. **Phase 3 (3-4 days)** - Configuration & Registry system
+4. **Phase 4 (3-5 days)** - Validation & determinism testing
+
+### **Priority 2: Phase C Market Prototype (After Refactor)**
+
+**Goal:** Implement the first true market mechanism in VMT - a "Local Posted-Price Auction" system.
+
+**Prerequisites:** Protocol modularization must be completed first.
+
+**Technical Approach:**
+- **Connected Components Detection** - Identify groups of agents within interaction radius
+- **Market Clearing Logic** - Aggregate bids/asks to determine clearing prices
+- **Deterministic Matching** - Sort by agent ID for reproducible outcomes
+- **Fallback to Bilateral** - Use existing bilateral system for small groups
+
+**Success Criteria:**
+- [ ] Market mechanism handles 5+ agent groups
+- [ ] Deterministic price discovery
+- [ ] Comprehensive telemetry logging
+- [ ] Integration with existing bilateral system
+- [ ] Performance benchmarks for large scenarios
+
+### **Priority 3: Advanced Money Features (Future)**
+
+**Planned Enhancements:**
+- **KKT Lambda Mode** - Endogenous λ estimation from market prices
+- **Mixed Liquidity Gated** - Barter fallback when money market is thin
+- **Distribution Syntax** - Random inventory generation
+- **Advanced Mode Scheduling** - Agent-specific and spatial zone patterns
+
+### **Priority 4: Visualization Enhancements (Ongoing)**
 
 **Completed:**
-- [x] **Smart Co-location Rendering** (2025-10-19):
-    - Implemented geometric layouts for co-located agents (diagonal, triangle, corners, circle pack)
-    - Added proportional sprite scaling based on agent count
-    - Organized inventory label display for readability
-    - Pure visualization enhancement - simulation state unchanged
-    - 8 new tests in `tests/test_renderer_colocation.py`
-    - Demo scenario: `scenarios/visual_clarity_demo.yaml`
+- ✅ **Smart Co-location Rendering** (2025-10-19) - Geometric layouts for multiple agents
 
-**Future Enhancements:**
-- [ ] **Hover Tooltips** (Roadmap):
-    - **Action:** Add mouse hover detection to renderer
-    - **Details:** When hovering over co-located agents, display popup with full agent details (IDs, inventories, utilities)
-    - **Use Case:** Improves accessibility for cells with 4+ agents showing summary labels
-- [ ] **Trade Indicators**:
-    - **Action:** Draw animated lines between recently traded agents
-    - **Details:** Visual feedback showing which agents just completed trades
-- [ ] **Configurable Layouts**:
-    - **Action:** Add UI toggle for classic vs smart co-location rendering
-    - **Details:** Allow users to switch visualization styles in real-time
+**Planned:**
+- **Hover Tooltips** - Mouse hover detection with agent details
+- **Trade Indicators** - Animated lines showing recent trades
+- **Configurable Layouts** - Toggle between visualization styles
 
 ---
 
-### **Milestone 5: Phase C — Prototype Posted-Price Market (The Payoff)**
+## Technical Debt & Refactoring Needs
 
-**Goal**: Implement a "Local Posted-Price Auction" mechanism as the first true market in VMT.
+### **Critical Architecture Issues**
 
-**Checklist:**
-- [ ] **Modify Simulation Loop (`simulation.py`):**
-    - **Action:** In `trade_phase`, add logic to detect "connected components" (groups of agents within `interaction_radius` of each other).
-- [ ] **Create Market Logic (`matching.py`):**
-    - **Action:** Create a new `run_market(agent_ids)` function.
-    - **Details:**
-        - If `len(agent_ids) < market_min_size`, fall back to bilateral trade.
-        - For a chosen market (e.g., "A" in terms of "M"), aggregate all bids and asks.
-        - Determine a single clearing price `p_star` with a deterministic rule (e.g., midpoint of `max(bids)` and `min(asks)`).
-        - Match willing buyers and sellers at `p_star`, sorting by `agent.id` for determinism.
-        - Re-use the `find_compensating_block` logic with the fixed `p_star` to execute trades, still respecting `ΔU > 0` and one-trade-per-agent rules.
-- [ ] **Update Telemetry:**
-    - **Action:** Add a `market_events` table to the database.
-    - **Details:** Log `(tick, market_id, clearing_price, volume)` for each market event.
+**Monolithic DecisionSystem:** The current `DecisionSystem` is a monolithic class that handles all decision logic in a tightly coupled manner. This creates several problems:
+
+1. **Impossible to Extend** - Cannot add new matching algorithms without modifying core logic
+2. **Testing Complexity** - Difficult to test individual components in isolation
+3. **Code Duplication** - Similar logic scattered across different methods
+4. **Performance Bottlenecks** - All logic runs in single thread with no optimization opportunities
+
+**Missing Abstractions:** The codebase lacks proper protocol interfaces for:
+- **Search Protocols** - How agents select forage targets
+- **Matching Protocols** - How agents find and pair with trading partners
+- **Trade Protocols** - How agents execute trades (future)
+
+### **Refactoring Strategy**
+
+**Phase 1: Protocol Interfaces**
+- Create `SearchProtocol` and `MatchingProtocol` abstract base classes
+- Define clear contracts for protocol behavior
+- Maintain backward compatibility with legacy wrappers
+
+**Phase 2: Logic Extraction**
+- Extract existing logic into standalone protocol implementations
+- Preserve all existing behavior and telemetry
+- Enable multiple algorithm implementations
+
+**Phase 3: Configuration System**
+- Add protocol registry for algorithm selection
+- Enable YAML configuration for protocol choice
+- Maintain Python API for programmatic control
+
+**Phase 4: Validation & Testing**
+- Comprehensive regression testing
+- Performance benchmarking
+- Determinism validation across all scenarios
+
+### **Benefits of Refactoring**
+
+1. **Extensibility** - Easy to add new matching algorithms (Greedy, Stable Matching, etc.)
+2. **Testability** - Individual protocols can be tested in isolation
+3. **Performance** - Opportunities for optimization and parallelization
+4. **Maintainability** - Clear separation of concerns and responsibilities
+5. **Research** - Enable experimentation with different economic mechanisms
+
+---
+
+## Technical Architecture
+
+### **Core Systems (Implemented)**
+- **7-Phase Engine** - Perception, Decision, Movement, Trade, Forage, Regeneration, Housekeeping
+- **Utility System** - 5 utility functions with money-aware calculations
+- **Trading System** - Bilateral negotiation with money-aware pairing
+- **Resource System** - Foraging, claiming, regeneration mechanics
+- **Telemetry System** - SQLite logging with comprehensive data capture
+
+### **Data Flow**
+```
+Scenario YAML → Schema Validation → Simulation Engine → Telemetry → Analysis
+```
+
+### **Key Design Principles**
+- **Determinism First** - All operations must be reproducible
+- **Modular Architecture** - Clean separation of concerns
+- **Comprehensive Testing** - Every feature must be tested
+- **Performance Awareness** - Scalable to large scenarios
+
+---
+
+## Development Guidelines
+
+### **Code Quality Standards**
+- **Type Safety** - 100% Mypy type coverage goal
+- **Formatting** - Black for consistent style
+- **Linting** - Ruff for code quality
+- **Testing** - All new features require tests
+
+### **Versioning Strategy**
+- **No SemVer** until developer manually pushes 0.0.1 prerelease
+- **Date-Based Tracking** - Use descriptive commit messages
+- **Manual Release** - Developer controls all versioning
+
+### **Testing Philosophy**
+- **Deterministic Tests** - Same seed → identical results
+- **Integration Tests** - End-to-end scenario validation
+- **Performance Tests** - Benchmark large scenarios
+- **Regression Tests** - Prevent breaking changes
+
+---
+
+## Research Applications
+
+### **Current Capabilities**
+- **Microeconomic Theory** - Utility maximization, gains from trade
+- **Money & Banking** - Quasilinear utility, heterogeneous preferences
+- **Spatial Economics** - Local interactions, transportation costs
+- **Agent-Based Modeling** - Emergent behavior from individual decisions
+
+### **Planned Research Extensions**
+- **Market Microstructure** - Price discovery, liquidity dynamics
+- **Behavioral Economics** - Bounded rationality, learning heuristics
+- **Experimental Economics** - Controlled laboratory environments
+- **Policy Analysis** - Tax systems, regulation effects
+
+---
+
+## Community & Documentation
+
+### **Documentation Status**
+- ✅ **Project Overview** - Complete feature overview
+- ✅ **Technical Manual** - Implementation details
+- ✅ **Scenario Configuration Guide** - Comprehensive parameter reference
+- ✅ **Parameter Reference** - Quick lookup tables and examples
+- ✅ **Type Specifications** - Type system documentation
+
+### **User Support**
+- **Demo Scenarios** - Tutorial and example scenarios
+- **GUI Launcher** - Intuitive scenario browser
+- **Log Viewer** - Analysis and visualization tools
+- **Comprehensive Examples** - Working scenario templates
+
+---
+
+## Success Metrics
+
+### **Technical Metrics**
+- **Test Coverage** - 316+ tests passing
+- **Performance** - Sub-second query times for telemetry
+- **Determinism** - 100% reproducible simulations
+- **Documentation** - Complete parameter reference
+
+### **User Experience Metrics**
+- **Ease of Use** - GUI launcher for scenario selection
+- **Educational Value** - Clear demonstration of economic concepts
+- **Research Utility** - Comprehensive telemetry for analysis
+- **Reproducibility** - Deterministic outcomes for reliable results
+
+---
+
+## Next Steps
+
+### **Immediate Actions (Next 30 days)**
+1. **Protocol Modularization Planning** - Detailed technical specification for refactoring
+2. **Legacy Wrapper Implementation** - Create backward-compatible protocol interfaces
+3. **Regression Testing Setup** - Ensure telemetry equivalence validation
+4. **Performance Baseline** - Establish benchmarks before refactoring
+
+### **Medium-term Goals (Next 6 months)**
+1. **Protocol Modularization Completion** - Full refactoring with multiple algorithms
+2. **Phase C Market Prototype** - Implement posted-price market mechanisms
+3. **Advanced Money Features** - KKT lambda mode, liquidity gating
+4. **Research Applications** - Demonstrate advanced economic modeling
+
+### **Long-term Vision (Next 2 years)**
+1. **Production Economy** - Firm agents and factor markets
+2. **General Equilibrium** - Multi-market price discovery
+3. **Advanced Topics** - Game theory, asymmetric information
+4. **Research Platform** - Comprehensive economic modeling toolkit
+
+---
+
+**Last Updated:** 2025-01-27  
+**Status:** Phase A & B Complete, Protocol Modularization Required  
+**Next Milestone:** Protocol Interfaces & Legacy Wrappers

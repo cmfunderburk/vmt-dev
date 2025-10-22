@@ -37,12 +37,16 @@ All utilities implement money-aware API in [src/vmt_engine/econ/utility.py](mdc:
 ## Money System
 
 - **Quasilinear Utility:** U_total = U_goods(A,B) + λ·M
+- **Heterogeneous Lambda:** RECOMMENDED to use agent-specific λ values for realistic trading
 - **Exchange Regimes:**
-  - `barter_only`: A↔B trades only
-  - `money_only`: A↔M, B↔M trades only  
-  - `mixed`: All trade types allowed
-  - `mixed_liquidity_gated`: **[DEFERRED]** - Planned for future
+  - `barter_only`: A↔B trades only (IMPLEMENTED)
+  - `money_only`: A↔M, B↔M trades only (IMPLEMENTED)
+  - `mixed`: All trade types allowed (IMPLEMENTED)
+  - `mixed_liquidity_gated`: **[PLANNED]** - Barter fallback when money market thin
 - **Money-Aware Pairing:** Uses `estimate_money_aware_surplus()` for money/mixed regimes
+- **Money Modes:**
+  - `quasilinear`: Fixed λ values (IMPLEMENTED)
+  - `kkt_lambda`: Endogenous λ estimation **[PLANNED]**
 
 ## Reservation Prices
 

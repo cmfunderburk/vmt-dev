@@ -25,7 +25,7 @@ seed: 42                        # Random seed for reproducibility
 ### Exchange Regimes
 ```yaml
 params:
-  exchange_regime: "mixed"       # barter_only | money_only | mixed | mixed_liquidity_gated
+  exchange_regime: "mixed"       # barter_only | money_only | mixed (mixed_liquidity_gated planned)
   mode_schedule: "both"         # trade | forage | both
 ```
 

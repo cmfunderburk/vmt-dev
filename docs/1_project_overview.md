@@ -82,11 +82,12 @@ python main.py scenarios/single_agent_forage.yaml 123
 - **🏠 Stone-Geary Utility Functions** - Subsistence constraints and hierarchical needs (LES foundation)
 - **💱 Generic Matching Algorithm** - Supports barter (A↔B) and monetary exchange (A↔M, B↔M)
 - **💰 Money System (v1.0)** - Complete monetary economics simulation
-  - Four exchange regimes: `barter_only`, `money_only`, `mixed`, `mixed_liquidity_gated`
-  - Two money modes: `quasilinear` (simple) and `kkt_lambda` (advanced)
+  - Three exchange regimes: `barter_only`, `money_only`, `mixed` (fully implemented)
+  - Quasilinear utility mode with heterogeneous λ values
   - Money-first tie-breaking in mixed economies
   - Mode × regime interaction for temporal control
   - Rich telemetry and analysis tools
+  - **Planned:** `kkt_lambda` mode, `mixed_liquidity_gated` regime
 - **🤝 Trade Pairing** - Three-pass algorithm with mutual consent and surplus-based fallback
 - **💱 Price Search Algorithm** - Finds mutually beneficial prices despite integer rounding
 - **📈 Reservation Pricing** - True economic reservation prices (zero bid-ask spread default)
@@ -314,6 +315,7 @@ The `exchange_regime` parameter controls allowed exchange types:
 - **`"barter_only"`** (default) — Only A↔B trades; backward compatible with legacy scenarios
 - **`"money_only"`** — Only A↔M and B↔M trades (goods for money)
 - **`"mixed"`** — All exchange pairs allowed; generic matching selects highest-surplus pair
+- **`"mixed_liquidity_gated"`** — (PLANNED) Barter fallback when money market is thin
 
 ### Quasilinear Utility
 
@@ -333,10 +335,10 @@ initial_inventories:
   M: 100  # Give each agent 100 units of money
 
 params:
-  exchange_regime: "mixed"         # Allow all exchange types
-  money_mode: "quasilinear"        # Fixed lambda (Phases 1-2)
+  exchange_regime: "mixed"         # Allow all exchange types (barter_only, money_only, mixed)
+  money_mode: "quasilinear"        # Fixed lambda (quasilinear mode - kkt_lambda planned)
   money_scale: 1                   # Minor units scale
-  lambda_money: 1.0                # Marginal utility of money
+  lambda_money: 1.0                # Marginal utility of money (can be list for heterogeneous agents)
 ```
 
 ### Telemetry
