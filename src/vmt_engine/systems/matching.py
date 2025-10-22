@@ -70,6 +70,169 @@ def compute_surplus(agent_i: 'Agent', agent_j: 'Agent') -> float:
     return max(feasible_overlaps) if feasible_overlaps else 0.0
 
 
+def estimate_money_aware_surplus(agent_i: 'Agent', agent_j: 'Agent', regime: str) -> tuple[float, str]:
+    """
+    Estimate best feasible surplus using quotes (lightweight, O(1)).
+    
+    Uses agent quotes to approximate surplus without full search.
+    This is a fast heuristic for pairing decisions in money-aware regimes.
+    
+    Money-first priority on ties: A<->M > B<->M > A<->B
+    
+    INVENTORY FEASIBILITY: Returns 0 if neither direction is inventory-feasible.
+    This prevents futile pairings when inventory constraints make theoretical 
+    surplus unrealizable.
+    
+    IMPORTANT LIMITATION - Heuristic Approximation:
+    ================================================
+    This function uses QUOTE OVERLAPS (price differences) as a proxy for surplus.
+    Quote overlap = bid_price - ask_price, which represents the "price space" 
+    for mutually beneficial trade.
+    
+    However, quote overlaps may not perfectly predict ACTUAL UTILITY GAINS:
+    - Quotes are based on MRS (marginal rate of substitution) at current inventory
+    - Actual trades change inventory discretely, affecting utility non-linearly
+    - With non-linear utilities (CES, Quadratic, etc.), the relationship between
+      MRS and utility change depends on the curvature of the utility function
+    - Integer rounding and discrete quantities can cause discrepancies
+    
+    Example: A quote overlap of 4.3 for barter might predict higher surplus than
+    a quote overlap of 2.1 for money trades, but the ACTUAL utility calculation
+    might show the money trade provides more utility gain (e.g., 2.3 vs 1.3).
+    
+    This is acceptable because:
+    1. Once paired, agents execute the ACTUAL best trade (using full utility calc)
+    2. The estimator is still directionally correct most of the time
+    3. Performance matters: O(1) per neighbor vs O(dA_max × prices) for exact calc
+    4. Agents still find good trades, just maybe not with the globally optimal partner
+    
+    For perfectly accurate pairing, use find_all_feasible_trades() instead, but
+    expect O(N × dA_max × prices) cost in Decision phase.
+    
+    Args:
+        agent_i: First agent
+        agent_j: Second agent
+        regime: Exchange regime ("money_only", "mixed", "mixed_liquidity_gated")
+        
+    Returns:
+        Tuple of (best_surplus, best_pair_type) where:
+        - best_surplus: Estimated surplus (positive indicates potential for trade)
+        - best_pair_type: Exchange pair type ("A<->B", "A<->M", "B<->M", or "")
+        
+        Returns (0.0, "") if no positive surplus found.
+    """
+    # Determine which pairs to evaluate based on regime
+    if regime == "money_only":
+        candidate_pairs = ["A<->M", "B<->M"]
+    elif regime in ["mixed", "mixed_liquidity_gated"]:
+        candidate_pairs = ["A<->M", "B<->M", "A<->B"]
+    else:
+        # Fallback to barter (shouldn't happen if called correctly)
+        candidate_pairs = ["A<->B"]
+    
+    # Money-first priority (lower is better)
+    PAIR_PRIORITY = {
+        "A<->M": 0,
+        "B<->M": 1,
+        "A<->B": 2,
+    }
+    
+    best_surplus = 0.0
+    best_pair_type = ""
+    best_priority = 999
+    
+    for pair in candidate_pairs:
+        if pair == "A<->B":
+            # Barter: A for B
+            bid_i = agent_i.quotes.get('bid_A_in_B', 0.0)
+            ask_i = agent_i.quotes.get('ask_A_in_B', 0.0)
+            bid_j = agent_j.quotes.get('bid_A_in_B', 0.0)
+            ask_j = agent_j.quotes.get('ask_A_in_B', 0.0)
+            
+            # Calculate overlaps
+            overlap_dir1 = bid_i - ask_j  # i buys A from j
+            overlap_dir2 = bid_j - ask_i  # j buys A from i
+            
+            # Check inventory feasibility
+            dir1_feasible = (agent_j.inventory.A >= 1 and agent_i.inventory.B >= 1)
+            dir2_feasible = (agent_i.inventory.A >= 1 and agent_j.inventory.B >= 1)
+            
+            # Get best feasible overlap
+            feasible_overlaps = []
+            if dir1_feasible and overlap_dir1 > 0:
+                feasible_overlaps.append(overlap_dir1)
+            if dir2_feasible and overlap_dir2 > 0:
+                feasible_overlaps.append(overlap_dir2)
+            
+            if feasible_overlaps:
+                surplus = max(feasible_overlaps)
+            else:
+                surplus = 0.0
+        
+        elif pair == "A<->M":
+            # Monetary: A for M
+            bid_i = agent_i.quotes.get('bid_A_in_M', 0.0)
+            ask_i = agent_i.quotes.get('ask_A_in_M', 0.0)
+            bid_j = agent_j.quotes.get('bid_A_in_M', 0.0)
+            ask_j = agent_j.quotes.get('ask_A_in_M', 0.0)
+            
+            # Calculate overlaps
+            overlap_dir1 = bid_i - ask_j  # i buys A from j with M
+            overlap_dir2 = bid_j - ask_i  # j buys A from i with M
+            
+            # Check inventory feasibility
+            dir1_feasible = (agent_j.inventory.A >= 1 and agent_i.inventory.M >= 1)
+            dir2_feasible = (agent_i.inventory.A >= 1 and agent_j.inventory.M >= 1)
+            
+            # Get best feasible overlap
+            feasible_overlaps = []
+            if dir1_feasible and overlap_dir1 > 0:
+                feasible_overlaps.append(overlap_dir1)
+            if dir2_feasible and overlap_dir2 > 0:
+                feasible_overlaps.append(overlap_dir2)
+            
+            if feasible_overlaps:
+                surplus = max(feasible_overlaps)
+            else:
+                surplus = 0.0
+        
+        else:  # "B<->M"
+            # Monetary: B for M
+            bid_i = agent_i.quotes.get('bid_B_in_M', 0.0)
+            ask_i = agent_i.quotes.get('ask_B_in_M', 0.0)
+            bid_j = agent_j.quotes.get('bid_B_in_M', 0.0)
+            ask_j = agent_j.quotes.get('ask_B_in_M', 0.0)
+            
+            # Calculate overlaps
+            overlap_dir1 = bid_i - ask_j  # i buys B from j with M
+            overlap_dir2 = bid_j - ask_i  # j buys B from i with M
+            
+            # Check inventory feasibility
+            dir1_feasible = (agent_j.inventory.B >= 1 and agent_i.inventory.M >= 1)
+            dir2_feasible = (agent_i.inventory.B >= 1 and agent_j.inventory.M >= 1)
+            
+            # Get best feasible overlap
+            feasible_overlaps = []
+            if dir1_feasible and overlap_dir1 > 0:
+                feasible_overlaps.append(overlap_dir1)
+            if dir2_feasible and overlap_dir2 > 0:
+                feasible_overlaps.append(overlap_dir2)
+            
+            if feasible_overlaps:
+                surplus = max(feasible_overlaps)
+            else:
+                surplus = 0.0
+        
+        # Update best if this surplus is better, or equal with higher priority
+        priority = PAIR_PRIORITY.get(pair, 999)
+        if surplus > best_surplus or (surplus == best_surplus and surplus > 0 and priority < best_priority):
+            best_surplus = surplus
+            best_pair_type = pair
+            best_priority = priority
+    
+    return best_surplus, best_pair_type
+
+
 def choose_partner(agent: 'Agent', neighbors: list[tuple[int, tuple[int, int]]], 
                    all_agents: dict[int, 'Agent'],
                    current_tick: int = 0) -> tuple[int | None, float | None, list[tuple[int, float]]]:

@@ -130,6 +130,7 @@ class Simulation:
         inv_A = self.config.initial_inventories['A']
         inv_B = self.config.initial_inventories['B']
         inv_M = self.config.initial_inventories.get('M', 0)  # Phase 1+: Money inventory
+        inv_lambda = self.config.initial_inventories.get('lambda_money', self.params['lambda_money'])  # Per-agent lambda
         
         # Convert to lists if needed
         if isinstance(inv_A, int):
@@ -138,11 +139,15 @@ class Simulation:
             inv_B = [inv_B] * n_agents
         if isinstance(inv_M, int):
             inv_M = [inv_M] * n_agents
+        if isinstance(inv_lambda, (int, float)):
+            inv_lambda = [float(inv_lambda)] * n_agents
         
         if len(inv_A) != n_agents or len(inv_B) != n_agents:
             raise ValueError(f"Initial inventory lists must match agent count {n_agents}")
         if isinstance(inv_M, list) and len(inv_M) != n_agents:
             raise ValueError(f"Initial M inventory list must match agent count {n_agents}")
+        if isinstance(inv_lambda, list) and len(inv_lambda) != n_agents:
+            raise ValueError(f"Initial lambda_money list must match agent count {n_agents}")
         
         # Sample utility types according to mix weights
         utility_configs = []
@@ -188,7 +193,8 @@ class Simulation:
                 inventory=inventory,
                 utility=utility,
                 vision_radius=self.params['vision_radius'],
-                move_budget_per_tick=self.params['move_budget_per_tick']
+                move_budget_per_tick=self.params['move_budget_per_tick'],
+                lambda_money=float(inv_lambda[i])  # Per-agent lambda from scenario
             )
             
             # Initialize quotes

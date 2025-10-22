@@ -390,7 +390,7 @@ class TelemetryManager:
     
     def log_preference(self, tick: int, agent_id: int, partner_id: int,
                        rank: int, surplus: float, discounted_surplus: float,
-                       distance: int):
+                       distance: int, pair_type: Optional[str] = None):
         """
         Log an agent's preference ranking for a potential partner.
         
@@ -402,13 +402,14 @@ class TelemetryManager:
             surplus: Undiscounted surplus with this partner
             discounted_surplus: Distance-discounted surplus (beta^distance * surplus)
             distance: Manhattan distance to partner
+            pair_type: Exchange pair type ("A<->B", "A<->M", "B<->M", or None for backward compatibility)
         """
         if not self.config.log_decisions or self.db is None or self.run_id is None:
             return
         
         self._preference_buffer.append((
             self.run_id, tick, agent_id, partner_id, rank,
-            surplus, discounted_surplus, distance
+            surplus, discounted_surplus, distance, pair_type
         ))
         
         # Flush buffer if needed
@@ -510,8 +511,8 @@ class TelemetryManager:
         
         self.db.executemany("""
             INSERT INTO preferences
-            (run_id, tick, agent_id, partner_id, rank, surplus, discounted_surplus, distance)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (run_id, tick, agent_id, partner_id, rank, surplus, discounted_surplus, distance, pair_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, self._preference_buffer)
         self.db.commit()
         self._preference_buffer.clear()

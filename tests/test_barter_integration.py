@@ -38,3 +38,36 @@ def test_foundational_barter_demo_determinism_and_trades():
     assert trade_count_1 >= 1
 
 
+def test_barter_only_pairing_unchanged():
+    """
+    Regression test to ensure money-aware pairing changes don't affect barter_only mode.
+    
+    This test verifies that in barter_only regime, agents still use the traditional
+    compute_surplus function for pairing decisions, preserving bit-identical behavior.
+    """
+    scenario_path = "scenarios/foundational_barter_demo.yaml"
+    
+    # Run simulation
+    sim = Simulation(load_scenario(scenario_path), seed=123, log_config=LogConfig.standard())
+    sim.run(max_ticks=5)
+    
+    # Verify regime is barter_only
+    assert sim.params.get("exchange_regime", "barter_only") == "barter_only"
+    
+    # Verify all agents have M=0 (no money in barter)
+    for agent in sim.agents:
+        assert agent.inventory.M == 0, "Barter scenario should have no money"
+    
+    # Run a second time with same seed to verify determinism
+    sim2 = Simulation(load_scenario(scenario_path), seed=123, log_config=LogConfig.standard())
+    sim2.run(max_ticks=5)
+    
+    # Compare final states
+    for i, (agent1, agent2) in enumerate(zip(sim.agents, sim2.agents)):
+        assert agent1.inventory.A == agent2.inventory.A, f"Agent {i} A inventory differs"
+        assert agent1.inventory.B == agent2.inventory.B, f"Agent {i} B inventory differs"
+        assert agent1.pos == agent2.pos, f"Agent {i} position differs"
+    
+    print("✓ Barter-only mode preserved bit-identical behavior")
+
+

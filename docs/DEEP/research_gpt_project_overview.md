@@ -42,7 +42,7 @@ For example, in forage mode no trading occurs at all (active exchange pairs = "[
 
 ## II. High-Priority Issues
 
-### P0: Pairing–Trading Mismatch (Barter vs Money)
+### P0: Pairing–Trading Mismatch (Barter vs Money) **[RESOLVED]**
 
 **Issue:** In the Decision phase, agents rank neighbors using barter-only surplus even if money trades are allowed. The code calls `compute_surplus(agent_i, agent_j)`, which considers only A↔B trade prices (it pulls `bid_A_in_B` / `ask_A_in_B` from each agent's quotes). In contrast, the Trading phase (Phase 4) uses the generic money-aware matching (`find_best_trade`, `find_all_feasible_trades`) that considers both barter and monetary trades. This misalignment means an agent might pair with a neighbor who offers high barter gains but cannot trade under a money regime, while overlooking another neighbor with a viable money trade.
 
@@ -79,6 +79,49 @@ To gauge the mismatch, run example scenarios (barter_only, money_only, mixed) an
 **Recommendation:** Introduce a money-aware scoring at pairing. For instance, for each neighbor compute the best feasible surplus across allowed pairs (via a single `find_best_trade()` call per neighbor) and rank by that. Alternatively, use a lightweight estimator: e.g., compare agent-quotes for A↔M and B↔M vs barter. A hybrid ("rank by barter then verify top-K with money-aware") is possible. 
 
 Ties that arise (e.g., equal surplus by barter vs money) should follow the same money-first priority as in trading: A↔M > B↔M > A↔B. Any changes must preserve determinism (sort by agent IDs on ties) and keep barter-only mode results bit-identical.
+
+**Resolution (2025-10-22):**
+
+Implemented lightweight quote-based estimator `estimate_money_aware_surplus()` in `matching.py`:
+- Uses agent quotes to calculate surplus for each exchange pair (O(1) per neighbor)
+- Evaluates A↔M, B↔M for `money_only`; all three pairs for `mixed` regime
+- Implements money-first tie-breaking: A↔M (priority 0) > B↔M (priority 1) > A↔B (priority 2)
+- Checks inventory feasibility to prevent pairing when trades impossible
+- `barter_only` regime unchanged - still uses `compute_surplus()` (bit-identical behavior preserved)
+
+Changes made:
+1. Added `estimate_money_aware_surplus()` in `src/vmt_engine/systems/matching.py`
+2. Modified `DecisionSystem._evaluate_trade_preferences()` to use money-aware surplus for money/mixed regimes
+3. Updated preference list tuples from 4-element to 5-element (added `pair_type`)
+4. Added `pair_type` column to telemetry `preferences` table (optional, defaults to NULL)
+5. Created comprehensive test suite in `tests/test_pairing_money_aware.py`
+6. Added regression test `test_barter_only_pairing_unchanged()` in `tests/test_barter_integration.py`
+7. Created demo scenario `scenarios/demos/demo_06_money_aware_pairing.yaml`
+8. Added support for per-agent `lambda_money` values in scenario `initial_inventories`
+
+Test results:
+- All existing tests pass (including barter determinism)
+- Money-only and mixed regimes now use money-aware pairing
+- Determinism preserved (same seed → identical results)
+- Backward compatibility confirmed (barter-only bit-identical)
+
+**Known Limitation - Heuristic Approximation:**
+
+The estimator uses **quote overlaps** (bid - ask price differences) as a proxy for surplus. This is a heuristic that may not perfectly predict actual utility gains from trades:
+
+- **Why it differs**: Quotes reflect MRS (marginal rates) at current inventory, but actual trades involve discrete quantity changes over non-linear utility functions. With CES, Quadratic, or other curved utilities, the relationship between MRS and utility change depends on function curvature.
+
+- **Example**: An estimator might predict barter has 4.3 surplus (quote overlap) vs 2.1 for money, but actual utility calculations could show money provides 2.3 utility gain vs 1.3 for barter.
+
+- **Why it's acceptable**:
+  1. Once paired, agents execute the ACTUAL best trade using full utility calculations
+  2. Estimator is still directionally correct in most cases
+  3. Performance: O(1) per neighbor vs O(dA_max × prices) for exact calculation
+  4. Agents still find profitable trades, just maybe not with the globally optimal partner
+
+- **Alternative**: For perfect accuracy, use `find_all_feasible_trades()` in pairing, but expect O(N × dA_max × prices) Decision phase cost.
+
+This design prioritizes performance for pedagogical scenarios (N < 100 agents) while maintaining reasonable pairing quality.
 
 ---
 

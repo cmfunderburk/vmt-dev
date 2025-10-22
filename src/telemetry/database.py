@@ -324,9 +324,19 @@ class TelemetryDatabase:
                 surplus REAL NOT NULL,
                 discounted_surplus REAL NOT NULL,
                 distance INTEGER NOT NULL,
+                pair_type TEXT DEFAULT NULL,
                 FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id)
             )
         """)
+        
+        # Add pair_type column to existing preferences table if it doesn't exist (migration)
+        try:
+            cursor.execute("""
+                ALTER TABLE preferences ADD COLUMN pair_type TEXT DEFAULT NULL
+            """)
+        except sqlite3.OperationalError:
+            # Column already exists, skip
+            pass
         
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_preferences_run_tick 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from .matching import compute_surplus
+from .matching import compute_surplus, estimate_money_aware_surplus
 from .movement import choose_forage_target
 
 if TYPE_CHECKING:
@@ -117,7 +117,13 @@ class DecisionSystem:
                     # Cooldown expired, remove
                     del agent.trade_cooldowns[neighbor_id]
             
-            surplus = compute_surplus(agent, neighbor)
+            # Use regime-appropriate surplus calculation
+            exchange_regime = sim.params.get("exchange_regime", "barter_only")
+            if exchange_regime in ("money_only", "mixed", "mixed_liquidity_gated"):
+                surplus, pair_type = estimate_money_aware_surplus(agent, neighbor, exchange_regime)
+            else:
+                surplus = compute_surplus(agent, neighbor)
+                pair_type = "A<->B"  # Barter only
             
             if surplus > 0:
                 # Compute distance for discounting
@@ -126,7 +132,7 @@ class DecisionSystem:
                 # Beta-discounted surplus: surplus × β^distance
                 discounted_surplus = surplus * (beta ** distance)
                 
-                candidates.append((neighbor_id, surplus, discounted_surplus, distance))
+                candidates.append((neighbor_id, surplus, discounted_surplus, distance, pair_type))
         
         # Sort by (-discounted_surplus, neighbor_id) for deterministic ranking
         candidates.sort(key=lambda x: (-x[2], x[0]))
@@ -136,7 +142,13 @@ class DecisionSystem:
         
         # Set primary target (top of list) - only if agent is unpaired
         if candidates and agent.paired_with_id is None:
-            best_partner_id, best_surplus, best_discounted, best_dist = candidates[0]
+            # Unpack candidate tuple (now 5 elements with pair_type)
+            best_partner_id = candidates[0][0]
+            best_surplus = candidates[0][1]
+            best_discounted = candidates[0][2]
+            best_dist = candidates[0][3]
+            # pair_type = candidates[0][4]  # Available but not used here
+            
             partner = sim.agent_by_id[best_partner_id]
             agent.target_pos = partner.pos
             agent.target_agent_id = best_partner_id
@@ -204,8 +216,14 @@ class DecisionSystem:
                     partner.trade_cooldowns.pop(agent.id, None)
                     
                     # Get both agents' surpluses for logging
-                    surplus_i = compute_surplus(agent, partner)
-                    surplus_j = compute_surplus(partner, agent)
+                    # Use regime-appropriate surplus calculation
+                    exchange_regime = sim.params.get("exchange_regime", "barter_only")
+                    if exchange_regime in ("money_only", "mixed", "mixed_liquidity_gated"):
+                        surplus_i, _ = estimate_money_aware_surplus(agent, partner, exchange_regime)
+                        surplus_j, _ = estimate_money_aware_surplus(partner, agent, exchange_regime)
+                    else:
+                        surplus_i = compute_surplus(agent, partner)
+                        surplus_j = compute_surplus(partner, agent)
                     
                     # Log pairing event
                     sim.telemetry.log_pairing_event(
@@ -229,7 +247,14 @@ class DecisionSystem:
                 continue
             
             # Add all preferences to potential pairing list
-            for rank, (partner_id, surplus, discounted_surplus, distance) in enumerate(agent._preference_list):
+            for rank, pref_tuple in enumerate(agent._preference_list):
+                # Handle both old 4-tuple and new 5-tuple formats
+                if len(pref_tuple) == 5:
+                    partner_id, surplus, discounted_surplus, distance, pair_type = pref_tuple
+                else:
+                    partner_id, surplus, discounted_surplus, distance = pref_tuple
+                    pair_type = "A<->B"  # Default for backward compatibility
+                
                 partner = sim.agent_by_id[partner_id]
                 
                 # Only consider if partner is unpaired
@@ -268,7 +293,12 @@ class DecisionSystem:
                 
                 # Get both agents' surpluses for logging
                 surplus_i = surplus  # Already computed for this agent
-                surplus_j = compute_surplus(partner, agent)
+                # Use regime-appropriate surplus calculation
+                exchange_regime = sim.params.get("exchange_regime", "barter_only")
+                if exchange_regime in ("money_only", "mixed", "mixed_liquidity_gated"):
+                    surplus_j, _ = estimate_money_aware_surplus(partner, agent, exchange_regime)
+                else:
+                    surplus_j = compute_surplus(partner, agent)
                 
                 # Log pairing event with rank and surplus information
                 sim.telemetry.log_pairing_event(
@@ -317,15 +347,23 @@ class DecisionSystem:
                 
                 # Get surplus from preference list if available
                 surplus = None
-                for pid, s, ds, d in agent._preference_list:
-                    if pid == partner_id:
-                        surplus = s
-                        break
+                for pref_tuple in agent._preference_list:
+                    # Handle both old 4-tuple and new 5-tuple formats
+                    if len(pref_tuple) >= 4:
+                        pid = pref_tuple[0]
+                        s = pref_tuple[1]
+                        if pid == partner_id:
+                            surplus = s
+                            break
             
             elif agent._decision_target_type == "trade":
                 decision_type = "trade_unpaired"
                 partner_id = agent.target_agent_id
-                surplus = agent._preference_list[0][1] if agent._preference_list else None
+                # Handle both old 4-tuple and new 5-tuple formats
+                if agent._preference_list:
+                    surplus = agent._preference_list[0][1]
+                else:
+                    surplus = None
             
             else:
                 decision_type = agent._decision_target_type or "idle"
@@ -340,7 +378,14 @@ class DecisionSystem:
             # Legacy alternatives string (for backward compatibility)
             alternatives_str = ""
             if agent._preference_list:
-                alternatives_str = "; ".join([f"{pid}:{s:.4f}" for pid, s, _, _ in agent._preference_list[:5]])
+                alt_parts = []
+                for pref_tuple in agent._preference_list[:5]:
+                    # Handle both old 4-tuple and new 5-tuple formats
+                    if len(pref_tuple) >= 4:
+                        pid = pref_tuple[0]
+                        s = pref_tuple[1]
+                        alt_parts.append(f"{pid}:{s:.4f}")
+                alternatives_str = "; ".join(alt_parts)
             
             # Log decision
             target_x = agent.target_pos[0] if agent.target_pos else None
@@ -361,10 +406,17 @@ class DecisionSystem:
                 log_full = sim.params.get("log_full_preferences", False)
                 max_prefs = len(agent._preference_list) if log_full else min(3, len(agent._preference_list))
                 
-                for rank, (pid, surplus, discounted_surplus, distance) in enumerate(agent._preference_list[:max_prefs]):
+                for rank, pref_tuple in enumerate(agent._preference_list[:max_prefs]):
+                    # Handle both old 4-tuple and new 5-tuple formats
+                    if len(pref_tuple) == 5:
+                        pid, surplus, discounted_surplus, distance, pair_type = pref_tuple
+                    else:
+                        pid, surplus, discounted_surplus, distance = pref_tuple
+                        pair_type = "A<->B"  # Default for backward compatibility
+                    
                     sim.telemetry.log_preference(
                         sim.tick, agent.id, pid, rank, surplus, 
-                        discounted_surplus, distance
+                        discounted_surplus, distance, pair_type=pair_type
                     )
             
             # Clear temporary decision context
