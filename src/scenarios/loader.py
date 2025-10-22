@@ -62,6 +62,10 @@ def load_scenario(path: str) -> ScenarioConfig:
             resource_max_amount=params_data.get('resource_max_amount', 5),
             resource_regen_cooldown=params_data.get('resource_regen_cooldown', 5),
             trade_cooldown_ticks=params_data.get('trade_cooldown_ticks', 5),
+            trade_execution_mode=params_data.get('trade_execution_mode', "minimum"),
+            # Resource claiming params
+            enable_resource_claiming=params_data.get('enable_resource_claiming', True),
+            enforce_single_harvester=params_data.get('enforce_single_harvester', True),
             # Money params (with defaults from schema)
             exchange_regime=params_data.get('exchange_regime', "barter_only"),
             money_mode=params_data.get('money_mode', "quasilinear"),

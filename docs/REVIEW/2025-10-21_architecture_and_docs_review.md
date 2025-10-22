@@ -16,7 +16,7 @@ However, there are several high-impact misalignments and documentation gaps that
 - P0 Documentation: Multiple referenced guides do not exist (user_guide_money.md, regime_comparison.md, technical/money_implementation.md, quick_reference.md, scenario_generator.md). The README links are broken.
 - P1 Versioning Policy: README forbids numeric versioning but the project needs SemVer pre-release (0.0.1). Badges also claim “money system v1.0,” which conflicts with pre-release status.
 - P1 Architectural Modularity: Search/Match/Bargain/Execute logic is mostly concentrated in `matching.py`/`trading.py`. It’s coherent, but lacks explicit protocol interfaces to enable swappable strategies.
-- P1 Planning Drift: Initial plan emphasized “no databases” and PyQt6; current code uses SQLite telemetry (good choice) and PyQt5. This is fine, but should be acknowledged and aligned in docs.
+- P1 Planning Drift: Initial plan emphasized "no databases" and PyQt6; current code uses SQLite telemetry (good choice) and PyQt6 (migrated 2025-10-22). Both are acknowledged and aligned in docs.
 - P2 Roadmap Claims vs Code: “mixed_liquidity_gated” regime appears in schema but gating logic is marked as future in code comments. The docs imply broader completion than implemented.
 
 Recommended immediate actions before 0.0.1:

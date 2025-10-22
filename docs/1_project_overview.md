@@ -2,7 +2,7 @@
 
 [![Tests](https://img.shields.io/badge/tests-316%2B%20passing-brightgreen)]()
 [![Python](https://img.shields.io/badge/python-3.11-blue)]()
-[![GUI](https://img.shields.io/badge/GUI-PyQt5-green)]()
+[![GUI](https://img.shields.io/badge/GUI-PyQt6-green)]()
 
 **A spatial agent-based simulation for teaching and researching microeconomic behavior through visualization.**
 
@@ -104,7 +104,7 @@ python main.py scenarios/single_agent_forage.yaml 123
 - **🎮 Pygame Visualization** - Interactive real-time rendering with smart co-location and target arrows
 - **🖥️ GUI Launcher** - Browse scenarios and create custom ones through forms
 - **⚡ CLI Scenario Generator** - Generate valid scenarios in < 0.1s with random parameters
-- **📊 SQLite Telemetry** - High-performance database logging with interactive PyQt5 viewer
+- **📊 SQLite Telemetry** - High-performance database logging with interactive PyQt6 viewer
 - **🎯 Deterministic** - Same seed → identical results every time
 - **⚙️ YAML Configuration** - Easy scenario customization (manual, GUI, or CLI)
 - **⚡ Performance Optimized** - O(N) agent interactions via spatial indexing and trade pairing
@@ -144,7 +144,7 @@ The telemetry database includes comprehensive tables:
 
 ### Interactive Log Viewer
 
-Use the PyQt5-based log viewer to explore simulation data:
+Use the PyQt6-based log viewer to explore simulation data:
 
 ```bash
 python view_logs.py

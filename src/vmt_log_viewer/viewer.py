@@ -4,13 +4,13 @@ Main log viewer window for analyzing simulation data.
 
 import sys
 from pathlib import Path
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QFileDialog, QTabWidget, QTableWidget,
     QTableWidgetItem, QSplitter, QMessageBox, QComboBox, QGroupBox
 )
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QFont
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QFont
 
 from telemetry.database import TelemetryDatabase
 from .queries import QueryBuilder
@@ -501,7 +501,7 @@ def main():
     app = QApplication(sys.argv)
     viewer = LogViewerWindow()
     viewer.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == '__main__':

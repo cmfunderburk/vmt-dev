@@ -51,6 +51,7 @@ class Simulation:
             'resource_max_amount': scenario_config.params.resource_max_amount,
             'resource_regen_cooldown': scenario_config.params.resource_regen_cooldown,
             'trade_cooldown_ticks': scenario_config.params.trade_cooldown_ticks,
+            'trade_execution_mode': scenario_config.params.trade_execution_mode,
             # Resource claiming system parameters
             'enable_resource_claiming': scenario_config.params.enable_resource_claiming,
             'enforce_single_harvester': scenario_config.params.enforce_single_harvester,

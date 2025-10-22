@@ -2,12 +2,12 @@
 Trade view widget for analyzing trades.
 """
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
     QTableWidgetItem, QLabel, QPushButton, QGroupBox
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont
 
 from ..queries import QueryBuilder
 

@@ -310,9 +310,17 @@ For a sample configuration (3 agents, mixed regime, tick=10), step through each 
 
 1. **Perception:** Agent 0 sees neighbors (IDs 1 and 2) and nearby resources. The perception cache holds these lists.
 
-2. **Decision:** `_evaluate_trade_preferences` calls `compute_surplus(0,1)` and `compute_surplus(0,2)`. Suppose `compute_surplus(0,1)` > `compute_surplus(0,2)`. Agent 0 tentatively targets 1 (if >0).
+2. **Decision:** 
+   - In **trade-only** or **forage-only** mode: Agent evaluates only the available activity
+   - In **both** mode (forage + trade enabled): Agent compares best trade vs best forage:
+     - `_evaluate_trade_preferences` builds ranked list of trade partners by discounted surplus: `surplus × β^distance`
+     - `_evaluate_trade_vs_forage` calculates best forage score: `delta_u × β^distance` 
+     - Agent chooses whichever activity has **higher score** (economically optimal)
+   - Example: Agent 0 has neighbors 1,2 with trade scores (5.2, 3.1) and forage opportunity with score 4.0
+     - Agent 0 chooses to trade with Agent 1 (5.2 > 4.0 > 3.1)
+     - If forage score were 6.0, agent would forage instead (6.0 > 5.2)
 
-3. **Pairing:** If Agent 1's best target is 0 (mutual consent), they pair. Otherwise, Agent 0 might fallback to best available.
+3. **Pairing:** If Agent 1's best target is also Agent 0 (mutual consent), they pair. Otherwise, Agent 0 might get paired via fallback algorithm (Pass 3: best-available greedy matching).
 
 4. **Movement:** A paired agent moves one step toward its partner's position (Manhattan).
 
@@ -413,7 +421,7 @@ Create or stub the missing guides (high priority before v0.0.1):
 - **Technical Money Implementation:** Detailed notes on matching algorithms, quotes, and how money is integrated (for developers)
 - **Scenario Generator Guide:** Instructions on creating YAML scenarios, especially for mixed/money cases
 
-Also fix READMEs (broken links to missing docs), and update versioning policy to SemVer 0.0.1. Note that PyQt5 and SQLite are intentionally used (add to tech manual).
+Also fix READMEs (broken links to missing docs), and update versioning policy to SemVer 0.0.1. Note that PyQt6 and SQLite are intentionally used (add to tech manual).
 
 ---
 

@@ -5,7 +5,7 @@
 # Seed 42 for deterministic reproducibility
 
 schema_version: 1
-name: perf_both_modes
+name: big_test_money
 N: 50
 agents: 400
 # Moderate randomized inventories per agent (range 100-350)

@@ -20,11 +20,11 @@ Scope: Compare current project status (code + docs) against the original plannin
 - Assessment: Strong architectural and educational improvement (reproducibility, fast analysis, compact logs).
 - Action: Update planning narrative to explicitly endorse local SQLite as a zero-external-dependency store.
 
-2) PyQt6 Plan vs PyQt5 in Practice
+2) PyQt6 Migration (2025-10-22)
 - Original plan suggested PyQt6 with Pygame embedding.
-- Current implementation and requirements standardize on PyQt5.
-- Assessment: Pragmatic choice; educational impact neutral; lowers friction.
-- Action: Record an ADR: stay on PyQt5 unless PyQt6 unlocks clear advantages; update docs accordingly.
+- Implementation initially used PyQt5 for pragmatic reasons.
+- **Status (2025-10-22): Migrated to PyQt6** - proactive migration completed before accumulating PyQt5-specific dependencies.
+- Assessment: Forward-looking choice; ensures compatibility with modern Qt ecosystem.
 
 3) MVP Utility Scope vs Implemented Breadth
 - MVP emphasized three classic preferences (Cobb-Douglas/CES, Perfect Substitutes, Leontief).
@@ -56,7 +56,7 @@ Scope: Compare current project status (code + docs) against the original plannin
 
 - Add an ADR set acknowledging:
   - Local SQLite telemetry adoption and rationale.
-  - PyQt5 standardization and migration criteria for PyQt6 (if ever needed).
+  - PyQt6 migration completed (2025-10-22).
   - Expanded utility scope and educational rationale.
 - Adopt SemVer 0.0.1 and update README badges/policy; maintain a CHANGELOG (Keep a Changelog).
 - Add the missing guides or stubs with status/ETA: user_guide_money.md, regime_comparison.md, technical/money_implementation.md, quick_reference.md, guides/scenario_generator.md.
@@ -66,7 +66,7 @@ Scope: Compare current project status (code + docs) against the original plannin
 ## Minimal Action List (to close alignment gaps)
 
 - Pairing: Introduce money-aware neighbor scoring when exchange_regime ∈ {money_only, mixed}; keep deterministic tie-breaking; add tests.
-- Docs: Replace broken links with real content or stubs; update dependency targets (PyQt5) and the “local database” rationale.
+- Docs: Replace broken links with real content or stubs; update dependency targets (PyQt6) and the "local database" rationale.
 - Versioning: Switch to 0.0.1 and harmonize badges and policy text.
 
 ---

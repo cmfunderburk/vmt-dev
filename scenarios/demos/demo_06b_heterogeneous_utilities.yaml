@@ -23,7 +23,8 @@ N: 12
 agents: 6
 
 params:
-  exchange_regime: "mixed"  # Allow all trade types: A↔B, A↔M, B↔M
+  trade_execution_mode: "maximum"
+  exchange_regime: money_only  # Allow only monetary trades
   vision_radius: 12         # See entire grid
   interaction_radius: 1     # Must be adjacent to trade
   move_budget_per_tick: 1   # Move 2 cells per tick
@@ -123,8 +124,8 @@ agent_positions:
   - [7, 8]    # Agent 5 (Linear) - adjacent to 2 & 4
 
 resource_seed:
-  density: 0.1  # Minimal resources (trade-focused scenario)
-  amount: 5
+  density: 0.05  # Minimal resources (trade-focused scenario)
+  amount: 1
 
 # Expected Behavior:
 # ==================

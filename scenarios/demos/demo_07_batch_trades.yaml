@@ -1,0 +1,76 @@
+# Demo 7: Batch Trade Execution Modes
+# 
+# Pedagogical Goal: Understanding Trade Batch Sizes
+# 
+# This scenario demonstrates the difference between minimum and maximum batch
+# trade execution modes. Agents start with large inventories and compatible
+# preferences, allowing for substantial trades.
+#
+# Key Teaching Points:
+# - Trade execution modes: minimum vs maximum
+# - Minimum mode: Execute smallest mutually beneficial trade (pedagogical)
+# - Maximum mode: Execute largest mutually beneficial trade at chosen price (efficient)
+# - Compare convergence speed and number of trades between modes
+# - Both modes reach same equilibrium, but at different speeds
+#
+# Suggested Exercise:
+# 1. Run with trade_execution_mode: minimum (default) and count trades to convergence
+# 2. Run with trade_execution_mode: maximum and observe faster convergence
+# 3. Compare total welfare gains (should be similar) and convergence time
+
+schema_version: 1
+name: "Demo 7: Batch Trade Execution Modes"
+N: 15
+agents: 6
+
+initial_inventories:
+  A: [25, 5, 20, 10, 15, 8]
+  B: [5, 25, 10, 20, 8, 15]
+  M: [200, 200, 200, 200, 200, 200]
+
+utilities:
+  mix:
+    - type: ces
+      weight: 1.0
+      params:
+        rho: 0.5
+        wA: 0.6
+        wB: 0.4
+
+params:
+  spread: 0.1
+  vision_radius: 15
+  interaction_radius: 1
+  move_budget_per_tick: 3
+  dA_max: 10  # Allow larger trade batches for maximum mode to be effective
+  forage_rate: 1
+  
+  # Trade execution mode: Try switching between "minimum" and "maximum"
+  # - minimum: Execute smallest beneficial trade (default, pedagogical)
+  # - maximum: Execute largest beneficial trade at the chosen price (efficient)
+  trade_execution_mode: minimum
+  
+  exchange_regime: money_only
+  money_mode: quasilinear
+  money_scale: 1
+  lambda_money: 1.0
+
+resource_seed:
+  density: 0.1
+  amount: 3
+
+# Recommended Workflow:
+# 1. Run with trade_execution_mode: minimum for 100 ticks
+#    - Observe: Many small trades, gradual convergence
+#    - Agents stay paired and trade repeatedly at small quantities
+# 
+# 2. Run with trade_execution_mode: maximum for 100 ticks  
+#    - Observe: Fewer but larger trades, faster convergence
+#    - Each trade moves more inventory, reaching equilibrium faster
+#
+# 3. Compare telemetry:
+#    - Total trades: minimum mode will show more trade events
+#    - Trade sizes: maximum mode will show larger dA/dB/dM values
+#    - Final utilities: Should be similar (both reach equilibrium)
+#    - Convergence speed: maximum mode reaches equilibrium in fewer ticks
+

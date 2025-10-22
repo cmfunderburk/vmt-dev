@@ -2,11 +2,11 @@
 Timeline widget for scrubbing through simulation ticks.
 """
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QSlider, QLabel,
     QPushButton, QSpinBox
 )
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
 
 
 class TimelineWidget(QWidget):
@@ -53,7 +53,7 @@ class TimelineWidget(QWidget):
         controls_layout.addWidget(self.next_btn)
         
         # Slider
-        self.slider = QSlider(Qt.Horizontal)
+        self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.setMinimum(0)
         self.slider.setMaximum(100)
         self.slider.setValue(0)

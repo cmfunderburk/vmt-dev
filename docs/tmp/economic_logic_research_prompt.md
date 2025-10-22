@@ -350,7 +350,7 @@ Based on findings, propose:
 
 **Update existing docs:**
 - [ ] `README.md`: Fix broken links, align versioning policy (adopt 0.0.1)
-- [ ] `docs/1_project_overview.md`: Acknowledge SQLite telemetry and PyQt5 as intentional choices
+- [x] `docs/1_project_overview.md`: Acknowledge SQLite telemetry and PyQt6 as intentional choices
 - [ ] `.github/copilot-instructions.md`: Add money-aware pairing status and API migration plan
 
 ---

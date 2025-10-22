@@ -4,14 +4,14 @@ Scenario builder dialog for creating custom scenarios.
 
 import yaml
 from pathlib import Path
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, QWidget,
     QPushButton, QLabel, QLineEdit, QFormLayout, QScrollArea,
     QMessageBox, QFileDialog, QTableWidget, QTableWidgetItem,
     QComboBox, QDoubleSpinBox, QSpinBox, QCheckBox, QSlider,
     QGroupBox, QTextBrowser, QSplitter
 )
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 from .validator import ScenarioValidator, ValidationError
 
 # Default directory to save scenarios
@@ -185,10 +185,10 @@ class ScenarioBuilderDialog(QDialog):
         
         # Resource density with slider
         density_layout = QHBoxLayout()
-        self.density_slider = QSlider(Qt.Horizontal)
+        self.density_slider = QSlider(Qt.Orientation.Horizontal)
         self.density_slider.setRange(0, 100)
         self.density_slider.setValue(10)
-        self.density_slider.setTickPosition(QSlider.TicksBelow)
+        self.density_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.density_slider.setTickInterval(10)
         self.density_label = QLabel("0.10")
         self.density_slider.valueChanged.connect(
@@ -232,7 +232,7 @@ class ScenarioBuilderDialog(QDialog):
         tab.setLayout(main_layout)
         
         # Create splitter for resizable panels
-        splitter = QSplitter(Qt.Horizontal)
+        splitter = QSplitter(Qt.Orientation.Horizontal)
         main_layout.addWidget(splitter)
         
         # Left panel - utility configuration

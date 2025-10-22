@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **GUI Framework Migration** (2025-10-22): Migrated from PyQt5 to PyQt6
+  - Updated all imports from `PyQt5` to `PyQt6`
+  - Updated Qt enum references to use proper namespaces (e.g., `Qt.UserRole` → `Qt.ItemDataRole.UserRole`)
+  - Replaced deprecated `exec_()` with `exec()`
+  - Updated documentation and requirements.txt
+
 ## [Pre-release: Money Track 1 WP3 (quasilinear) - 2025-10-21]
 
 ### Added
@@ -184,19 +191,19 @@ See `docs/BIG/PHASE1_COMPLETION_SUMMARY.md`, `docs/BIG/PHASE2_PR_DESCRIPTION.md`
 ## [0.2.0] - 2025-10-12
 
 ### Added - GUI Launcher & Scenario Builder
-- **GUI Launcher**: Added a PyQt5-based GUI (`launcher.py`) for browsing, selecting, and running scenarios with a specified seed.
+- **GUI Launcher**: Added a PyQt6-based GUI (`launcher.py`) for browsing, selecting, and running scenarios with a specified seed.
 - **Scenario Builder**: Implemented a comprehensive, tabbed GUI dialog for creating and saving custom `.yaml` scenarios from scratch, eliminating the need for manual YAML editing.
 - **Input Validation**: Added a robust validator to the scenario builder to provide real-time feedback and prevent the creation of invalid scenarios.
 - **In-Context Documentation**: Embedded a rich HTML documentation panel directly into the scenario builder's "Utility Functions" tab to explain economic concepts and parameters.
 
 ### Added - SQLite Telemetry System Overhaul
 - **Database Backend**: Replaced the entire CSV-based logging system with a SQLite backend.
-- **Interactive Log Viewer**: Created a new standalone PyQt5 application (`view_logs.py`) for interactively exploring simulation data. Features include a timeline scrubber, detailed agent state analysis, trade history, and CSV export functionality.
+- **Interactive Log Viewer**: Created a new standalone PyQt6 application (`view_logs.py`) for interactively exploring simulation data. Features include a timeline scrubber, detailed agent state analysis, trade history, and CSV export functionality.
 - **Structured Logging**: Implemented multiple log levels (SUMMARY, STANDARD, DEBUG) and a structured database schema to capture detailed information about agent states, trades, decisions, and resources.
 
 ### Changed
 - **Project Structure**: Refactored the project into a `src/` layout for better organization and scalability.
-- **Dependencies**: Added `PyQt5` to `requirements.txt`.
+- **Dependencies**: Added `PyQt6` to `requirements.txt`.
 - **Documentation**: Overhauled the `docs/` folder, consolidating planning documents and creating the `1_project_overview.md`, `2_technical_manual.md`, and `3_strategic_roadmap.md` as the new single sources of truth.
 
 ---

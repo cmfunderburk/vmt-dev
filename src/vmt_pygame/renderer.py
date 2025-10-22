@@ -402,7 +402,7 @@ class VMTRenderer:
             # Single agent - draw inventory below (current behavior)
             agent = agents[0]
             if has_money:
-                inv_text = f"A:{agent.inventory.A} B:{agent.inventory.B} M:{agent.inventory.M}"
+                inv_text = f"A:{agent.inventory.A} B:{agent.inventory.B} $:{agent.inventory.M}"
             else:
                 inv_text = f"A:{agent.inventory.A} B:{agent.inventory.B}"
             
@@ -414,7 +414,7 @@ class VMTRenderer:
             # 2-3 agents - stack labels vertically
             for idx, agent in enumerate(agents):
                 if has_money:
-                    inv_text = f"[{agent.id}] A:{agent.inventory.A} B:{agent.inventory.B} M:{agent.inventory.M}"
+                    inv_text = f"[{agent.id}] A:{agent.inventory.A} B:{agent.inventory.B} $:{agent.inventory.M}"
                 else:
                     inv_text = f"[{agent.id}] A:{agent.inventory.A} B:{agent.inventory.B}"
                 
@@ -938,7 +938,7 @@ class VMTRenderer:
         has_money = total_M > 0 or self.sim.params.get('exchange_regime') in ('money_only', 'mixed')
         
         if has_money:
-            inv_text = f"Total Inventory - A: {total_A}  B: {total_B}  M: {total_M}"
+            inv_text = f"Total Inventory - A: {total_A}  B: {total_B}  $: {total_M}"
         else:
             inv_text = f"Total Inventory - A: {total_A}  B: {total_B}"
         
@@ -1007,10 +1007,10 @@ class VMTRenderer:
                 # Monetary trade
                 if dA > 0:
                     # Good A for money
-                    trade_text = f"T{tick}: {buyer} buys {dA}A from {seller} for {dM}M @ {price:.2f}"
+                    trade_text = f"T{tick}: {buyer} buys {dA}A from {seller} for ${dM} @ {price:.2f}"
                 elif dB > 0:
                     # Good B for money
-                    trade_text = f"T{tick}: {buyer} buys {dB}B from {seller} for {dM}M @ {price:.2f}"
+                    trade_text = f"T{tick}: {buyer} buys {dB}B from {seller} for ${dM} @ {price:.2f}"
                 else:
                     trade_text = f"T{tick}: Monetary trade"
             else:

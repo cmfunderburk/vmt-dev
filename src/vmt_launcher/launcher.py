@@ -5,13 +5,13 @@ Main launcher window for VMT simulation.
 import sys
 import os
 from pathlib import Path
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QListWidget, QLineEdit, QLabel,
     QMessageBox, QApplication, QFrame
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIntValidator
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIntValidator
 from .scenario_builder import ScenarioBuilderDialog
 
 # Assumes the script is run from the project root
@@ -125,7 +125,7 @@ class LauncherWindow(QMainWindow):
             self.scenario_list.addItem(filename)
             # Store full path in item data
             item = self.scenario_list.item(self.scenario_list.count() - 1)
-            item.setData(Qt.UserRole, full_path)
+            item.setData(Qt.ItemDataRole.UserRole, full_path)
         
         self.status_label.setText(f"Status: Found {len(scenarios)} scenario(s)")
         self.status_label.setStyleSheet("color: green;")
@@ -136,14 +136,14 @@ class LauncherWindow(QMainWindow):
     
     def on_scenario_selected(self, item):
         """Handle scenario selection."""
-        self.selected_scenario = item.data(Qt.UserRole)
+        self.selected_scenario = item.data(Qt.ItemDataRole.UserRole)
         self.status_label.setText(f"Status: Selected {item.text()}")
         self.status_label.setStyleSheet("color: blue;")
     
     def open_scenario_builder(self):
         """Open the scenario builder dialog."""
         dialog = ScenarioBuilderDialog(self)
-        if dialog.exec_():
+        if dialog.exec():
             # Scenario was created, refresh the list
             self.refresh_scenarios()
             
@@ -153,7 +153,7 @@ class LauncherWindow(QMainWindow):
                 # Find item by matching the full path stored in UserRole
                 for i in range(self.scenario_list.count()):
                     item = self.scenario_list.item(i)
-                    if item.data(Qt.UserRole) == str(new_file_path):
+                    if item.data(Qt.ItemDataRole.UserRole) == str(new_file_path):
                         self.scenario_list.setCurrentItem(item)
                         self.on_scenario_selected(item)
                         break
@@ -226,7 +226,7 @@ def main():
     app = QApplication(sys.argv)
     window = LauncherWindow()
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":

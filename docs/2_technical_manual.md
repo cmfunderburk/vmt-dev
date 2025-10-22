@@ -194,6 +194,28 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
 -   **Performance**: Reduces trade phase from O(N²) distance checks to O(P) where P = paired count (typically P ≤ N/2). Decision phase remains O(N·k) where k = average neighbors.
 -   **Pedagogical Note**: Agents can commit to distant partners and spend many ticks moving toward them while ignoring other opportunities. Once paired, they execute multiple sequential trades. This demonstrates opportunity cost of commitment and iterative bilateral exchange.
 
+#### Economic Decision-Making: Trade vs Forage Comparison
+-   **Motivation**: When both trading and foraging are available (mode = "both"), agents must decide which activity offers higher utility gain. This is a fundamental economic choice: should I gather resources or exchange with others?
+-   **Comparable Scoring**: Both activities are measured in utility units with identical distance discounting:
+    *   **Trade score**: `surplus × β^distance` where surplus = bilateral utility gain from best feasible trade
+    *   **Forage score**: `delta_u × β^distance` where delta_u = utility gain from harvesting best resource
+    *   Both use the same β (discount factor parameter), making direct comparison economically valid
+-   **Decision Rule** (`_evaluate_trade_vs_forage` in `src/vmt_engine/systems/decision.py`):
+    1.  Evaluate all visible trade partners, rank by discounted surplus (done in `_evaluate_trade_preferences`)
+    2.  Evaluate all available resources, calculate best forage score using `choose_forage_target`
+    3.  **Choose whichever activity has the higher score**
+    4.  If trade chosen: Set target to best partner and participate in pairing algorithm
+    5.  If forage chosen: Claim resource and set foraging commitment (persists until harvest)
+-   **Example**: Agent with neighbors offering trade scores (5.2, 3.1) and forage opportunity with score 4.0:
+    *   Agent chooses trading with best partner (5.2 > 4.0 > 3.1)
+    *   If forage score were 6.0, agent would forage instead (6.0 > 5.2)
+    *   This implements rational utility-maximizing behavior
+-   **Mode Behavior**:
+    *   **mode = "trade"**: Only trade opportunities evaluated (forage unavailable)
+    *   **mode = "forage"**: Only forage opportunities evaluated (trade unavailable)
+    *   **mode = "both"**: Full comparison as described above (economically optimal)
+-   **Historical Note**: Prior to this implementation, agents used lexicographic preferences ("trade if any opportunity exists, otherwise forage"), which was not economically correct. The current system properly balances opportunity costs.
+
 #### Money System (v1.0 — Phases 1-4 Complete)
 -   **Money as Good**: Money holdings (`M`) are stored as integers in minor units (e.g., cents). The `money_scale` parameter converts between whole units and minor units (default: 1 = no conversion).
 -   **Exchange Regimes**: The `exchange_regime` parameter controls allowed exchange types:

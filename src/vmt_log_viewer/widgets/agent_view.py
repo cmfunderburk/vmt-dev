@@ -2,12 +2,12 @@
 Agent-focused view widget for detailed agent analysis.
 """
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
     QTableWidgetItem, QLabel, QComboBox, QPushButton, QSplitter
 )
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QFont
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QFont
 
 from ..queries import QueryBuilder
 
@@ -50,7 +50,7 @@ class AgentViewWidget(QWidget):
         layout.addLayout(controls)
         
         # Splitter for main content
-        splitter = QSplitter(Qt.Vertical)
+        splitter = QSplitter(Qt.Orientation.Vertical)
         
         # Agent state at current tick
         state_widget = QWidget()

@@ -10,7 +10,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 
 from vmt_log_viewer import LogViewerWindow
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 
 def main():
@@ -18,7 +18,7 @@ def main():
     app = QApplication(sys.argv)
     viewer = LogViewerWindow()
     viewer.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == '__main__':

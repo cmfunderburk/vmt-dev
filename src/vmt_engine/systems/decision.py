@@ -60,12 +60,12 @@ class DecisionSystem:
             if sim.current_mode in ("trade", "both"):
                 self._evaluate_trade_preferences(agent, view, sim)
             
-            # Case 3: Mixed mode with no trade target - fall back to forage
-            if sim.current_mode == "both" and agent.target_agent_id is None:
-                self._evaluate_forage_target(agent, view, sim)
+            # Case 3: Mixed mode - compare best trade vs best forage, choose higher
+            if sim.current_mode == "both":
+                self._evaluate_trade_vs_forage(agent, view, sim)
             
             # Case 4: Pure forage mode
-            if sim.current_mode == "forage":
+            elif sim.current_mode == "forage":
                 self._evaluate_forage_target(agent, view, sim)
     
     def _handle_paired_agent_pass1(self, agent: "Agent", sim: "Simulation") -> None:
@@ -182,6 +182,68 @@ class DecisionSystem:
             agent.is_foraging_committed = True
             agent.forage_target_pos = target
         else:
+            agent.target_pos = None
+            agent.target_agent_id = None
+            agent._decision_target_type = "idle"
+    
+    def _evaluate_trade_vs_forage(self, agent: "Agent", view: dict, sim: "Simulation") -> None:
+        """
+        In 'both' mode, compare best trade opportunity vs best forage opportunity.
+        Choose whichever has higher distance-discounted utility gain.
+        
+        Both are measured in comparable utility units with β^distance discount,
+        so direct comparison is economically valid.
+        """
+        # Get best trade score from preference list (already computed in _evaluate_trade_preferences)
+        best_trade_score = 0.0
+        has_trade_target = False
+        if agent._preference_list:
+            # Preference list is sorted by discounted_surplus descending
+            # Format: (partner_id, surplus, discounted_surplus, distance, pair_type)
+            best_trade_score = agent._preference_list[0][2]  # discounted_surplus
+            has_trade_target = agent.target_agent_id is not None
+        
+        # Calculate best forage score using existing helper
+        resource_cells = view.get("resource_cells", [])
+        available = self._filter_claimed_resources(resource_cells, sim, agent.id)
+        
+        best_forage_target = choose_forage_target(
+            agent, available, sim.params["beta"], sim.params["forage_rate"]
+        )
+        
+        # Calculate forage score for comparison
+        best_forage_score = 0.0
+        if best_forage_target and agent.utility:
+            current_u = agent.utility.u(agent.inventory.A, agent.inventory.B)
+            distance = abs(best_forage_target[0] - agent.pos[0]) + abs(best_forage_target[1] - agent.pos[1])
+            
+            # Determine resource type and calculate utility gain
+            cell = sim.grid.get_cell(best_forage_target[0], best_forage_target[1])
+            harvest_amount = min(cell.resource.amount, sim.params["forage_rate"])
+            
+            if cell.resource.type == "A":
+                new_u = agent.utility.u(agent.inventory.A + harvest_amount, agent.inventory.B)
+            else:  # "B"
+                new_u = agent.utility.u(agent.inventory.A, agent.inventory.B + harvest_amount)
+            
+            delta_u = new_u - current_u
+            best_forage_score = delta_u * (sim.params["beta"] ** distance)
+        
+        # Decision: Choose activity with higher score
+        if has_trade_target and best_trade_score > best_forage_score:
+            # Keep trade target (already set by _evaluate_trade_preferences)
+            # agent.target_agent_id and agent.target_pos are already correct
+            pass
+        elif best_forage_target is not None:
+            # Override trade target with forage target
+            self._claim_resource(sim, agent.id, best_forage_target)
+            agent.target_pos = best_forage_target
+            agent.target_agent_id = None
+            agent._decision_target_type = "forage"
+            agent.is_foraging_committed = True
+            agent.forage_target_pos = best_forage_target
+        else:
+            # No good options (both scores <= 0)
             agent.target_pos = None
             agent.target_agent_id = None
             agent._decision_target_type = "idle"
