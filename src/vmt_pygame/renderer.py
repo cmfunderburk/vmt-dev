@@ -4,7 +4,7 @@ Pygame visualization for VMT simulation.
 
 import pygame
 import math
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from vmt_engine.simulation import Simulation
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class VMTRenderer:
     """Renders VMT simulation using Pygame."""
     
-    def __init__(self, simulation: 'Simulation', cell_size: int = None):
+    def __init__(self, simulation: 'Simulation', cell_size: Optional[int] = None):
         """
         Initialize renderer with automatic display scaling.
         
@@ -59,6 +59,9 @@ class VMTRenderer:
         )
         
         # Set window size (capped to available space)
+        # Add space for left info panel (250px width)
+        self.left_panel_width = 250
+        
         if self.needs_scrolling:
             self.width = min(grid_pixel_size, available_width)
             self.height = min(grid_pixel_size, available_height)
@@ -69,7 +72,8 @@ class VMTRenderer:
         # Store HUD height
         self.hud_height = HUD_HEIGHT
         
-        # Add HUD height to total window height
+        # Total window dimensions including left panel
+        self.total_window_width = self.width + self.left_panel_width
         self.window_height = self.height + HUD_HEIGHT
         
         # Initialize camera offset for scrolling
@@ -77,7 +81,7 @@ class VMTRenderer:
         self.camera_y = 0
         
         # Create window
-        self.screen = pygame.display.set_mode((self.width, self.window_height))
+        self.screen = pygame.display.set_mode((self.total_window_width, self.window_height))
         scenario_name = simulation.config.name
         seed = simulation.seed
         pygame.display.set_caption(f"VMT v1 - {scenario_name} (seed: {seed})")
@@ -121,6 +125,9 @@ class VMTRenderer:
         # Colors for money
         self.COLOR_GOLD = (255, 215, 0)
         self.COLOR_DARK_GOLD = (218, 165, 32)
+        
+        # Exchange rate tracking
+        self.trade_history = []  # List of (tick, exchange_pair_type, rate) tuples
     
     def handle_camera_input(self, keys):
         """Handle camera movement with arrow keys."""
@@ -142,22 +149,25 @@ class VMTRenderer:
             self.camera_y = min(max_y, self.camera_y + SCROLL_SPEED)
     
     def to_screen_coords(self, grid_x, grid_y):
-        """Convert grid coordinates to screen coordinates with camera offset."""
+        """Convert grid coordinates to screen coordinates with camera offset and left panel."""
         return (
-            grid_x * self.cell_size - self.camera_x,
+            self.left_panel_width + grid_x * self.cell_size - self.camera_x,
             grid_y * self.cell_size - self.camera_y
         )
     
     def is_visible(self, screen_x, screen_y):
-        """Check if coordinates are visible in current viewport."""
+        """Check if coordinates are visible in current viewport (accounting for left panel)."""
         return (
-            -self.cell_size <= screen_x <= self.width + self.cell_size and
+            self.left_panel_width - self.cell_size <= screen_x <= self.total_window_width + self.cell_size and
             -self.cell_size <= screen_y <= self.height + self.cell_size
         )
     
     def render(self):
         """Render the current simulation state."""
         self.screen.fill(self.COLOR_WHITE)
+        
+        # Draw left info panel first
+        self.draw_left_panel()
         
         self.draw_grid()
         self.draw_resources()
@@ -186,7 +196,7 @@ class VMTRenderer:
         end_y = min(self.sim.grid.N, (self.camera_y + self.height) // self.cell_size + 1)
         
         for x in range(start_x, end_x + 1):
-            screen_x = x * self.cell_size - self.camera_x
+            screen_x = self.left_panel_width + x * self.cell_size - self.camera_x
             pygame.draw.line(
                 self.screen, self.COLOR_GRAY,
                 (screen_x, 0), (screen_x, self.height),
@@ -197,7 +207,7 @@ class VMTRenderer:
             screen_y = y * self.cell_size - self.camera_y
             pygame.draw.line(
                 self.screen, self.COLOR_GRAY,
-                (0, screen_y), (self.width, screen_y),
+                (self.left_panel_width, screen_y), (self.total_window_width, screen_y),
                 1
             )
     
@@ -649,6 +659,10 @@ class VMTRenderer:
             if is_forage and not self.show_forage_arrows:
                 continue
             
+            # Skip if no target position (should not happen given earlier check)
+            if agent.target_pos is None:
+                continue
+            
             # Convert positions to screen coordinates
             agent_x, agent_y = agent.pos
             target_x, target_y = agent.target_pos
@@ -950,10 +964,10 @@ class VMTRenderer:
         """Draw heads-up display with simulation info."""
         hud_y = self.height + 10
         
-        # Background for HUD
+        # Background for HUD (spans entire window width including left panel)
         pygame.draw.rect(
             self.screen, self.COLOR_LIGHT_GRAY,
-            (0, self.height, self.width, self.hud_height)
+            (0, self.height, self.total_window_width, self.hud_height)
         )
         
         # Tick counter
@@ -981,9 +995,10 @@ class VMTRenderer:
         total_B = sum(a.inventory.B for a in self.sim.agents)
         total_M = sum(a.inventory.M for a in self.sim.agents)
         
-        # Show average money if any agent has it or money system is active
+        # Show average money and median money if any agent has it or money system is active
         has_money = total_M > 0 or self.sim.params.get('exchange_regime') in ('money_only', 'mixed')
         average_money = total_M / len(self.sim.agents) if has_money else 0
+        median_money = sorted(self.sim.agents, key=lambda a: a.inventory.M)[len(self.sim.agents) // 2].inventory.M if has_money else 0
         
         if has_money:
             # Format money with explicit comma separators (locale-independent)
@@ -992,7 +1007,7 @@ class VMTRenderer:
             money_int = int(average_money)
             money_dec = f"{average_money - money_int:.2f}"[1:]  # Get decimal part with leading dot
             money_formatted = f"{money_int:,}{money_dec}"
-            inv_text = f"Total Inventory - A: {total_A}  B: {total_B}  Average$: {money_formatted}"
+            inv_text = f"Total Inventory - A: {total_A}  B: {total_B}  Average$: {money_formatted}  Median$: {median_money}"
         else:
             inv_text = f"Total Inventory - A: {total_A}  B: {total_B}"
         
@@ -1039,11 +1054,11 @@ class VMTRenderer:
         money_viz_label = self.small_font.render(money_viz_status, True, self.COLOR_BLACK)
         self.screen.blit(money_viz_label, (200, hud_y + 95))
 
-        # Recent trades (right-justified)
+        # Recent trades (right-justified, accounting for total window width)
         trade_hud_y = hud_y
         trade_title = self.font.render("Recent Trades:", True, self.COLOR_BLACK)
         trade_title_width = trade_title.get_width()
-        trade_x_start = self.width - trade_title_width - 10  # 10px margin from right edge
+        trade_x_start = self.total_window_width - trade_title_width - 10  # 10px margin from right edge
         self.screen.blit(trade_title, (trade_x_start, trade_hud_y))
         
         for i, trade in enumerate(reversed(self.recent_trades)):
@@ -1075,10 +1090,157 @@ class VMTRenderer:
             
             trade_label = self.small_font.render(trade_text, True, self.COLOR_BLACK)
             trade_label_width = trade_label.get_width()
-            trade_x = self.width - trade_label_width - 10  # Right-justify each trade line
+            trade_x = self.total_window_width - trade_label_width - 10  # Right-justify each trade line
             self.screen.blit(trade_label, (trade_x, trade_hud_y + 20 + i * 15))
     
     def add_trade_indicator(self, pos: tuple[int, int]):
         """Add a trade indicator at the given position."""
         self.recent_trades.append((self.sim.tick, pos))
+    
+    def update_trade_history(self):
+        """Update trade history from recent trades for exchange rate calculations."""
+        # Process recent trades from telemetry
+        for trade in self.sim.telemetry.recent_trades_for_renderer:
+            tick = trade['tick']
+            exchange_pair = trade['exchange_pair_type']
+            dA = trade['dA']
+            dB = trade['dB']
+            dM = trade['dM']
+            
+            # Calculate exchange rate based on trade type
+            rate = None
+            rate_type = None
+            
+            if exchange_pair == "A<->M" and dA > 0 and dM > 0:
+                # M/A rate: money per unit of A
+                rate = dM / dA
+                rate_type = "M/A"
+            elif exchange_pair == "B<->M" and dB > 0 and dM > 0:
+                # M/B rate: money per unit of B
+                rate = dM / dB
+                rate_type = "M/B"
+            elif exchange_pair == "A<->B" and dA > 0 and dB > 0:
+                # B/A rate: units of B per unit of A
+                rate = dB / dA
+                rate_type = "B/A"
+            
+            # Add to history if valid
+            if rate is not None and rate_type is not None:
+                # Check if this trade is already in history
+                already_exists = any(
+                    h[0] == tick and h[1] == rate_type and abs(h[2] - rate) < 0.0001
+                    for h in self.trade_history
+                )
+                if not already_exists:
+                    self.trade_history.append((tick, rate_type, rate))
+        
+        # Keep only last 1000 trades to prevent memory issues
+        if len(self.trade_history) > 1000:
+            self.trade_history = self.trade_history[-1000:]
+    
+    def calculate_exchange_rate_averages(self, rate_type: str) -> dict[str, float | None]:
+        """
+        Calculate exchange rate averages for different time windows.
+        
+        Args:
+            rate_type: Type of exchange rate ("M/A", "M/B", or "B/A")
+            
+        Returns:
+            Dictionary with keys: 'last_tick', 'last_10', 'last_50', 'lifetime'
+            Values are average rates or None if no data available
+        """
+        current_tick = self.sim.tick
+        
+        # Filter trades by rate type
+        relevant_trades = [(tick, rate) for tick, rtype, rate in self.trade_history if rtype == rate_type]
+        
+        if not relevant_trades:
+            return {
+                'last_tick': None,
+                'last_10': None,
+                'last_50': None,
+                'lifetime': None
+            }
+        
+        # Calculate averages for different windows
+        result = {}
+        
+        # Last tick only
+        last_tick_trades = [rate for tick, rate in relevant_trades if tick == current_tick]
+        result['last_tick'] = sum(last_tick_trades) / len(last_tick_trades) if last_tick_trades else None
+        
+        # Last 10 ticks
+        last_10_trades = [rate for tick, rate in relevant_trades if current_tick - tick < 10]
+        result['last_10'] = sum(last_10_trades) / len(last_10_trades) if last_10_trades else None
+        
+        # Last 50 ticks
+        last_50_trades = [rate for tick, rate in relevant_trades if current_tick - tick < 50]
+        result['last_50'] = sum(last_50_trades) / len(last_50_trades) if last_50_trades else None
+        
+        # Lifetime
+        all_rates = [rate for _, rate in relevant_trades]
+        result['lifetime'] = sum(all_rates) / len(all_rates) if all_rates else None
+        
+        return result
+    
+    def draw_left_panel(self):
+        """Draw the left info panel with exchange rate information."""
+        # Draw background
+        pygame.draw.rect(
+            self.screen, self.COLOR_LIGHT_GRAY,
+            (0, 0, self.left_panel_width, self.height)
+        )
+        
+        # Draw separator line
+        pygame.draw.line(
+            self.screen, self.COLOR_BLACK,
+            (self.left_panel_width, 0), (self.left_panel_width, self.height),
+            2
+        )
+        
+        # Update trade history
+        self.update_trade_history()
+        
+        # Draw title
+        y_offset = 10
+        title = self.font.render("Exchange Rates", True, self.COLOR_BLACK)
+        self.screen.blit(title, (10, y_offset))
+        y_offset += 30
+        
+        # Draw exchange rate information for each type
+        rate_types = [
+            ("M/A", "Money/Good A"),
+            ("M/B", "Money/Good B"),
+            ("B/A", "Good B/Good A")
+        ]
+        
+        for rate_type, label in rate_types:
+            # Draw section header
+            header = self.font.render(label + ":", True, self.COLOR_BLACK)
+            self.screen.blit(header, (10, y_offset))
+            y_offset += 20
+            
+            # Calculate averages
+            averages = self.calculate_exchange_rate_averages(rate_type)
+            
+            # Draw each time window
+            windows = [
+                ("Last Tick", averages['last_tick']),
+                ("Last 10", averages['last_10']),
+                ("Last 50", averages['last_50']),
+                ("Lifetime", averages['lifetime'])
+            ]
+            
+            for window_label, avg in windows:
+                if avg is not None:
+                    text = f"  {window_label}: {avg:.4f}"
+                else:
+                    text = f"  {window_label}: --"
+                
+                label_surface = self.small_font.render(text, True, self.COLOR_BLACK)
+                self.screen.blit(label_surface, (10, y_offset))
+                y_offset += 15
+            
+            # Add spacing between sections
+            y_offset += 10
 
