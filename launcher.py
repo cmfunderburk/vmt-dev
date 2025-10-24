@@ -19,6 +19,8 @@ from vmt_launcher.launcher import LauncherWindow
 def main():
     """Main entry point for the GUI launcher."""
     app = QApplication(sys.argv)
+    # Set application to quit when last window closes (important for Linux)
+    app.setQuitOnLastWindowClosed(True)
     window = LauncherWindow()
     window.show()
     sys.exit(app.exec())

@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QMessageBox, QApplication, QFrame
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QIntValidator
+from PyQt6.QtGui import QIntValidator, QKeySequence, QShortcut, QCloseEvent
 from .scenario_builder import ScenarioBuilderDialog
 
 # Assumes the script is run from the project root
@@ -59,6 +59,22 @@ class LauncherWindow(QMainWindow):
         """Initialize the user interface."""
         self.setWindowTitle("VMT Simulation Launcher")
         self.setGeometry(100, 100, 500, 600)
+        
+        # Set window attribute to ensure proper closing on Linux
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        
+        # Set up keyboard shortcuts for quitting
+        # Ctrl+D to quit
+        quit_shortcut_d = QShortcut(QKeySequence("Ctrl+D"), self)
+        quit_shortcut_d.activated.connect(self.quit_application)
+        
+        # Ctrl+Q to quit (standard)
+        quit_shortcut_q = QShortcut(QKeySequence.StandardKey.Quit, self)
+        quit_shortcut_q.activated.connect(self.quit_application)
+        
+        # Ctrl+W to close window
+        close_shortcut = QShortcut(QKeySequence.StandardKey.Close, self)
+        close_shortcut.activated.connect(self.quit_application)
         
         # Central widget
         central_widget = QWidget()
@@ -219,6 +235,18 @@ class LauncherWindow(QMainWindow):
             )
             self.status_label.setText(f"Status: Error - {str(e)}")
             self.status_label.setStyleSheet("color: red;")
+    
+    def quit_application(self):
+        """Quit the application cleanly."""
+        self.close()
+        QApplication.quit()
+    
+    def closeEvent(self, event: QCloseEvent):
+        """Handle window close event to ensure proper cleanup."""
+        # Accept the close event
+        event.accept()
+        # Ensure the application quits
+        QApplication.quit()
 
 
 def main():
