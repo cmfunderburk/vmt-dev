@@ -1,0 +1,100 @@
+---
+alwaysApply: true
+---
+# VMT Development Environment
+
+## System Configuration
+
+- **OS:** Arch Linux (kernel 6.17.4-arch2-1)
+- **Window Manager:** Hyprland (tiling WM)
+- **Shell:** /usr/bin/bash
+- **Workspace:** `/home/cmf/Work/vmt-dev/`
+
+## Python Environment
+
+- **Python Version:** 3.11+
+- **Virtual Environment:** [venv/](mdc:venv/)
+- **Package Manager:** pip
+
+## Key Development Tools
+
+### Code Quality
+- **Formatter:** Black (project-wide standard)
+- **Linter:** Ruff (Flake8/Mypy rules)
+- **Type Checker:** Mypy (100% coverage goal)
+
+### GUI Frameworks
+- **Visualization:** PyGame (renderer)
+- **Launcher:** PyQt6 (scenario browser)
+
+### Testing
+- **Framework:** pytest
+- **Coverage:** 316+ tests
+- **Location:** [tests/](mdc:tests/)
+
+## Running Commands
+
+**Always use venv:**
+```bash
+source venv/bin/activate && <command>
+```
+
+**Common workflows:**
+```bash
+# Run simulation with GUI
+source venv/bin/activate && python main.py scenarios/<scenario>.yaml
+
+# Run launcher
+source venv/bin/activate && python launcher.py
+
+# Run tests
+source venv/bin/activate && pytest
+
+# Code quality checks
+source venv/bin/activate && black --check .
+source venv/bin/activate && ruff check .
+source venv/bin/activate && mypy src/
+```
+
+## Hyprland Integration
+
+The renderer is optimized for tiling window managers:
+- **Window resize:** Fully supported with `pygame.RESIZABLE`
+- **Default size:** 1200×900 (tiles well)
+- **Panel toggles:** `[` for left panel, `]` for HUD
+- **Minimum size:** 640×480
+
+See [docs/HYPRLAND_RESIZE_IMPLEMENTATION.md](mdc:docs/HYPRLAND_RESIZE_IMPLEMENTATION.md)
+
+## User Preferences
+
+From PhD in Economics with Philosophy & History of Math and Science background:
+- **Code style:** Rigorous, comprehensive, explicit logical steps
+- **Documentation:** Detailed explanations, not glossed over
+- **Testing:** Thorough coverage with reproducibility
+- **Comments:** Clear rationale for design decisions
+
+## Project Standards
+
+### Determinism First
+- All simulations must be reproducible with same seed
+- 7-phase tick cycle is immutable
+- Sorted iteration by agent ID
+
+### No SemVer
+- Date-based tracking until manual 0.0.1 release
+- Developer controls all versioning
+- Descriptive commit messages
+
+### Type Safety
+- All code should have type hints
+- Mypy compliance goal
+- Integer types for inventories and spatial parameters
+
+See [docs/4_typing_overview.md](mdc:docs/4_typing_overview.md)
+
+## File Paths
+
+Always prefer **absolute paths** when possible:
+- `/home/cmf/Work/vmt-dev/` instead of relative paths
+- Especially important for tool call arguments
