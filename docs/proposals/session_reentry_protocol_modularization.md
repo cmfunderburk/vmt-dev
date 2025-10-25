@@ -18,7 +18,7 @@ You are at a critical architectural decision point for VMT. The current monolith
 
 ### Primary Task
 Reviewing a formal protocol modularization architecture proposal in:
-- **File:** `/Users/cmfunderburk/CODE_PROJECTS/vmt-dev/docs/proposals/quickreview.md`
+- **File:** [docs/proposals/quickreview.md](mdc:docs/proposals/quickreview.md)
 - **Purpose:** Transform VMT's monolithic decision/trading system into a modular protocol architecture
 - **Motivation:** Current architecture cannot support advanced market mechanisms needed for Phase C
 
@@ -231,25 +231,25 @@ foraging_policy:
 ## Critical Files to Review Next Session
 
 ### Current Architecture (Study Before Modifying)
-- `/Users/cmfunderburk/CODE_PROJECTS/vmt-dev/src/vmt_engine/simulation.py`
+- [src/vmt_engine/simulation.py](mdc:src/vmt_engine/simulation.py)
   - **Line ~150-300:** The 7-phase tick loop
-- `/Users/cmfunderburk/CODE_PROJECTS/vmt-dev/src/vmt_engine/systems/decision.py`
+- [src/vmt_engine/systems/decision.py](mdc:src/vmt_engine/systems/decision.py)
   - **Monolith to decompose:** Search + matching currently entangled
-- `/Users/cmfunderburk/CODE_PROJECTS/vmt-dev/src/vmt_engine/systems/trading.py`
+- [src/vmt_engine/systems/trading.py](mdc:src/vmt_engine/systems/trading.py)
   - **Bargaining logic:** Compensating blocks, price grid, rounding
-- `/Users/cmfunderburk/CODE_PROJECTS/vmt-dev/src/vmt_engine/systems/matching.py`
+- [src/vmt_engine/systems/matching.py](mdc:src/vmt_engine/systems/matching.py)
   - **Surplus calculation:** Money-aware pairing (recently fixed P0)
 
 ### Related Design Documents
-- `/Users/cmfunderburk/CODE_PROJECTS/vmt-dev/docs/proposals/protocol_modularization_plan_v3.md`
+- [docs/proposals/protocol_modularization_plan_v3.md](mdc:docs/proposals/protocol_modularization_plan_v3.md)
   - **Earlier iteration:** May have complementary details
-- `/Users/cmfunderburk/CODE_PROJECTS/vmt-dev/docs/2_technical_manual.md`
+- [docs/2_technical_manual.md](mdc:docs/2_technical_manual.md)
   - **Current system:** 7-phase description, data flows
 
 ### Testing Infrastructure
-- `/Users/cmfunderburk/CODE_PROJECTS/vmt-dev/tests/test_pairing_money_aware.py`
+- [tests/test_pairing_money_aware.py](mdc:tests/test_pairing_money_aware.py)
   - **Golden tests:** Must pass with adapters
-- `/Users/cmfunderburk/CODE_PROJECTS/vmt-dev/tests/test_barter_integration.py`
+- [tests/test_barter_integration.py](mdc:tests/test_barter_integration.py)
   - **Regression tests:** Bit-identical reproduction requirement
 
 ---
@@ -357,8 +357,8 @@ diff docs/proposals/protocol_modularization_plan_v3.md docs/proposals/quickrevie
 
 ## If You Only Have 15 Minutes
 
-1. **Re-read:** Sections 1-3 of `/Users/cmfunderburk/CODE_PROJECTS/vmt-dev/docs/proposals/quickreview.md`
-2. **Skim:** `/Users/cmfunderburk/CODE_PROJECTS/vmt-dev/src/vmt_engine/systems/decision.py` (the monolith)
+1. **Re-read:** Sections 1-3 of [docs/proposals/quickreview.md](mdc:docs/proposals/quickreview.md)
+2. **Skim:** [src/vmt_engine/systems/decision.py](mdc:src/vmt_engine/systems/decision.py) (the monolith)
 3. **Decide:** Do you want to start Phase 1 (adapters) or refine design further?
 
 ## If You Have 1-2 Hours
