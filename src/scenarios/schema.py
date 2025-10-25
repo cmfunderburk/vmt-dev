@@ -128,6 +128,20 @@ class ScenarioParams:
     The fixed marginal utility of money (λ) used in 'quasilinear' mode. Must be positive.
     """
 
+    money_utility_form: Literal["linear", "log"] = "linear"
+    """
+    Functional form for money utility component.
+    - 'linear': U_money = λ·M (constant marginal utility)
+    - 'log': U_money = λ·log(M + M_0) (diminishing marginal utility)
+    """
+
+    M_0: float = 0.0
+    """
+    Shift parameter for logarithmic money utility. Prevents log(0) singularity
+    and calibrates the curvature of money's marginal utility. Must be >= 0.
+    Ignored when money_utility_form='linear'.
+    """
+
     lambda_update_rate: float = 0.2
     """
     The smoothing factor (alpha) for updating lambda in 'kkt_lambda' mode.
@@ -192,6 +206,10 @@ class ScenarioParams:
             raise ValueError(f"money_scale must be >= 1, got {self.money_scale}")
         if self.lambda_money <= 0:
             raise ValueError(f"lambda_money must be positive, got {self.lambda_money}")
+        if self.M_0 < 0:
+            raise ValueError(f"M_0 must be non-negative, got {self.M_0}")
+        if self.money_utility_form not in ["linear", "log"]:
+            raise ValueError(f"money_utility_form must be 'linear' or 'log', got {self.money_utility_form}")
         if not 0 <= self.lambda_update_rate <= 1:
             raise ValueError(f"lambda_update_rate must be in [0, 1], got {self.lambda_update_rate}")
         if "lambda_min" in self.lambda_bounds and "lambda_max" in self.lambda_bounds:

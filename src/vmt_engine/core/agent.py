@@ -45,8 +45,10 @@ class Agent:
     _decision_target_type: Optional[str] = field(default=None, repr=False)  # "trade", "forage", "idle", "trade_paired"
 
     # Money system state (Phase 1)
-    lambda_money: float = 1.0  # Marginal utility of money
+    lambda_money: float = 1.0  # Marginal utility of money parameter (λ)
     lambda_changed: bool = False  # Flag for Housekeeping
+    money_utility_form: str = "linear"  # "linear" or "log"
+    M_0: float = 0.0  # Shift parameter for log money utility
 
     def __post_init__(self):
         if self.id < 0:

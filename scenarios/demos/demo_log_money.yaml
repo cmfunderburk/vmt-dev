@@ -1,0 +1,160 @@
+# Demo: Logarithmic Money Utility (Income Effects)
+# 
+# This scenario demonstrates the logarithmic money utility form:
+#   U_total = U_goods(A,B) + λ·log(M + M_0)
+# 
+# Key Feature: Diminishing Marginal Utility of Money & Income Effects
+# =====================================================================
+# Unlike linear money utility (λ·M), the log form captures:
+# 1. Diminishing MU: ∂U/∂M = λ/(M + M_0) decreases as M increases
+# 2. Income Effects: Wealthy agents value goods more in money terms
+#    - Poor agents: High MU_money → low prices (bid/ask in money)
+#    - Rich agents: Low MU_money → high prices (willing to pay more)
+#
+# This scenario contrasts three agents with different wealth levels:
+# - Agent 0: POOR (M=20) - High MU_money, conservative buyer
+# - Agent 1: RICH (M=500) - Low MU_money, aggressive buyer  
+# - Agent 2: MIDDLE (M=100) - Moderate MU_money
+#
+# Expected Result:
+# ================
+# Rich agent (1) should dominate monetary trades, offering higher prices
+# and extracting better terms due to wealth advantage. Poor agent (0)
+# cannot compete in monetary markets due to low willingness to pay.
+#
+# This demonstrates a key economic insight: wealth inequality affects
+# market power even when agents have identical preferences!
+
+schema_version: 1
+name: "demo_log_money_income_effects"
+N: 10
+agents: 3
+mode: "trade"  # Trade-only mode to focus on monetary exchange
+
+params:
+  exchange_regime: "mixed"  # Allow all trade types: A↔B, A↔M, B↔M
+  vision_radius: 10
+  interaction_radius: 1
+  move_budget_per_tick: 1
+  beta: 0.95
+  dA_max: 10
+  epsilon: 0.000000001
+  money_scale: 1
+  spread: 0.0
+  forage_rate: 1
+  trade_cooldown_ticks: 5
+  log_preferences: true
+  
+  # NEW: Logarithmic money utility parameters
+  money_utility_form: "log"  # Use logarithmic form instead of linear
+  M_0: 10.0                  # Shift parameter (subsistence money level)
+
+# All agents have IDENTICAL preferences for goods (CES utility)
+# Differences emerge solely from wealth levels due to log money utility
+utilities:
+  mix:
+    - type: "ces"
+      weight: 1.0
+      params:
+        rho: 0.5
+        wA: 0.6      
+        wB: 0.4
+
+# Starting inventories: Identical goods, DIFFERENT money holdings
+# This isolates the income effect from log money utility
+initial_inventories:
+  A: [100, 100, 100]           # All agents have same goods
+  B: [100, 100, 100]
+  M: [20, 500, 100]            # Agent 0: POOR, Agent 1: RICH, Agent 2: MIDDLE
+  lambda_money: [1.0, 1.0, 1.0]  # Same λ for all (differences come from M, not λ)
+
+agent_positions:
+  - [5, 5]    # Agent 0 (POOR)
+  - [5, 6]    # Agent 1 (RICH)
+  - [5, 7]    # Agent 2 (MIDDLE)
+
+resource_seed:
+  density: 0.0  # No resources (trade-only scenario)
+  amount: 5
+
+# Expected Behavior:
+# ==================
+# With logarithmic money utility, marginal utility of money varies by wealth:
+#
+# Agent 0 (M=20):
+#   MU_money = λ/(20 + 10) = 1.0/30 ≈ 0.033
+#   → HIGH MU_money → LOW willingness to pay in money
+#   → Will demand HIGH prices when selling goods (needs money badly)
+#   → Will offer LOW prices when buying goods (money is precious)
+#
+# Agent 1 (M=500):
+#   MU_money = λ/(500 + 10) = 1.0/510 ≈ 0.002  
+#   → LOW MU_money → HIGH willingness to pay in money
+#   → Will accept LOW prices when selling goods (money is plentiful)
+#   → Will offer HIGH prices when buying goods (money is cheap)
+#
+# Agent 2 (M=100):
+#   MU_money = λ/(100 + 10) = 1.0/110 ≈ 0.009
+#   → MIDDLE MU_money → MODERATE prices
+#
+# Key Predictions:
+# ================
+# 1. Rich agent (1) will be aggressive in monetary markets
+#    - Higher bid prices: willing to pay more money for goods
+#    - Lower ask prices: willing to accept less money when selling
+#
+# 2. Poor agent (0) will be conservative
+#    - Lower bid prices: cannot afford to pay much money
+#    - Higher ask prices: demands more money when selling
+#
+# 3. Monetary trades will show wealth effects:
+#    - Rich-Poor trades: Rich agent pays high prices, poor accepts
+#    - Surplus distribution: Rich agent can extract better terms
+#
+# 4. Income inequality emerges endogenously:
+#    - Poor agent becomes poorer (unfavorable trade terms)
+#    - Rich agent becomes richer (favorable terms)
+#
+# To Compare with Linear Money:
+# ==============================
+# Change params.money_utility_form to "linear" and re-run with same seed.
+# With linear money (constant MU), all agents offer identical prices for
+# same goods holdings, eliminating wealth effects. Trade patterns become
+# symmetric, and inequality does not amplify through trade.
+#
+# To observe:
+# ===========
+# 1. Run: python main.py scenarios/demos/demo_log_money.yaml --max-ticks 20 --seed 42
+#
+# 2. Check monetary quotes at t=0:
+#    SELECT agent_id, ask_A_in_M, bid_A_in_M FROM agent_snapshots WHERE tick = 0;
+#    → Agent 1 (rich) should have highest bids and lowest asks
+#    → Agent 0 (poor) should have lowest bids and highest asks
+#
+# 3. Check trades:
+#    SELECT * FROM trades WHERE exchange_pair_type IN ('A<->M', 'B<->M');
+#    → Rich agent should execute more trades at better prices
+#
+# 4. Track money distribution over time:
+#    SELECT tick, agent_id, M FROM agent_snapshots ORDER BY tick, agent_id;
+#    → Watch wealth inequality increase through trade!
+#
+# 5. Compare with linear money:
+#    Edit YAML to set money_utility_form: "linear" and re-run
+#    → Quotes become identical for same goods holdings
+#    → No systematic wealth effects from trading
+#
+# Pedagogical Value:
+# ==================
+# This scenario demonstrates:
+# - Why constant MU of money (linear) is unrealistic
+# - How diminishing MU of money creates market power differences
+# - Why wealthy traders dominate markets even with identical preferences
+# - How trade can amplify inequality through price discrimination
+# - Foundation for understanding luxury goods, credit access, etc.
+#
+# For students: This shows that market outcomes depend not just on
+# preferences and endowments, but also on wealth distribution and how
+# agents value money at the margin. The log form is standard in economics
+# (CRRA utility with γ=1) and captures these realistic effects.
+

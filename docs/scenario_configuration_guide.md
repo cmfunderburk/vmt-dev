@@ -1191,7 +1191,105 @@ Low λ (e.g., 0.5): High ask prices (demand more money to sell)
 - Model heterogeneous money preferences
 - Create trading opportunities based on different money valuations
 
-#### 5.7.5 `lambda_update_rate`
+#### 5.7.5 `money_utility_form`
+
+**Type:** `string`  
+**Default:** `"linear"`  
+**Options:** `"linear"`, `"log"`
+
+Controls the functional form of money utility component.
+
+**Linear Form** (default):
+```
+U_total = U_goods(A, B) + λ·M
+∂U/∂M = λ (constant)
+```
+
+**Logarithmic Form**:
+```
+U_total = U_goods(A, B) + λ·log(M + M_0)
+∂U/∂M = λ/(M + M_0) (diminishing)
+```
+
+**Key Differences:**
+- **Linear**: Constant marginal utility of money, no wealth effects
+- **Log**: Diminishing marginal utility, captures income effects
+
+**Example:**
+```yaml
+params:
+  money_utility_form: "log"
+  M_0: 10.0  # Shift parameter for log form
+```
+
+**Economic Implications:**
+
+With **linear** money:
+- All agents with same goods holdings offer identical money prices
+- Wealth doesn't affect willingness to pay
+- Simpler, good for basic pedagogy
+
+With **log** money:
+- Wealthy agents (high M) have lower MU_money → willing to pay MORE for goods
+- Poor agents (low M) have higher MU_money → demand MORE money when selling
+- Creates realistic income/wealth effects in trade
+- Rich agents dominate monetary markets
+
+**Use Case:**
+- Use `linear` for introductory scenarios and basic demonstrations
+- Use `log` for realistic simulations showing wealth inequality effects
+- See `scenarios/demos/demo_log_money.yaml` for complete example
+
+#### 5.7.6 `M_0`
+
+**Type:** `float ≥ 0`  
+**Default:** `0.0`
+
+Shift parameter for logarithmic money utility.
+
+**Ignored if `money_utility_form = "linear"`.**
+
+**Purpose:**
+- Prevents log(0) singularity when M=0
+- Calibrates curvature of diminishing marginal utility
+- Analogous to subsistence parameter in Stone-Geary utility
+
+**Effect:**
+```
+MU_money = λ/(M + M_0)
+
+M_0 = 0:   MU varies from infinity (M=0) to very small (large M)
+M_0 = 10:  MU varies from λ/10 (M=0) to smaller values (large M)
+M_0 = 50:  Flatter curve, less dramatic wealth effects
+```
+
+**Guidelines:**
+- **M_0 = 0**: Maximum wealth sensitivity (use epsilon guard at M=0)
+- **M_0 = 5-20**: Moderate wealth effects (RECOMMENDED for realistic scenarios)
+- **M_0 > 50**: Mild wealth effects, approaching linear behavior
+
+**Example:**
+```yaml
+params:
+  money_utility_form: "log"
+  M_0: 10.0  # Subsistence money level
+
+initial_inventories:
+  M: [20, 500, 100]  # Poor, rich, middle agents
+```
+
+**Result:** 
+- Poor agent (M=20): MU_money = λ/30 = 0.033 (high)
+- Rich agent (M=500): MU_money = λ/510 = 0.002 (low)
+- Rich agent willing to pay ~16× more money for same goods!
+
+**Agent-Specific M_0** (optional):
+```yaml
+initial_inventories:
+  M_0: [5.0, 10.0, 15.0]  # Per-agent shift parameters
+```
+
+#### 5.7.7 `lambda_update_rate`
 
 **Type:** `0 ≤ float ≤ 1`  
 **Default:** `0.2`
@@ -1221,7 +1319,7 @@ params:
 - Higher α: Faster adaptation to price changes, more volatility
 - Lower α: Slower adaptation, more stability
 
-#### 5.7.6 `lambda_bounds`
+#### 5.7.8 `lambda_bounds`
 
 **Type:** `dict[str, float]`  
 **Default:** `{lambda_min: 1e-6, lambda_max: 1e6}`
@@ -1253,7 +1351,7 @@ elif λ_new > lambda_max:
     λ_new = lambda_max
 ```
 
-#### 5.7.7 `liquidity_gate`
+#### 5.7.9 `liquidity_gate`
 
 **Type:** `dict[str, int]`  
 **Default:** `{min_quotes: 3}`
@@ -2120,10 +2218,12 @@ python view_logs.py
 | **Params: Money** |
 | `exchange_regime` | string | barter_only | See §5.7.1 |
 | `money_mode` | string | quasilinear | quasilinear, kkt_lambda |
+| `money_utility_form` | string | linear | linear, log |
+| `M_0` | float | 0.0 | ≥ 0 |
 | `money_scale` | int | 1 | ≥ 1 |
 | `lambda_money` | float | 1.0 | > 0 |
 | `lambda_update_rate` | float | 0.2 | [0, 1] |
-| `lambda_bounds` | dict | See §5.7.6 | min < max, min > 0 |
+| `lambda_bounds` | dict | See §5.7.8 | min < max, min > 0 |
 | `liquidity_gate` | dict | {min_quotes: 3} | min_quotes ≥ 0 |
 | `earn_money_enabled` | bool | false | true, false (unused) |
 | **Mode Schedule** |

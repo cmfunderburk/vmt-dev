@@ -641,8 +641,18 @@ def find_compensating_block_generic(
     if not agent_i.utility or not agent_j.utility:
         return None
     
-    params_i = {'utility': agent_i.utility, 'lambda_money': agent_i.lambda_money}
-    params_j = {'utility': agent_j.utility, 'lambda_money': agent_j.lambda_money}
+    params_i = {
+        'utility': agent_i.utility,
+        'lambda_money': agent_i.lambda_money,
+        'money_utility_form': agent_i.money_utility_form,
+        'M_0': agent_i.M_0
+    }
+    params_j = {
+        'utility': agent_j.utility,
+        'lambda_money': agent_j.lambda_money,
+        'money_utility_form': agent_j.money_utility_form,
+        'M_0': agent_j.M_0
+    }
     
     # Current utility
     u_i_0 = u_total(agent_i.inventory, params_i)

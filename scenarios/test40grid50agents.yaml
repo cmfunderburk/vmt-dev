@@ -18,6 +18,7 @@ params:
   resource_max_amount: 1
   resource_regen_cooldown: 20
   trade_cooldown_ticks: 5
+  exchange_regime: barter_only # mixed, barter_only, money_only
 resource_seed:
   density: 0.05
   amount: 1

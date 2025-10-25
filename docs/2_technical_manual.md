@@ -223,10 +223,22 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
     *   `"money_only"` — Only A↔M and B↔M trades (goods for money)
     *   `"mixed"` — All exchange pairs allowed; uses money-first tie-breaking when multiple pairs have equal surplus
     *   `"mixed_liquidity_gated"` — (PLANNED) Mixed with minimum quote depth requirement
--   **Quasilinear Utility** (Implemented): U_total = U_goods(A, B) + λ·M, where:
-    *   λ (`lambda_money`) is the marginal utility of money (default: 1.0, can be heterogeneous per agent)
-    *   M is money holdings in minor units
-    *   Current implementation uses fixed λ (quasilinear mode); adaptive λ (KKT mode) is planned
+-   **Money Utility Forms** (Implemented): Two functional forms for money utility:
+    *   **Linear** (default): U_total = U_goods(A, B) + λ·M
+        - Constant marginal utility of money: ∂U/∂M = λ
+        - Simplest form, good for basic pedagogy
+        - No wealth effects: agents with same goods holdings offer identical money prices
+        - Parameter: `money_utility_form: "linear"`
+    *   **Logarithmic**: U_total = U_goods(A, B) + λ·log(M + M_0)
+        - Diminishing marginal utility: ∂U/∂M = λ/(M + M_0)
+        - Captures realistic income effects: wealthy agents value goods more in money terms
+        - M_0 is shift parameter (default: 0.0): prevents log(0) and calibrates curvature
+        - Analogous to Stone-Geary for money (subsistence money level)
+        - Parameter: `money_utility_form: "log"`, `M_0: 10.0`
+    *   **Heterogeneous λ** (RECOMMENDED): Use agent-specific λ values via `initial_inventories.lambda_money` list for realistic trading dynamics
+    *   **Money Modes** (Current implementation uses quasilinear mode; adaptive λ (KKT mode) is planned):
+        - `quasilinear`: Fixed λ values (either constant or agent-specific)
+        - `kkt_lambda` (PLANNED): Endogenous λ estimation from observed market prices
 -   **Money-First Tie-Breaking** (Implemented): When multiple trade types offer equal surplus in mixed regimes, the engine uses deterministic three-level sorting:
     1.  **Total surplus** (descending) — Maximizes welfare
     2.  **Pair type priority** (ascending) — Money-first policy:

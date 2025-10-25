@@ -71,6 +71,8 @@
 |-----------|------|---------|-------|----------------|-------|
 | `exchange_regime` | string | "barter_only" | See below | "mixed" | Trade type control (mixed_liquidity_gated planned) |
 | `money_mode` | string | "quasilinear" | See below | "quasilinear" | Money utility mode (kkt_lambda planned) |
+| `money_utility_form` | string | "linear" | "linear", "log" | "log" | Money utility functional form |
+| `M_0` | float | 0.0 | ≥ 0 | 5-20 | Log money shift parameter (subsistence money) |
 | `money_scale` | int | 1 | ≥ 1 | 1, 10, 100 | Money scale factor |
 | `lambda_money` | float | 1.0 | > 0 | 0.1-5.0 | Fixed λ value |
 | `lambda_update_rate` | float | 0.2 | [0, 1] | 0.1-0.3 | λ update smoothing (kkt_lambda mode only) |

@@ -69,12 +69,16 @@ def load_scenario(path: str) -> ScenarioConfig:
             # Money params (with defaults from schema)
             exchange_regime=params_data.get('exchange_regime', "barter_only"),
             money_mode=params_data.get('money_mode', "quasilinear"),
+            money_utility_form=params_data.get('money_utility_form', "linear"),
+            M_0=params_data.get('M_0', 0.0),
             money_scale=params_data.get('money_scale', 1),
             lambda_money=params_data.get('lambda_money', 1.0),
             lambda_update_rate=params_data.get('lambda_update_rate', 0.2),
             lambda_bounds=params_data.get('lambda_bounds', {"lambda_min": 1e-6, "lambda_max": 1e6}),
             liquidity_gate=params_data.get('liquidity_gate', {"min_quotes": 3}),
-            earn_money_enabled=params_data.get('earn_money_enabled', False)
+            earn_money_enabled=params_data.get('earn_money_enabled', False),
+            # Telemetry params
+            log_preferences=params_data.get('log_preferences', False)
         )
         
         # Parse resource seed

@@ -480,11 +480,11 @@ utilities:
       gamma_B: 0
 params:
   spread: 0.1
-  vision_radius: 20
+  vision_radius: 8
   interaction_radius: 1
   move_budget_per_tick: 1
   dA_max: 5000
-  trade_execution_mode: minimum
+  trade_execution_mode: maximum
   forage_rate: 1
   trade_cooldown_ticks: 200
   beta: 0.95
@@ -498,6 +498,8 @@ params:
   resource_growth_rate: 0
   resource_max_amount: 1
   resource_regen_cooldown: 20
+  
+  money_utility_form: "log"
 resource_seed:
   density: 0
   amount: 1

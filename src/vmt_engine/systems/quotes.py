@@ -99,19 +99,27 @@ def compute_quotes(agent: 'Agent', spread: float, epsilon: float, money_scale: i
     quotes['p_max_B_in_A'] = max(0.0, p_max_B_in_A)
     
     # Monetary pairs: A<->M and B<->M
-    # Price in money = (MU_good / lambda_money) * money_scale
-    # For now, use simple approximation: price ≈ MRS * lambda_money
-    lambda_m = agent.lambda_money
+    # Price in money = (MU_good / MU_money) * money_scale
+    # MU_money depends on utility form (linear: constant λ, log: λ/(M+M_0))
+    from ..econ.utility import mu_money
+    
+    mu_m = mu_money(
+        agent.inventory.M,
+        agent.lambda_money,
+        money_utility_form=agent.money_utility_form,
+        M_0=agent.M_0,
+        epsilon=epsilon
+    )
     
     # Ask/bid for A in terms of M (minor units)
     mu_A = agent.utility.mu_A(A, B)
-    price_A_in_M = (mu_A / lambda_m) * money_scale if lambda_m > epsilon else 1e6 * money_scale
+    price_A_in_M = (mu_A / mu_m) * money_scale if mu_m > epsilon else 1e6 * money_scale
     quotes['ask_A_in_M'] = max(0.0, price_A_in_M * (1 + spread))
     quotes['bid_A_in_M'] = max(0.0, price_A_in_M * (1 - spread))
     
     # Ask/bid for B in terms of M
     mu_B = agent.utility.mu_B(A, B)
-    price_B_in_M = (mu_B / lambda_m) * money_scale if lambda_m > epsilon else 1e6 * money_scale
+    price_B_in_M = (mu_B / mu_m) * money_scale if mu_m > epsilon else 1e6 * money_scale
     quotes['ask_B_in_M'] = max(0.0, price_B_in_M * (1 + spread))
     quotes['bid_B_in_M'] = max(0.0, price_B_in_M * (1 - spread))
     

@@ -58,6 +58,8 @@ class Simulation:
             # Money system parameters (Phase 1)
             'exchange_regime': scenario_config.params.exchange_regime,
             'money_mode': scenario_config.params.money_mode,
+            'money_utility_form': scenario_config.params.money_utility_form,
+            'M_0': scenario_config.params.M_0,
             'money_scale': scenario_config.params.money_scale,
             'lambda_money': scenario_config.params.lambda_money,
             'lambda_update_rate': scenario_config.params.lambda_update_rate,
@@ -134,6 +136,7 @@ class Simulation:
         inv_B = self.config.initial_inventories['B']
         inv_M = self.config.initial_inventories.get('M', 0)  # Phase 1+: Money inventory
         inv_lambda = self.config.initial_inventories.get('lambda_money', self.params['lambda_money'])  # Per-agent lambda
+        inv_M_0 = self.config.initial_inventories.get('M_0', self.params['M_0'])  # Per-agent M_0
         
         # Convert to lists if needed
         if isinstance(inv_A, int):
@@ -144,6 +147,8 @@ class Simulation:
             inv_M = [inv_M] * n_agents
         if isinstance(inv_lambda, (int, float)):
             inv_lambda = [float(inv_lambda)] * n_agents
+        if isinstance(inv_M_0, (int, float)):
+            inv_M_0 = [float(inv_M_0)] * n_agents
         
         # Scale money inventory by money_scale (liquidity adjustment)
         # This ensures that when prices are scaled up, agents have proportionally more money
@@ -156,6 +161,8 @@ class Simulation:
             raise ValueError(f"Initial M inventory list must match agent count {n_agents}")
         if isinstance(inv_lambda, list) and len(inv_lambda) != n_agents:
             raise ValueError(f"Initial lambda_money list must match agent count {n_agents}")
+        if isinstance(inv_M_0, list) and len(inv_M_0) != n_agents:
+            raise ValueError(f"Initial M_0 list must match agent count {n_agents}")
         
         # Sample utility types according to mix weights
         utility_configs = []
@@ -203,6 +210,8 @@ class Simulation:
                 vision_radius=self.params['vision_radius'],
                 move_budget_per_tick=self.params['move_budget_per_tick'],
                 lambda_money=float(inv_lambda[i]),  # Per-agent lambda from scenario
+                money_utility_form=self.params['money_utility_form'],
+                M_0=float(inv_M_0[i]),  # Per-agent M_0 from scenario
                 home_pos=pos  # Set home position to initial position
             )
             

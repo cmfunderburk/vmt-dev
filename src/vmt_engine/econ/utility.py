@@ -10,7 +10,9 @@ Contracts and zero-handling:
 Money-aware API (Phase 2):
 - u_goods(A, B): utility from goods only
 - mu_A(A, B), mu_B(A, B): analytic marginal utilities
-- u_total(inventory, params): top-level utility including money (future)
+- u_total(inventory, params): top-level utility including money
+- mu_money(M, lambda_money, money_utility_form, M_0): marginal utility of money
+- Money utility forms: linear (λ·M) or log (λ·log(M + M_0))
 """
 
 from __future__ import annotations
@@ -660,24 +662,61 @@ def create_utility(config: dict) -> Utility:
         raise ValueError(f"Unknown utility type: {utype}")
 
 
+def mu_money(M: int, lambda_money: float, money_utility_form: str = "linear", 
+             M_0: float = 0.0, epsilon: float = 1e-12) -> float:
+    """
+    Compute marginal utility of money.
+    
+    Supports two functional forms:
+    - linear: ∂U/∂M = λ (constant)
+    - log: ∂U/∂M = λ/(M + M_0) (diminishing)
+    
+    Args:
+        M: Money holdings (integer, in minor units)
+        lambda_money: Base marginal utility parameter (λ)
+        money_utility_form: "linear" or "log"
+        M_0: Shift parameter for log form (subsistence money)
+        epsilon: Guard against log(0) when M=0 and M_0=0
+        
+    Returns:
+        Marginal utility of money (∂U/∂M)
+        
+    Raises:
+        ValueError: If money_utility_form is not recognized
+    """
+    if money_utility_form == "linear":
+        return lambda_money
+    elif money_utility_form == "log":
+        return lambda_money / max(M + M_0, epsilon)
+    else:
+        raise ValueError(f"Unknown money_utility_form: {money_utility_form}")
+
+
 def u_total(inventory, params: dict) -> float:
     """
     Compute total utility including goods and money (money-aware API).
     
     This is the canonical top-level utility function for Phase 2+.
     
-    For Phase 2b: Implements quasilinear money utility.
-    Money utility is added as: U_total = U_goods(A, B) + lambda_money * M
+    Supports two money utility forms:
+    - linear: U = U_goods(A,B) + λ·M
+    - log: U = U_goods(A,B) + λ·log(M + M_0)
     
     Args:
         inventory: Inventory object with A, B, M fields
-        params: Scenario parameters dict (must include 'utility' key)
-        
+        params: Dict with keys:
+            - 'utility': Utility instance for goods
+            - 'lambda_money': λ parameter (default: 1.0)
+            - 'money_utility_form': "linear" or "log" (default: "linear")
+            - 'M_0': Shift parameter for log form (default: 0.0)
+            - 'epsilon': Small value for zero-safe calculations (default: 1e-12)
+            
     Returns:
         Total utility value
         
     Raises:
         KeyError: If params['utility'] is missing
+        ValueError: If money_utility_form is not recognized
     """
     if 'utility' not in params:
         raise KeyError("params must contain 'utility' key with Utility instance")
@@ -687,10 +726,18 @@ def u_total(inventory, params: dict) -> float:
     # Goods utility
     u_goods_val = utility_func.u_goods(inventory.A, inventory.B)
     
-    # Money utility (quasilinear by default)
-    # Get lambda_money from params if provided, otherwise use 1.0
+    # Money utility
     lambda_money = params.get('lambda_money', 1.0)
-    u_money = lambda_money * inventory.M
+    money_form = params.get('money_utility_form', 'linear')
+    M_0 = params.get('M_0', 0.0)
+    epsilon = params.get('epsilon', 1e-12)
+    
+    if money_form == 'linear':
+        u_money = lambda_money * inventory.M
+    elif money_form == 'log':
+        u_money = lambda_money * math.log(max(inventory.M + M_0, epsilon))
+    else:
+        raise ValueError(f"Unknown money_utility_form: {money_form}")
     
     return u_goods_val + u_money
 
