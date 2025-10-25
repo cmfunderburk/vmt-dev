@@ -486,12 +486,12 @@ params:
   dA_max: 5000
   trade_execution_mode: maximum
   forage_rate: 1
-  trade_cooldown_ticks: 200
+  trade_cooldown_ticks: 1000
   beta: 0.95
   epsilon: 1.0e-12
   exchange_regime: mixed
   money_mode: quasilinear
-  money_scale: 100
+  money_scale: 10
   lambda_money: 1.0
   enable_resource_claiming: true
   enforce_single_harvester: true
