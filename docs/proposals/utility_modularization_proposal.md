@@ -1,17 +1,25 @@
 # Utility Module Modularization Proposal
 
-**Document Version:** 1.0  
+**Document Version:** 1.1  
 **Created:** 2025-10-25  
-**Status:** Draft Proposal  
+**Updated:** 2025-10-25 (Added Phase 0: Base Extraction)  
+**Status:** Draft Proposal (Phase 0 Ready for Implementation)  
 **Priority:** Low (Quality-of-Life / Architectural Hygiene)  
-**Estimated Effort:** 8-12 hours  
+**Estimated Effort:** Phase 0: 1-2 hours | Full Plan: 8-12 hours  
 **Blockers:** None  
 
 ---
 
 ## Executive Summary
 
-This proposal recommends refactoring the monolithic `src/vmt_engine/econ/utility.py` (~700 lines) into a modular package structure where each utility function type resides in its own module. This change improves maintainability, discoverability, and extensibility without altering any public APIs or simulation behavior.
+This proposal recommends a **two-stage refactoring** of the monolithic `src/vmt_engine/econ/utility.py` (~744 lines):
+
+1. **Phase 0 (Immediate):** Extract the `Utility` ABC base class into a separate `base.py` module, establishing clear separation between interface and implementation
+2. **Full Modularization (Future):** Split concrete utility implementations into individual module files within a `utilities/` package
+
+This staged approach provides immediate value with minimal risk while setting the foundation for more extensive modularization.
+
+**Current Context (2025-10-25):** Following the successful implementation of logarithmic money utility (adding `mu_money()` and `u_total()` functions to `utility.py`), the module has grown to ~744 lines. Phase 0 provides a natural opportunity to establish cleaner architectural patterns as the economic module continues to evolve.
 
 **Key Benefits:**
 1. **Separation of Concerns** - Base abstractions separated from concrete implementations
@@ -22,7 +30,148 @@ This proposal recommends refactoring the monolithic `src/vmt_engine/econ/utility
 
 **Backward Compatibility:** 100% - All existing imports continue to work via `__init__.py` re-exports.
 
-**Risk Assessment:** Very Low - This is a pure refactoring with comprehensive test coverage to verify bit-identical behavior.
+**Risk Assessment:** Phase 0: Very Low (single file extraction) | Full Plan: Low (pure refactoring with comprehensive test coverage)
+
+---
+
+## Phase 0: Base Class Extraction (Immediate)
+
+### Motivation
+
+Before pursuing full modularization, we can achieve significant immediate value with a minimal change: **extracting the `Utility` ABC into its own `base.py` module**. This provides:
+
+1. **Clear Interface Definition**: New utility authors see the contract separately from implementations
+2. **Reduced Cognitive Load**: The base class is ~110 lines that developers must understand before implementing; separating it makes both files more focused
+3. **Foundation for Future Work**: Sets up the pattern for later splitting concrete implementations
+4. **Zero Risk**: Single file creation with re-exports for backward compatibility
+
+### Phase 0 Structure
+
+```
+src/vmt_engine/econ/
+├── __init__.py           # Public API (unchanged exports)
+├── base.py               # NEW: Utility ABC (~110 lines)
+└── utility.py            # Concrete implementations + module functions (~630 lines)
+```
+
+**File Breakdown:**
+
+**`base.py` (NEW - ~110 lines):**
+```python
+"""
+Base interface for utility functions.
+
+Defines the contract that all utility implementations must follow.
+"""
+
+from __future__ import annotations
+from abc import ABC, abstractmethod
+
+
+class Utility(ABC):
+    """Base interface for utility functions."""
+    
+    @abstractmethod
+    def u(self, A: int, B: int) -> float:
+        """Compute utility for inventory (A, B)."""
+        pass
+    
+    def u_goods(self, A: int, B: int) -> float:
+        """Compute utility from goods only (money-aware API)."""
+        return self.u(A, B)
+    
+    # ... all abstract methods and protocol definition
+```
+
+**`utility.py` (REFACTORED - ~630 lines):**
+```python
+"""
+Concrete utility function implementations.
+
+Contains:
+- Five utility implementations (CES, Linear, Quadratic, Translog, Stone-Geary)
+- Factory function (create_utility)
+- Top-level utility functions (mu_money, u_total)
+"""
+
+from __future__ import annotations
+from .base import Utility  # Import ABC from base
+import math
+import warnings
+
+
+class UCES(Utility):
+    # ... implementation unchanged
+```
+
+**`__init__.py` (UPDATED for backward compatibility):**
+```python
+"""Economic utilities module."""
+
+# Re-export base class
+from .base import Utility
+
+# Re-export concrete implementations
+from .utility import (
+    UCES,
+    ULinear,
+    UQuadratic,
+    UTranslog,
+    UStoneGeary,
+    create_utility,
+    mu_money,
+    u_total
+)
+
+__all__ = [
+    'Utility',
+    'UCES',
+    'ULinear',
+    'UQuadratic',
+    'UTranslog',
+    'UStoneGeary',
+    'create_utility',
+    'mu_money',
+    'u_total',
+]
+```
+
+### Benefits of Phase 0
+
+1. **Immediate Clarity**: Interface vs implementation separation is immediately visible
+2. **Low Effort**: ~1-2 hours to implement and test
+3. **Zero Breaking Changes**: All existing imports continue to work
+4. **Sets Pattern**: Establishes modularization approach for full plan
+5. **Can Ship Independently**: Delivers value without committing to full refactor
+
+### Implementation Checklist (Phase 0)
+
+- [ ] Create `src/vmt_engine/econ/base.py` with `Utility` ABC (~110 lines)
+- [ ] Update `src/vmt_engine/econ/utility.py` to import from `base`
+- [ ] Update `src/vmt_engine/econ/__init__.py` with re-exports
+- [ ] Run full test suite (should be 100% green, zero test changes)
+- [ ] Verify imports work: `from src.vmt_engine.econ.utility import Utility`
+- [ ] Verify imports work: `from src.vmt_engine.econ import Utility`
+- [ ] Run linter and type checker (no new errors)
+- [ ] Commit as standalone improvement
+
+**Estimated Time:** 1-2 hours (includes testing and verification)
+
+**Decision Point:** After Phase 0, evaluate whether full modularization (Phases 1-6 below) is worth pursuing, or if base extraction alone suffices.
+
+### What Stays in utility.py (Phase 0)
+
+**Concrete implementations remain in utility.py:**
+- Five utility classes: `UCES`, `ULinear`, `UQuadratic`, `UTranslog`, `UStoneGeary` (~500 lines)
+- `create_utility()` factory function (~40 lines)
+- `mu_money()` and `u_total()` module-level functions (~75 lines)
+
+**Rationale:** 
+- Keeps Phase 0 scope minimal (single file extraction)
+- All remaining content relates to "utility calculation" (fits module name)
+- Can be split further in full modularization (Phases 1-6) if desired
+
+**Future Consideration:** In full modularization, `mu_money()` and `u_total()` could potentially move to a separate `money.py` module, but this is not required and they work well in `utility.py`.
 
 ---
 
@@ -32,21 +181,22 @@ This proposal recommends refactoring the monolithic `src/vmt_engine/econ/utility
 
 ```
 src/vmt_engine/econ/
-└── utility.py (~700 lines)
-    ├── Utility (base ABC)
-    ├── UCES
-    ├── ULinear
-    ├── UQuadratic
-    ├── UTranslog
-    ├── UStoneGeary
-    ├── create_utility()
-    └── u_total()
+└── utility.py (~744 lines)
+    ├── Utility (base ABC) - ~110 lines
+    ├── UCES - ~110 lines
+    ├── ULinear - ~45 lines
+    ├── UQuadratic - ~90 lines
+    ├── UTranslog - ~130 lines
+    ├── UStoneGeary - ~110 lines
+    ├── create_utility() - ~40 lines
+    ├── mu_money() - ~25 lines
+    └── u_total() - ~50 lines
 ```
 
 ### Problems with Current Structure
 
 1. **Monolithic File Length**
-   - 697 lines in a single module
+   - 744 lines in a single module (grew from 697 after log money utility addition)
    - Difficult to navigate during development
    - High cognitive load for code reviews
 
@@ -74,9 +224,11 @@ src/vmt_engine/econ/
 
 ---
 
-## Proposed Structure
+## Full Modularization Plan (Future - Phases 1-6)
 
-### Directory Layout (To-Be)
+**Note:** This section describes the complete modularization if we proceed beyond Phase 0. Phase 0 (base extraction) can be implemented independently and provides immediate value without committing to this full plan.
+
+### Directory Layout (To-Be After Full Modularization)
 
 ```
 src/vmt_engine/econ/
@@ -288,9 +440,12 @@ class UCES(Utility):
 
 ## Migration Strategy
 
+**Important:** This migration strategy assumes Phase 0 (base extraction) has been completed. If not, Phase 0 should be completed first as it establishes the pattern and provides immediate value.
+
 ### Phase 1: Create New Structure (Non-Breaking)
 
-**Duration:** 2-3 hours
+**Duration:** 2-3 hours  
+**Prerequisites:** Phase 0 completed (base.py exists)
 
 1. Create `src/vmt_engine/econ/utilities/` directory
 2. Create individual utility modules (ces.py, linear.py, etc.)
@@ -551,11 +706,27 @@ from src.vmt_engine.econ.utilities.ces import UCES
 
 ## Timeline and Effort Estimate
 
+### Phase 0 Only (Recommended First Step)
+
+**Total Effort:** 1-2 hours (can be completed in single session)
+
+| Task | Duration | Dependencies |
+|------|----------|--------------|
+| Create base.py | 30 min | None |
+| Update utility.py imports | 15 min | base.py created |
+| Update __init__.py | 15 min | base.py created |
+| Testing & verification | 30 min | All files updated |
+
+**Recommended Schedule:** Complete in single 2-hour session
+
+### Full Modularization (If Pursuing After Phase 0)
+
 **Total Effort:** 8-12 hours (single developer, full-time equivalent: 1-2 days)
 
 | Phase | Task | Duration | Dependencies |
 |-------|------|----------|--------------|
-| 1 | Create new utilities/ modules | 2-3 hours | None |
+| 0 | Base extraction (if not done) | 1-2 hours | None |
+| 1 | Create new utilities/ modules | 2-3 hours | Phase 0 |
 | 2 | Refactor base utility.py | 1-2 hours | Phase 1 |
 | 3 | Update package imports | 1-2 hours | Phase 2 |
 | 4 | Reorganize tests (optional) | 3-4 hours | Phase 3 |
@@ -563,9 +734,10 @@ from src.vmt_engine.econ.utilities.ces import UCES
 | 6 | Determinism verification | 30 min | Phase 5 |
 
 **Recommended Schedule:**
-- **Week 1, Day 1-2:** Phases 1-3 (core refactoring)
-- **Week 1, Day 3:** Phase 6 (verification) + buffer time
-- **Week 2, Day 4-5:** Phases 4-5 (optional enhancements + docs)
+- **Week 1, Day 1:** Phase 0 (base extraction) - can be done and shipped independently
+- **Week 1, Day 2-3:** Phases 1-3 (core refactoring) - only if proceeding with full plan
+- **Week 1, Day 4:** Phase 6 (verification) + buffer time
+- **Week 2, Day 5-6:** Phases 4-5 (optional enhancements + docs)
 
 **Parallelization:** Documentation updates (Phase 5) can happen alongside test reorganization (Phase 4).
 
@@ -573,15 +745,29 @@ from src.vmt_engine.econ.utilities.ces import UCES
 
 ## Priority and Scheduling Recommendation
 
-### Priority Assessment: **Low (Quality-of-Life)**
+### Priority Assessment
 
-**Rationale:**
+**Phase 0 (Base Extraction):** **Medium - Ready to Implement**
+- Low effort (1-2 hours)
+- Immediate clarity benefit
+- Zero risk
+- Sets foundation for future work
+- Can be done alongside log money implementation
+
+**Full Modularization (Phases 1-6):** **Low (Quality-of-Life)**
 - No blocking issues with current structure
 - No performance or correctness problems
 - Primarily developer experience improvement
 - Low urgency compared to Protocol Modularization (higher priority)
 
 ### Recommended Timing
+
+**Phase 0:** Implement now or within next sprint
+- Pairs well with recent log money utility work
+- Quick win that establishes modularization pattern
+- Can be completed in single session
+
+**Full Plan (Phases 1-6):**
 
 **Option 1: Pair with Protocol Modularization**
 - Tackle utility modularization *after* Protocol Modularization completes
@@ -605,10 +791,30 @@ from src.vmt_engine.econ.utilities.ces import UCES
 
 ## Success Criteria
 
-Upon completion, the refactoring is successful if:
+### Phase 0 Success Criteria
+
+Upon completion of Phase 0 (base extraction), the refactoring is successful if:
+
+**Functional Criteria:**
+- [ ] All 350+ tests pass without modification
+- [ ] Determinism preserved (same seed → identical telemetry)
+- [ ] No linter errors (Ruff, Black, Mypy)
+- [ ] All import patterns work: `from .utility import Utility`, `from . import Utility`
+
+**Structural Criteria:**
+- [ ] `base.py` created with `Utility` ABC (~110 lines)
+- [ ] `utility.py` imports from `base` (~630 lines)
+- [ ] `__init__.py` re-exports maintain compatibility
+
+**Time Criteria:**
+- [ ] Completed in single 2-hour session
+
+### Full Modularization Success Criteria (If Pursuing)
+
+Upon completion of Phases 1-6, the refactoring is successful if:
 
 ### Functional Criteria
-- [ ] All 316+ tests pass without modification
+- [ ] All 350+ tests pass without modification
 - [ ] Determinism verification succeeds (3 runs with same seed → identical telemetry)
 - [ ] No linter errors introduced (Ruff, Black, Mypy)
 - [ ] Scenario loading works for all 20+ existing scenarios
@@ -769,11 +975,29 @@ Phase C focuses on trading protocols, not utility functions. However, clean util
 
 ## Implementation Checklist
 
-### Pre-Implementation
-- [ ] Announce refactoring plan to team (if applicable)
+### Pre-Implementation (Any Phase)
 - [ ] Check for pending PRs that touch `utility.py`
-- [ ] Freeze changes to `utility.py` during migration
-- [ ] Create feature branch: `refactor/utility-modularization`
+- [ ] Create feature branch for changes
+
+### Phase 0: Base Extraction (Immediate - 1-2 hours)
+- [ ] Create `src/vmt_engine/econ/base.py` with `Utility` ABC
+- [ ] Update `src/vmt_engine/econ/utility.py` to `from .base import Utility`
+- [ ] Update `src/vmt_engine/econ/__init__.py` to re-export `Utility` from `base`
+- [ ] Add `__all__` declaration to `__init__.py`
+- [ ] Run test suite: `pytest -v` (should be 100% green)
+- [ ] Test import: `from src.vmt_engine.econ.utility import Utility`
+- [ ] Test import: `from src.vmt_engine.econ import Utility`
+- [ ] Run type checker: `mypy src/vmt_engine/econ/`
+- [ ] Run linter: `ruff check src/vmt_engine/econ/`
+- [ ] Commit: "refactor(econ): Extract Utility ABC to base.py"
+
+**Decision Point:** Ship Phase 0 and evaluate whether to proceed with full modularization.
+
+---
+
+### Full Modularization Checklist (If Proceeding)
+
+**Note:** Only pursue if Phase 0 proves valuable and full modularization is deemed worthwhile.
 
 ### Phase 1: Create Structure
 - [ ] Create `src/vmt_engine/econ/utilities/` directory
@@ -829,16 +1053,43 @@ Phase C focuses on trading protocols, not utility functions. However, clean util
 
 ## Conclusion
 
-Modularizing the utility module is a low-risk, high-value refactoring that improves developer experience, code clarity, and extensibility. While not urgent, it provides immediate benefits to new developers working through the onboarding program and establishes a clean template for future utility additions.
+This proposal presents a **two-stage approach** to utility module modularization:
 
-The proposed structure maintains 100% backward compatibility through careful use of `__init__.py` re-exports, ensuring zero disruption to existing code while enabling better organization going forward.
+### Stage 1: Phase 0 (Base Extraction) - Ready to Implement
 
-**Recommendation:** Proceed with refactoring during a low-activity period or assign as an onboarding exercise to a new developer completing Module 1.
+**Immediate action recommended:** Extract the `Utility` ABC into `base.py` (1-2 hours)
+
+This minimal change provides:
+- Clear separation between interface and implementation
+- Foundation for future modularization
+- Zero risk with comprehensive backward compatibility
+- Can be completed and shipped independently
+
+**Status:** Ready for implementation. Can proceed immediately.
+
+### Stage 2: Full Modularization (Phases 1-6) - Future Consideration
+
+If Phase 0 proves valuable and we want to go further, the full modularization plan (8-12 hours) provides:
+- Per-utility module files for easier navigation
+- Rich module-level documentation
+- Clear template for adding new utilities
+- Improved test organization
+
+**Status:** Optional future work. Evaluate after Phase 0 completion.
+
+---
+
+Both approaches maintain 100% backward compatibility through careful use of `__init__.py` re-exports, ensuring zero disruption to existing code while enabling better organization going forward.
+
+**Immediate Recommendation:** Implement Phase 0 (base extraction) now as a quick win alongside the recent log money utility work.
+
+**Future Recommendation:** Evaluate full modularization (Phases 1-6) after completing Protocol Modularization, or assign as an onboarding exercise to a new developer.
 
 ---
 
 **Document History:**
 - 2025-10-25: Initial draft (v1.0)
+- 2025-10-25: Updated to v1.1 - Added Phase 0 (base extraction) as immediate first step
 
 **Maintainer:** VMT Core Team  
 **Review Status:** Awaiting feedback
