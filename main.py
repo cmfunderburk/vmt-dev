@@ -52,6 +52,11 @@ def main():
     print("  F: Toggle forage arrows")
     print("  A: All arrows on")
     print("  O: All arrows off")
+    print("  [: Toggle left panel")
+    print("  ]: Toggle HUD panel")
+    print("  M: Toggle money labels")
+    print("  L: Toggle lambda heatmap")
+    print("  I: Toggle mode/regime overlay")
     print("  Q: Quit")
     print()
     
@@ -60,6 +65,10 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            
+            elif event.type == pygame.VIDEORESIZE:
+                # Handle window resize
+                renderer.handle_resize(event.w, event.h)
             
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
@@ -129,6 +138,24 @@ def main():
                     renderer.show_mode_regime_overlay = not renderer.show_mode_regime_overlay
                     status = "ON" if renderer.show_mode_regime_overlay else "OFF"
                     print(f"Mode/regime overlay: {status}")
+                
+                elif event.key == pygame.K_LEFTBRACKET:
+                    # Toggle left panel
+                    renderer.show_left_panel = not renderer.show_left_panel
+                    status = "ON" if renderer.show_left_panel else "OFF"
+                    print(f"Left panel: {status}")
+                    # Recalculate layout to account for panel visibility change
+                    current_size = renderer.screen.get_size()
+                    renderer._calculate_layout(current_size[0], current_size[1])
+                
+                elif event.key == pygame.K_RIGHTBRACKET:
+                    # Toggle HUD panel
+                    renderer.show_hud_panel = not renderer.show_hud_panel
+                    status = "ON" if renderer.show_hud_panel else "OFF"
+                    print(f"HUD panel: {status}")
+                    # Recalculate layout to account for panel visibility change
+                    current_size = renderer.screen.get_size()
+                    renderer._calculate_layout(current_size[0], current_size[1])
         
         # Handle camera scrolling (for large grids)
         keys = pygame.key.get_pressed()

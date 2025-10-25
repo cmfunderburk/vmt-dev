@@ -26,73 +26,25 @@ class VMTRenderer:
         
         self.sim = simulation
         
-        # Get monitor dimensions
-        display_info = pygame.display.Info()
-        screen_width = display_info.current_w
-        screen_height = display_info.current_h
+        # Panel toggle states
+        self.show_left_panel = True
+        self.show_hud_panel = True
         
-        # Reserve space for margins and HUD
-        MARGIN = 80
-        HUD_HEIGHT = 100
-        available_width = screen_width - (2 * MARGIN)
-        available_height = screen_height - (2 * MARGIN) - HUD_HEIGHT
-        
-        # Calculate optimal cell size if not provided
-        if cell_size is None:
-            grid_size = simulation.grid.N
-            optimal_cell_size = min(
-                available_width // grid_size,
-                available_height // grid_size
-            )
-            # Enforce minimum of 10px
-            self.cell_size = max(10, optimal_cell_size)
-        else:
-            self.cell_size = cell_size
-        
-        # Calculate actual grid dimensions
-        grid_pixel_size = simulation.grid.N * self.cell_size
-        
-        # Determine if scrolling is needed
-        self.needs_scrolling = (
-            grid_pixel_size > available_width or 
-            grid_pixel_size > available_height
-        )
-        
-        # Set window size (capped to available space)
-        # Add space for left info panel (250px width)
-        self.left_panel_width = 250
-        
-        if self.needs_scrolling:
-            self.width = min(grid_pixel_size, available_width)
-            self.height = min(grid_pixel_size, available_height)
-        else:
-            self.width = grid_pixel_size
-            self.height = grid_pixel_size
-        
-        # Store HUD height
-        self.hud_height = HUD_HEIGHT
-        
-        # Total window dimensions including left panel
-        self.total_window_width = self.width + self.left_panel_width
-        self.window_height = self.height + HUD_HEIGHT
+        # Fixed default window size for good tiling behavior
+        DEFAULT_WIDTH = 1200
+        DEFAULT_HEIGHT = 900
         
         # Initialize camera offset for scrolling
         self.camera_x = 0
         self.camera_y = 0
         
-        # Create window
-        self.screen = pygame.display.set_mode((self.total_window_width, self.window_height))
+        # Create resizable window
+        self.screen = pygame.display.set_mode((DEFAULT_WIDTH, DEFAULT_HEIGHT), pygame.RESIZABLE)
         scenario_name = simulation.config.name
         seed = simulation.seed
         pygame.display.set_caption(f"VMT v1 - {scenario_name} (seed: {seed})")
         
-        # Scale fonts proportionally (minimum 10px, maximum 16px for base, 8-12px for small)
-        base_font_size = max(10, min(16, self.cell_size // 4))
-        small_font_size = max(8, min(12, self.cell_size // 5))
-        self.font = pygame.font.SysFont('arial', base_font_size)
-        self.small_font = pygame.font.SysFont('arial', small_font_size)
-        
-        # Colors
+        # Colors (defined before layout calculation)
         self.COLOR_WHITE = (255, 255, 255)
         self.COLOR_BLACK = (0, 0, 0)
         self.COLOR_GRAY = (200, 200, 200)
@@ -106,6 +58,11 @@ class VMTRenderer:
         self.COLOR_ARROW_FORAGE = (255, 165, 0)       # Orange for forage targeting
         self.COLOR_ARROW_IDLE_HOME = (173, 216, 230)  # Light blue for idle home targeting
         self.COLOR_IDLE_BORDER = (255, 100, 100)      # Red border for idle agents
+        self.COLOR_GOLD = (255, 215, 0)
+        self.COLOR_DARK_GOLD = (218, 165, 32)
+        
+        # Calculate initial layout
+        self._calculate_layout(DEFAULT_WIDTH, DEFAULT_HEIGHT, cell_size)
         
         # Track trade events for visualization
         self.recent_trades = self.sim.telemetry.recent_trades_for_renderer
@@ -122,12 +79,113 @@ class VMTRenderer:
         # Money transfer animations
         self.money_sparkles = []  # List of active sparkle animations
         
-        # Colors for money
-        self.COLOR_GOLD = (255, 215, 0)
-        self.COLOR_DARK_GOLD = (218, 165, 32)
-        
         # Exchange rate tracking
         self.trade_history = []  # List of (tick, exchange_pair_type, rate) tuples
+    
+    def _calculate_layout(self, window_width: int, window_height: int, forced_cell_size: Optional[int] = None):
+        """
+        Calculate layout parameters based on window dimensions.
+        
+        Args:
+            window_width: Current window width in pixels
+            window_height: Current window height in pixels
+            forced_cell_size: Override cell size (None = auto-calculate)
+        """
+        grid_size = self.sim.grid.N
+        
+        # Base panel dimensions (will scale based on window size)
+        base_left_panel_width = 250
+        base_hud_height = 100
+        
+        # Scale panels proportionally to window size
+        # Left panel: 15-25% of width, clamped to 200-400px
+        left_panel_ratio = 0.20
+        self.left_panel_width = int(max(200, min(400, window_width * left_panel_ratio)))
+        
+        # HUD height: 8-12% of height, clamped to 80-120px
+        hud_ratio = 0.10
+        self.hud_height = int(max(80, min(120, window_height * hud_ratio)))
+        
+        # Calculate available space for grid (accounting for panels if shown)
+        available_width = window_width - (self.left_panel_width if self.show_left_panel else 0)
+        available_height = window_height - (self.hud_height if self.show_hud_panel else 0)
+        
+        # Calculate optimal cell size if not forced
+        if forced_cell_size is None:
+            optimal_cell_size = min(
+                available_width // grid_size,
+                available_height // grid_size
+            )
+            # Allow cells to shrink to 5px minimum
+            self.cell_size = max(5, optimal_cell_size)
+        else:
+            self.cell_size = forced_cell_size
+        
+        # Calculate actual grid dimensions
+        grid_pixel_size = grid_size * self.cell_size
+        
+        # Determine if scrolling is needed
+        self.needs_scrolling = (
+            grid_pixel_size > available_width or 
+            grid_pixel_size > available_height
+        )
+        
+        # Set grid viewport dimensions
+        if self.needs_scrolling:
+            self.width = min(grid_pixel_size, available_width)
+            self.height = min(grid_pixel_size, available_height)
+        else:
+            self.width = grid_pixel_size
+            self.height = grid_pixel_size
+        
+        # Total window dimensions including panels
+        self.total_window_width = self.width + (self.left_panel_width if self.show_left_panel else 0)
+        self.window_height = self.height + (self.hud_height if self.show_hud_panel else 0)
+        
+        # Constrain camera position to valid bounds after resize
+        if self.needs_scrolling:
+            max_x = max(0, grid_pixel_size - self.width)
+            max_y = max(0, grid_pixel_size - self.height)
+            self.camera_x = min(self.camera_x, max_x)
+            self.camera_y = min(self.camera_y, max_y)
+        else:
+            self.camera_x = 0
+            self.camera_y = 0
+        
+        # Progressive UI element hiding for very small cell sizes
+        self.show_inventory_labels = self.cell_size >= 15
+        self.show_agent_labels = self.cell_size >= 8
+        self.show_resource_labels = self.cell_size >= 10
+        self.show_home_indicators = self.cell_size >= 6
+        
+        # Scale fonts proportionally to cell size
+        base_font_size = max(8, min(16, self.cell_size // 3))
+        small_font_size = max(7, min(12, self.cell_size // 4))
+        self.font = pygame.font.SysFont('arial', base_font_size)
+        self.small_font = pygame.font.SysFont('arial', small_font_size)
+    
+    def handle_resize(self, new_width: int, new_height: int):
+        """
+        Handle window resize events.
+        
+        Args:
+            new_width: New window width
+            new_height: New window height
+        """
+        # Enforce minimum window size
+        MIN_WIDTH = 640
+        MIN_HEIGHT = 480
+        
+        new_width = max(MIN_WIDTH, new_width)
+        new_height = max(MIN_HEIGHT, new_height)
+        
+        # NOTE: Do NOT call pygame.display.set_mode() here!
+        # The display surface is automatically resized by pygame when VIDEORESIZE occurs.
+        # Calling set_mode() again would trigger another VIDEORESIZE event (infinite loop).
+        # Just recalculate the layout with the new dimensions.
+        
+        # Recalculate layout
+        self._calculate_layout(new_width, new_height)
     
     def handle_camera_input(self, keys):
         """Handle camera movement with arrow keys."""
@@ -150,15 +208,17 @@ class VMTRenderer:
     
     def to_screen_coords(self, grid_x, grid_y):
         """Convert grid coordinates to screen coordinates with camera offset and left panel."""
+        left_offset = self.left_panel_width if self.show_left_panel else 0
         return (
-            self.left_panel_width + grid_x * self.cell_size - self.camera_x,
+            left_offset + grid_x * self.cell_size - self.camera_x,
             grid_y * self.cell_size - self.camera_y
         )
     
     def is_visible(self, screen_x, screen_y):
         """Check if coordinates are visible in current viewport (accounting for left panel)."""
+        left_offset = self.left_panel_width if self.show_left_panel else 0
         return (
-            self.left_panel_width - self.cell_size <= screen_x <= self.total_window_width + self.cell_size and
+            left_offset - self.cell_size <= screen_x <= self.total_window_width + self.cell_size and
             -self.cell_size <= screen_y <= self.height + self.cell_size
         )
     
@@ -166,12 +226,16 @@ class VMTRenderer:
         """Render the current simulation state."""
         self.screen.fill(self.COLOR_WHITE)
         
-        # Draw left info panel first
-        self.draw_left_panel()
+        # Draw left info panel if enabled
+        if self.show_left_panel:
+            self.draw_left_panel()
         
         self.draw_grid()
         self.draw_resources()
-        self.draw_home_positions()
+        
+        # Draw home positions if cell size is large enough
+        if self.show_home_indicators:
+            self.draw_home_positions()
         
         # Draw agents with optional lambda heatmap coloring
         if self.show_lambda_heatmap:
@@ -183,7 +247,10 @@ class VMTRenderer:
         self.draw_money_labels()
         self.draw_money_sparkles()
         self.draw_trade_indicators()
-        self.draw_hud()
+        
+        # Draw HUD if enabled
+        if self.show_hud_panel:
+            self.draw_hud()
         
         pygame.display.flip()
     
@@ -195,8 +262,10 @@ class VMTRenderer:
         start_y = self.camera_y // self.cell_size
         end_y = min(self.sim.grid.N, (self.camera_y + self.height) // self.cell_size + 1)
         
+        left_offset = self.left_panel_width if self.show_left_panel else 0
+        
         for x in range(start_x, end_x + 1):
-            screen_x = self.left_panel_width + x * self.cell_size - self.camera_x
+            screen_x = left_offset + x * self.cell_size - self.camera_x
             pygame.draw.line(
                 self.screen, self.COLOR_GRAY,
                 (screen_x, 0), (screen_x, self.height),
@@ -207,7 +276,7 @@ class VMTRenderer:
             screen_y = y * self.cell_size - self.camera_y
             pygame.draw.line(
                 self.screen, self.COLOR_GRAY,
-                (self.left_panel_width, screen_y), (self.total_window_width, screen_y),
+                (left_offset, screen_y), (left_offset + self.width, screen_y),
                 1
             )
     
@@ -235,12 +304,13 @@ class VMTRenderer:
                 surface.fill(color)
                 self.screen.blit(surface, (screen_x, screen_y))
                 
-                # Draw amount label
-                label = self.small_font.render(
-                    f"{cell.resource.type}:{cell.resource.amount}",
-                    True, self.COLOR_BLACK
-                )
-                self.screen.blit(label, (screen_x + 2, screen_y + 2))
+                # Draw amount label if cell size permits
+                if self.show_resource_labels:
+                    label = self.small_font.render(
+                        f"{cell.resource.type}:{cell.resource.amount}",
+                        True, self.COLOR_BLACK
+                    )
+                    self.screen.blit(label, (screen_x + 2, screen_y + 2))
     
     def draw_home_positions(self):
         """Draw home position indicators for all agents."""
@@ -551,8 +621,8 @@ class VMTRenderer:
                     max(1, radius // 5)
                 )
                 
-                # Draw agent ID and utility type label (if space permits)
-                if radius >= 5 and self.cell_size >= 15:
+                # Draw agent ID and utility type label (if space permits and labels enabled)
+                if self.show_agent_labels and radius >= 5:
                     # Draw agent ID on first line
                     id_label = self.small_font.render(str(agent.id), True, self.COLOR_BLACK)
                     id_height = id_label.get_height()
@@ -932,8 +1002,8 @@ class VMTRenderer:
                     max(1, radius // 5)
                 )
                 
-                # Draw agent ID and utility type label (if space permits)
-                if radius >= 5 and self.cell_size >= 15:
+                # Draw agent ID and utility type label (if space permits and labels enabled)
+                if self.show_agent_labels and radius >= 5:
                     # Draw agent ID on first line
                     id_label = self.small_font.render(str(agent.id), True, self.COLOR_BLACK)
                     id_height = id_label.get_height()
@@ -1016,9 +1086,9 @@ class VMTRenderer:
         
         # Controls (with scrolling if needed)
         if self.needs_scrolling:
-            controls_text = "SPACE=Pause R=Reset S=Step ←→↑↓=Scroll/Speed T/F/A/O=Arrows M/L/I=Money Q=Quit"
+            controls_text = "SPACE=Pause R=Reset S=Step ←→↑↓=Scroll/Speed T/F/A/O=Arrows [=Panel ]=HUD M/L/I=Money Q=Quit"
         else:
-            controls_text = "SPACE=Pause R=Reset S=Step ↑↓=Speed T/F/A/O=Arrows M/L/I=Money Q=Quit"
+            controls_text = "SPACE=Pause R=Reset S=Step ↑↓=Speed T/F/A/O=Arrows [=Panel ]=HUD M/L/I=Money Q=Quit"
         controls_label = self.small_font.render(controls_text, True, self.COLOR_BLACK)
         self.screen.blit(controls_label, (10, hud_y + 80))
         
