@@ -189,7 +189,7 @@ class DecisionSystem:
                     agent.target_agent_id = None
                     # Determine type based on whether it's a resource
                     cell = sim.grid.get_cell(effect.target[0], effect.target[1])
-                    if cell.resource.type is not None:
+                    if cell.resource is not None and cell.resource.type is not None:
                         agent._decision_target_type = "forage"
                         agent.is_foraging_committed = True
                         agent.forage_target_pos = effect.target

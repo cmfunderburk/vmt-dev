@@ -28,7 +28,7 @@ from .base import Utility
 class UCES(Utility):
     """CES (Constant Elasticity of Substitution) utility function."""
     
-    def __init__(self, rho: float, wA: float, wB: float):
+    def __init__(self, rho: float, wA: float, wB: float, epsilon: float = 1e-9):
         """
         Initialize CES utility: U = [wA * A^ρ + wB * B^ρ]^(1/ρ)
         
@@ -36,6 +36,7 @@ class UCES(Utility):
             rho: Elasticity parameter (ρ ≠ 1)
             wA: Weight for good A (> 0)
             wB: Weight for good B (> 0)
+            epsilon: Small value for zero-safe calculations when rho < 0 (default: 1e-9)
         """
         if rho == 1.0:
             raise ValueError("CES utility cannot have rho=1.0")
@@ -45,22 +46,30 @@ class UCES(Utility):
         self.rho = rho
         self.wA = wA
         self.wB = wB
+        self.epsilon = epsilon
     
     def u(self, A: int, B: int) -> float:
-        """Compute CES utility.
-        For negative rho, zero in either good collapses utility toward 0.
+        """
+        Compute CES utility with epsilon-shift for zero inventories when rho < 0.
+        
+        For negative rho, x^rho is undefined when x=0 (division by zero).
+        We use epsilon-shift: treat A=0 as A=epsilon to get finite utility values.
+        
+        This ensures agents still value acquiring the first unit of a good.
         """
         if A == 0 and B == 0:
             return 0.0
         
-        # Handle zero cases carefully
+        # Epsilon-shift for zero inventories when rho < 0 to avoid division by zero
         if self.rho < 0:
-            # For negative rho, zero inventory in either good makes utility approach 0
-            if A == 0 or B == 0:
-                return 0.0
+            A_safe = max(A, self.epsilon)
+            B_safe = max(B, self.epsilon)
+        else:
+            A_safe = A
+            B_safe = B
         
-        term_A = self.wA * (A ** self.rho) if A > 0 else 0.0
-        term_B = self.wB * (B ** self.rho) if B > 0 else 0.0
+        term_A = self.wA * (A_safe ** self.rho) if A_safe > 0 else 0.0
+        term_B = self.wB * (B_safe ** self.rho) if B_safe > 0 else 0.0
         
         total = term_A + term_B
         if total <= 0:

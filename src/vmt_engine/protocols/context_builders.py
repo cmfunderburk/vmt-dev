@@ -192,6 +192,9 @@ def build_trade_world_view(
     params_with_partner[f"partner_{agent_b.id}_inv_B"] = agent_b.inventory.B
     params_with_partner[f"partner_{agent_b.id}_inv_M"] = agent_b.inventory.M
     params_with_partner[f"partner_{agent_b.id}_lambda"] = agent_b.lambda_money
+    params_with_partner[f"partner_{agent_b.id}_utility"] = agent_b.utility
+    params_with_partner[f"partner_{agent_b.id}_money_utility_form"] = agent_b.money_utility_form
+    params_with_partner[f"partner_{agent_b.id}_M_0"] = agent_b.M_0
     
     # Rebuild WorldView with extended params
     # Using dataclasses.replace would be cleaner but WorldView is frozen

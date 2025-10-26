@@ -495,11 +495,11 @@ params:
   lambda_money: 1.0
   enable_resource_claiming: true
   enforce_single_harvester: true
-  resource_growth_rate: 0
-  resource_max_amount: 1
-  resource_regen_cooldown: 20
+  resource_growth_rate: 1
+  resource_max_amount: 5
+  resource_regen_cooldown: 50
   
   money_utility_form: "log"
 resource_seed:
-  density: 0
+  density: 0.1
   amount: 1

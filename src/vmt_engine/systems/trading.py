@@ -216,16 +216,31 @@ class TradeSystem:
         buyer = sim.agent_by_id[effect.buyer_id]
         seller = sim.agent_by_id[effect.seller_id]
         
-        # Log trade event
+        # Determine direction string
+        if effect.pair_type == "A<->B":
+            direction = "A_traded_for_B"
+            dA, dB, dM = effect.dA, effect.dB, 0
+        elif effect.pair_type == "A<->M":
+            direction = "A_traded_for_M"
+            dA, dB, dM = effect.dA, 0, effect.dM
+        elif effect.pair_type == "B<->M":
+            direction = "B_traded_for_M"
+            dA, dB, dM = 0, effect.dB, effect.dM
+        else:
+            direction = "unknown"
+            dA, dB, dM = effect.dA, effect.dB, effect.dM
+        
+        # Log trade event (using original API signature)
         sim.telemetry.log_trade(
             tick=sim.tick,
+            x=buyer.pos[0],
+            y=buyer.pos[1],
             buyer_id=effect.buyer_id,
             seller_id=effect.seller_id,
-            good_sold=effect.pair_type.split("<->")[0],  # "A" or "B"
-            good_paid=effect.pair_type.split("<->")[1],  # "B" or "M"
-            dX=effect.dA if "A" in effect.pair_type.split("<->")[0] else effect.dB,
-            dY=effect.dB if effect.pair_type == "A<->B" else effect.dM,
+            dA=dA,
+            dB=dB,
             price=effect.price,
-            buyer_surplus=effect.metadata.get("surplus_buyer", 0.0),
-            seller_surplus=effect.metadata.get("surplus_seller", 0.0)
+            direction=direction,
+            dM=dM,
+            exchange_pair_type=effect.pair_type
         )

@@ -134,6 +134,8 @@ class LegacyBargainingProtocol(BargainingProtocol):
             quotes = world.quotes
             utility = world.utility
             lambda_money = world.lambda_money
+            money_utility_form = world.params.get("money_utility_form", "linear")
+            M_0 = world.inventory.get("M", 0)  # Use current M as M_0
         else:
             # Find partner in visible agents
             partner_view = None
@@ -149,6 +151,8 @@ class LegacyBargainingProtocol(BargainingProtocol):
                 quotes = {}
                 utility = None
                 lambda_money = 1.0
+                money_utility_form = "linear"
+                M_0 = 0
             else:
                 # Extract from AgentView
                 # Note: AgentView doesn't have inventory, only quotes
@@ -159,8 +163,10 @@ class LegacyBargainingProtocol(BargainingProtocol):
                     M=world.params.get(f"partner_{agent_id}_inv_M", 0)
                 )
                 quotes = partner_view.quotes
-                utility = None  # Not needed for matching functions
+                utility = world.params.get(f"partner_{agent_id}_utility", None)
                 lambda_money = world.params.get(f"partner_{agent_id}_lambda", 1.0)
+                money_utility_form = world.params.get(f"partner_{agent_id}_money_utility_form", "linear")
+                M_0 = world.params.get(f"partner_{agent_id}_M_0", 0)
         
         # Create minimal agent
         agent = Agent(
@@ -171,6 +177,8 @@ class LegacyBargainingProtocol(BargainingProtocol):
             quotes=quotes,
         )
         agent.lambda_money = lambda_money
+        agent.money_utility_form = money_utility_form
+        agent.M_0 = M_0
         
         return agent
     

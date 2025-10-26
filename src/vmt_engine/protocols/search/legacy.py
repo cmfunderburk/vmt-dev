@@ -216,6 +216,7 @@ class LegacySearchProtocol(SearchProtocol):
                 continue  # Empty resource
             
             delta_u = new_u - current_u
+            
             if delta_u > 0:
                 discounted_u = delta_u * (beta ** distance)
                 candidates.append((pos, delta_u, discounted_u, distance))
