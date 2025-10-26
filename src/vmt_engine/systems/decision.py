@@ -288,11 +288,12 @@ class DecisionSystem:
             for rank, (target_id, score, meta) in enumerate(trade_prefs):
                 pair_type = meta.get("pair_type", "A<->B")
                 surplus = meta.get("surplus", score)
+                discounted_surplus = meta.get("discounted_surplus", score)
                 distance = meta.get("distance", 0)
                 
                 sim.telemetry.log_preference(
                     sim.tick, agent.id, target_id, rank, 
-                    surplus, pair_type, distance
+                    surplus, discounted_surplus, distance, pair_type
                 )
     
     def _clear_stale_claims(self, sim: "Simulation") -> None:

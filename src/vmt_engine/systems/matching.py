@@ -1300,3 +1300,44 @@ def execute_trade_generic(
     agent_i.inventory_changed = True
     agent_j.inventory_changed = True
 
+
+def get_allowed_exchange_pairs(exchange_regime: str) -> list[str]:
+    """
+    Get allowed exchange pair types for a given regime.
+    
+    This is a pure utility function for determining which bilateral
+    exchange types are permitted based on regime configuration.
+    
+    Args:
+        exchange_regime: "barter_only", "money_only", "mixed", or "mixed_liquidity_gated"
+    
+    Returns:
+        List of allowed pair type strings in deterministic order.
+        - barter_only: ["A<->B"]
+        - money_only: ["A<->M", "B<->M"]
+        - mixed/mixed_liquidity_gated: ["A<->B", "A<->M", "B<->M"]
+    
+    Raises:
+        ValueError: If exchange_regime is unknown or empty
+    
+    Examples:
+        >>> get_allowed_exchange_pairs("barter_only")
+        ["A<->B"]
+        >>> get_allowed_exchange_pairs("mixed")
+        ["A<->B", "A<->M", "B<->M"]
+    """
+    if not exchange_regime:
+        raise ValueError("exchange_regime cannot be empty")
+    
+    if exchange_regime == "barter_only":
+        return ["A<->B"]
+    elif exchange_regime == "money_only":
+        return ["A<->M", "B<->M"]
+    elif exchange_regime in ["mixed", "mixed_liquidity_gated"]:
+        return ["A<->B", "A<->M", "B<->M"]
+    else:
+        raise ValueError(
+            f"Unknown exchange_regime: '{exchange_regime}'. "
+            f"Valid: barter_only, money_only, mixed, mixed_liquidity_gated"
+        )
+

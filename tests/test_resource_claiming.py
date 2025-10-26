@@ -297,10 +297,9 @@ def test_claiming_disabled():
     # Run decision phase
     sim.current_mode = "forage"
     from vmt_engine.systems.perception import PerceptionSystem
-    from vmt_engine.systems.decision import DecisionSystem
     
     perception = PerceptionSystem()
-    decision = DecisionSystem()
+    decision = sim.systems[1]  # Use simulation's pre-configured DecisionSystem
     
     perception.execute(sim)
     decision.execute(sim)

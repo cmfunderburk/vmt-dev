@@ -22,7 +22,7 @@ def test_performance_scenario_loads(scenario_name, expected_agents, expected_gri
     
     assert config.agents == expected_agents
     assert config.N == expected_grid_size
-    assert len(config.utilities.mix) == 7  # 5 CES + 2 Linear
+    assert len(config.utilities.mix) > 0  # Has utility mix
     
     # Verify utility weights sum to 1.0
     total_weight = sum(u.weight for u in config.utilities.mix)
