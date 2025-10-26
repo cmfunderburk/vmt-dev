@@ -1,9 +1,24 @@
 # VMT Protocol Modularization Master Plan
 
-**Document Status:** Authoritative Single Source of Truth  
-**Version:** 1.0  
+**Document Status:** Active - Minimal Implementation Phase  
+**Version:** 1.1  
 **Created:** 2025-01-27  
-**Purpose:** Consolidated master plan for VMT architectural refactoring  
+**Updated:** 2025-10-26  
+**Purpose:** Consolidated master plan for VMT architectural refactoring
+
+---
+
+## IMPLEMENTATION STATUS ✅
+
+**Active Path:** Minimal Implementation (4 weeks)
+- Infrastructure and legacy adapters only
+- Full protocol system deferred for future work
+- See "Minimal Implementation Path" section below
+
+**Approved Architectural Decisions:**
+- ✅ Effect Application: Immediate (not batched)
+- ✅ Multi-tick State: Effect-based (InternalStateUpdate)
+- ✅ Protocol Versioning: Date-based (YYYY.MM.DD format)
 
 ---
 
@@ -13,9 +28,10 @@ This document consolidates multiple protocol modularization proposals into a sin
 
 **Key Principle:** "Pure inputs → explicit effects" with the simulation core as the sole state mutator.
 
-**Timeline:** 8-12 weeks for complete implementation  
-**Priority:** Critical - blocks Phase C market mechanisms  
-**Risk:** Low - incremental approach with backward compatibility  
+**Current Timeline:** 4 weeks for minimal implementation (infrastructure + legacy adapters)  
+**Future Work:** Additional protocols can be added incrementally as research needs arise  
+**Priority:** Medium - provides extensible foundation  
+**Risk:** Low - incremental approach with backward compatibility
 
 ---
 
@@ -250,7 +266,28 @@ class BargainingProtocol(ProtocolBase):
 
 ## Part III: Implementation Phases
 
-### Phase 0: Preparation (Week 1)
+**NOTE:** The full 12-week implementation described below is the complete vision. The current approved path is the **Minimal Implementation** (Phases 0-2 only, 4 weeks), with Phases 3-6 deferred for future work as research needs arise.
+
+---
+
+## Minimal Implementation Path (Active - 4 Weeks)
+
+### Overview
+The approved minimal implementation includes:
+1. **Week 1:** Phase 0 - Infrastructure setup
+2. **Week 2:** Phase 1 - Legacy adapters
+3. **Week 3:** Phase 2 - Core integration & configuration
+4. **Week 4:** Testing, documentation, and cleanup
+
+**Result:** Extensible protocol foundation with legacy behavior preserved, ready for incremental protocol additions in the future.
+
+**Phases 3-6 (Alternative & Advanced Protocols):** Deferred until research priorities require specific new mechanisms.
+
+---
+
+## Full Implementation Phases (Reference)
+
+### Phase 0: Preparation (Week 1) ✅ ACTIVE
 
 **Goal:** Set up infrastructure without changing behavior.
 
@@ -267,7 +304,7 @@ class BargainingProtocol(ProtocolBase):
 - [ ] Type checking passes (mypy)
 - [ ] No behavior changes yet
 
-### Phase 1: Legacy Adapters (Week 2-3)
+### Phase 1: Legacy Adapters (Week 2) ✅ ACTIVE
 
 **Goal:** Wrap existing logic in protocol interfaces.
 
@@ -311,7 +348,7 @@ class LegacyBargainingProtocol(BargainingProtocol):
 - [ ] Telemetry identical (bit-for-bit)
 - [ ] All 316+ tests pass
 
-### Phase 2: Core Integration (Week 4)
+### Phase 2: Core Integration (Week 3) ✅ ACTIVE
 
 **Goal:** Engine applies effects instead of direct mutation.
 
@@ -349,7 +386,9 @@ def apply_effects(self, effects: list[Effect]) -> None:
 - [ ] Conflict resolution tested
 - [ ] Performance within 10% of baseline
 
-### Phase 3: Alternative Protocols (Week 5-6)
+### Phase 3: Alternative Protocols (DEFERRED)
+
+**Status:** Not included in minimal implementation - deferred for future work.
 
 **Goal:** Implement first non-legacy protocols.
 
@@ -400,9 +439,11 @@ class RandomWalkSearch(SearchProtocol):
 - [ ] Comparative scenarios created
 - [ ] Performance benchmarked
 
-### Phase 4: Configuration System (Week 7)
+### Phase 4: Configuration System (Week 3) ✅ INCLUDED IN MINIMAL
 
 **Goal:** YAML-based protocol selection.
+
+**Note:** Basic configuration system included in minimal implementation (Week 3) to support legacy protocol selection and future extensibility.
 
 **4.1 Protocol Registry**
 ```python
@@ -449,7 +490,9 @@ protocols:
 - [ ] CLI supports protocol override
 - [ ] GUI dropdown for protocol selection
 
-### Phase 5: Advanced Protocols (Week 8-10)
+### Phase 5: Advanced Protocols (DEFERRED)
+
+**Status:** Not included in minimal implementation - deferred for future work.
 
 **Goal:** Implement economically sophisticated protocols.
 
@@ -502,9 +545,11 @@ class StableMatching(MatchingProtocol):
 - [ ] Economic properties verified
 - [ ] Documentation complete
 
-### Phase 6: Cleanup and Optimization (Week 11-12)
+### Phase 6: Cleanup and Optimization (Week 4) ✅ INCLUDED IN MINIMAL
 
-**Goal:** Remove legacy code and optimize performance.
+**Goal:** Testing, documentation, and verification.
+
+**Note:** In minimal implementation, this phase focuses on verification that legacy behavior is preserved, not on removing legacy code (which will remain as the primary implementation).
 
 **Tasks:**
 1. Remove inlined logic from DecisionSystem
@@ -686,69 +731,64 @@ src/vmt_engine/
 
 ---
 
-## Appendix B: Decision Points
+## Appendix B: Decision Points ✅ RESOLVED
 
-**DECISION REQUIRED:** The following design choices need confirmation:
+**All architectural decisions have been made:**
 
-### 1. Effect Application Strategy
+### 1. Effect Application Strategy ✅ RESOLVED
 
-**Option A: Immediate Application** (Recommended)
+**Decision:** Option A - Immediate Application
+
 - Effects applied as generated within each phase
 - Simpler to implement
 - Easier debugging
 
-**Option B: Batch Application**
-- Collect all effects, apply at phase end
-- More complex conflict resolution
-- Better for parallelization (future)
+**Rationale:** Lower complexity for minimal implementation, can refactor to batch application in future if needed.
 
-**Recommendation:** Option A for initial implementation
+### 2. Multi-tick State Storage ✅ RESOLVED
 
-### 2. Multi-tick State Storage
+**Decision:** Option A - Effect-based State (InternalStateUpdate)
 
-**Option A: InternalStateUpdate Effects** (Recommended)
 - State stored via effects in telemetry
 - Full audit trail
 - Reproducible
 
-**Option B: Protocol-managed State**
-- Protocols maintain own state dict
-- Less telemetry overhead
-- Harder to debug
+**Rationale:** Aligns with VMT's determinism requirements and telemetry-first philosophy.
 
-**Recommendation:** Option A for transparency
+### 3. Protocol Versioning ✅ RESOLVED
 
-### 3. Protocol Versioning
+**Decision:** Option B - Date-based Versioning
 
-**Option A: Semantic Versioning** (Recommended)
-- Standard major.minor.patch
-- Clear compatibility rules
-- Industry standard
-
-**Option B: Date-based Versioning**
 - YYYY.MM.DD format
 - Simpler for research
-- Matches current practice
+- Matches current VMT practice
 
-**Recommendation:** Option A for protocol versions (even though main project uses date-based)
+**Rationale:** Consistency with VMT project standards, simpler for research reproducibility.
 
 ---
 
 ## Appendix C: Timeline Summary
 
-| Week | Phase | Key Deliverables |
-|------|-------|-----------------|
-| 1 | Phase 0: Preparation | Infrastructure setup |
-| 2-3 | Phase 1: Legacy Adapters | Behavior preservation |
-| 4 | Phase 2: Core Integration | Effect system |
-| 5-6 | Phase 3: Alternative Protocols | First variants |
-| 7 | Phase 4: Configuration | YAML/Registry |
-| 8-10 | Phase 5: Advanced Protocols | Economic mechanisms |
-| 11-12 | Phase 6: Cleanup | Optimization/Docs |
+### Active Timeline (Minimal Implementation - 4 Weeks)
 
-**Total Duration:** 12 weeks (3 months)
+| Week | Phase | Key Deliverables | Status |
+|------|-------|-----------------|--------|
+| 1 | Phase 0: Preparation | Infrastructure setup | ✅ Approved |
+| 2 | Phase 1: Legacy Adapters | Behavior preservation | ✅ Approved |
+| 3 | Phase 2: Core Integration + Config | Effect system & YAML support | ✅ Approved |
+| 4 | Phase 6: Testing & Docs | Verification & documentation | ✅ Approved |
+
+**Total Duration:** 4 weeks (1 month)
+
+### Future Work (Deferred)
+
+Additional protocols (Phases 3 & 5) can be added incrementally as research needs arise:
+- Alternative matching protocols (greedy, stable matching)
+- Alternative bargaining protocols (take-it-or-leave-it, Rubinstein, Nash)
+- Advanced search protocols (memory-based, random walk)
 
 ---
 
-**Document Status:** Ready for review and decision  
-**Next Steps:** Review decision points, confirm timeline, begin Phase 0
+**Document Status:** Approved for minimal implementation - ready to proceed  
+**Next Steps:** Begin Phase 0 (infrastructure setup) after utility base extraction  
+**Timeline:** 4 weeks to extensible foundation

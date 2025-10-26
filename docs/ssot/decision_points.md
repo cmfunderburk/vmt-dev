@@ -1,32 +1,49 @@
 # Critical Decision Points
 
-**Document Status:** Requires User Input  
-**Version:** 1.0  
+**Document Status:** ✅ All Decisions Made  
+**Version:** 1.1  
 **Created:** 2025-01-27  
-**Purpose:** Identify key decisions needed before implementation  
+**Updated:** 2025-10-26  
+**Purpose:** Document all key decisions for VMT architectural initiatives
+
+---
+
+## ✅ DECISIONS SUMMARY
+
+**All critical decisions have been resolved and documented below:**
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| **Implementation Approach** | Minimal Implementation (4 weeks) | Lower risk, faster delivery, extensible foundation |
+| **Utility Base Extraction** | Approved - Proceed Immediately | 2-hour task, zero risk, high clarity value |
+| **Effect Application Strategy** | Immediate Application | Simpler implementation, easier debugging |
+| **Multi-tick State Storage** | Effect-based (InternalStateUpdate) | Full audit trail, reproducibility, determinism |
+| **Protocol Versioning** | Date-based (YYYY.MM.DD) | Aligns with VMT standards, simpler for research |
+
+**Status:** Ready to proceed with implementation
 
 ---
 
 ## Executive Summary
 
-This document consolidates all design decisions that require your input before proceeding with implementation. These decisions affect architecture, timeline, and resource allocation.
+This document consolidates all design decisions for the VMT architectural initiatives. All decisions have been made and are documented below with full context and rationale.
 
 ---
 
 ## IMMEDIATE DECISIONS (This Week)
 
-### 1. Overall Implementation Approach
+### 1. Overall Implementation Approach ✅ RESOLVED
 
 **Question:** How should we proceed with protocol modularization?
 
-**Option A: Full Implementation (Recommended)**
+**Option A: Full Implementation**
 - 12-week comprehensive refactoring
 - All protocols implemented
 - Complete documentation
 - **Pros:** Unblocks all Phase C features, research-grade system
 - **Cons:** 3-month timeline, significant effort
 
-**Option B: Minimal Implementation**
+**Option B: Minimal Implementation ✅ SELECTED**
 - 4-week infrastructure only
 - Legacy adapters only (no new features)
 - Extensible foundation
@@ -39,9 +56,11 @@ This document consolidates all design decisions that require your input before p
 - **Pros:** No effort required
 - **Cons:** Cannot implement Phase C features
 
-**➤ DECISION NEEDED:** _______________________
+**➤ DECISION:** Option B: Minimal Implementation
 
-### 2. Utility Base Extraction
+> cmf: Option B is the official decision - 4-week minimal implementation providing extensible foundation for future protocol work.
+
+### 2. Utility Base Extraction ✅ RESOLVED
 
 **Question:** Should we immediately extract the Utility ABC to base.py?
 
@@ -51,17 +70,19 @@ This document consolidates all design decisions that require your input before p
 
 **Recommendation:** Yes - proceed immediately
 
-**➤ DECISION:** ⬜ Yes | ⬜ No
+**➤ DECISION:** Yes - Proceed immediately
+
+> cmf: decision resolved: yes -- proceed immediately with utility base extraction to src/vmt_engine/econ/base.py
 
 ---
 
 ## ARCHITECTURAL DECISIONS (Week 1)
 
-### 3. Effect Application Strategy
+### 3. Effect Application Strategy ✅ RESOLVED
 
 **Question:** How should protocols apply their effects?
 
-**Option A: Immediate Application (Recommended)**
+**Option A: Immediate Application ✅ SELECTED**
 ```python
 def execute_phase(self):
     effects = protocol.generate_effects()
@@ -82,13 +103,15 @@ def execute_phase(self):
 - **Pros:** Better for future parallelization
 - **Cons:** Complex conflict resolution
 
-**➤ DECISION NEEDED:** _______________________
+**➤ DECISION:** Option A - Immediate Application
 
-### 4. Multi-tick State Storage
+> cmf: this decision resolved in favor of option A - effects applied immediately within each phase for simpler implementation and debugging
+
+### 4. Multi-tick State Storage ✅ RESOLVED
 
 **Question:** How should protocols store state across ticks?
 
-**Option A: Effect-based State (Recommended)**
+**Option A: Effect-based State ✅ SELECTED**
 ```python
 InternalStateUpdate(
     protocol_name="rubinstein",
@@ -109,18 +132,20 @@ class RubinsteinProtocol:
 - **Pros:** Less telemetry overhead
 - **Cons:** Harder to debug, reproduce
 
-**➤ DECISION NEEDED:** _______________________
+**➤ DECISION:** Option A - Effect-based State
 
-### 5. Protocol Versioning Scheme
+> cmf: this has been resolved in favor of option A: effect-based state stored via InternalStateUpdate effects for full audit trail and reproducibility
+
+### 5. Protocol Versioning Scheme ✅ RESOLVED
 
 **Question:** How should we version individual protocols?
 
-**Option A: Semantic Versioning (Recommended)**
+**Option A: Semantic Versioning**
 - Format: `major.minor.patch` (e.g., "1.0.0")
 - Clear compatibility rules
 - Industry standard
 
-**Option B: Date-based Versioning**
+**Option B: Date-based Versioning ✅ SELECTED**
 - Format: `YYYY.MM.DD` (e.g., "2025.01.27")
 - Matches current VMT practice
 - Simpler for research
@@ -130,17 +155,23 @@ class RubinsteinProtocol:
 - Simplest approach
 - Less information
 
-**➤ DECISION NEEDED:** _______________________
+**➤ DECISION:** Option B - Date-based Versioning
+
+> cmf: this has been resolved in favor of option B - protocols will use YYYY.MM.DD versioning format to align with VMT project standards and simplify research reproducibility
 
 ---
 
-## PRIORITY DECISIONS (Week 2)
+## PRIORITY DECISIONS (Week 2) - DEFERRED
 
-### 6. First Alternative Protocols
+**Note:** These decisions are deferred since minimal implementation does not include alternative protocols. These can be revisited when/if full protocol implementation is undertaken.
+
+### 6. First Alternative Protocols ⏸️ DEFERRED
 
 **Question:** After legacy adapters, which protocols should we implement first?
 
-**Research Focus Options:**
+**Status:** Not applicable for minimal implementation. Deferred until research priorities require specific alternative protocols.
+
+**Research Focus Options (for future reference):**
 
 **Option A: Bargaining Mechanisms**
 - Take-it-or-leave-it
@@ -160,9 +191,9 @@ class RubinsteinProtocol:
 - Market makers
 - **Use Case:** Prepare for market mechanisms
 
-**➤ PREFERENCE:** _______________________
+**➤ DECISION:** Deferred - not applicable to minimal implementation
 
-### 7. Performance Targets
+### 7. Performance Targets ✅ RESOLVED
 
 **Question:** What performance regression is acceptable?
 
@@ -173,16 +204,16 @@ class RubinsteinProtocol:
 
 **Options:**
 - ⬜ <5% regression (may limit features)
-- ⬜ <10% regression (recommended)
+- ✅ <10% regression (recommended)
 - ⬜ <20% regression (more flexibility)
 
-**➤ DECISION NEEDED:** _______________________
+**➤ DECISION:** <10% regression target (standard for all VMT refactoring work)
 
 ---
 
 ## RESOURCE DECISIONS
 
-### 8. Development Allocation
+### 8. Development Allocation ✅ RESOLVED
 
 **Question:** How should development effort be allocated?
 
@@ -191,19 +222,19 @@ class RubinsteinProtocol:
 - Faster completion
 - Consistent architecture
 
-**Option B: Part-time Development**
-- 50% allocation over 24 weeks
+**Option B: Part-time Development ✅ SELECTED**
+- 50% allocation over 8 weeks (4 weeks calendar for minimal)
 - Allows parallel work
-- Longer timeline
+- Appropriate for minimal implementation
 
 **Option C: Team Effort**
 - Multiple developers
 - Requires more coordination
 - Risk of inconsistency
 
-**➤ APPROACH:** _______________________
+**➤ DECISION:** Part-time development - single developer, ~50% allocation over 4-week minimal implementation
 
-### 9. Testing Strategy
+### 9. Testing Strategy ✅ RESOLVED
 
 **Question:** What level of testing is required?
 
@@ -212,132 +243,140 @@ class RubinsteinProtocol:
 - Telemetry backward compatible
 - Basic property tests
 
-**Recommended:**
+**Recommended: ✅ SELECTED**
 - Above plus:
-- Golden standard tests
+- Golden standard tests (telemetry equivalence)
 - Property-based testing
 - Economic validation
-- Performance benchmarks
+- Performance benchmarks (<10% regression)
 
 **Comprehensive:**
 - Above plus:
-- Comparative analysis
-- Multi-protocol scenarios
-- Formal verification
+- Comparative analysis (deferred - N/A for minimal)
+- Multi-protocol scenarios (deferred - N/A for minimal)
+- Formal verification (not planned)
 
-**➤ LEVEL:** _______________________
+**➤ DECISION:** Recommended level testing - includes golden standard tests for legacy adapter equivalence
 
 ---
 
 ## OPTIONAL DECISIONS
 
-### 10. Utility Modularization (Phase 2)
+### 10. Utility Modularization (Phase 2) ✅ RESOLVED
 
 **Question:** When should we do full utility modularization?
 
 - ⬜ After protocol modularization
-- ⬜ Assign to new developer
+- ✅ Assign to new developer
 - ⬜ Defer indefinitely
 
-**Recommendation:** Assign to new developer
+**Decision:** Assign to new developer as onboarding exercise (Phase 1 base extraction approved for immediate implementation)
 
-### 11. Developer Onboarding Updates
+### 11. Developer Onboarding Updates ✅ RESOLVED
 
 **Question:** When should we update onboarding materials?
 
 - ⬜ During protocol implementation
-- ⬜ After protocols complete
+- ✅ After protocols complete
 - ⬜ As separate project
 
-**Recommendation:** After protocols complete
+**Decision:** After protocols complete and stable
 
-### 12. GUI Integration
+### 12. GUI Integration ✅ RESOLVED
 
 **Question:** How should protocol selection work in GUI?
 
-- ⬜ Dropdown menu per protocol type
-- ⬜ Advanced settings dialog
-- ⬜ Config file only initially
+- ⬜ Dropdown menu per protocol type (deferred - for future with multiple protocols)
+- ⬜ Advanced settings dialog (deferred)
+- ✅ Config file only initially
 
-**Recommendation:** Dropdown menu
-
----
-
-## DECISION SUMMARY FORM
-
-Please fill out your decisions:
-
-**Immediate:**
-1. Implementation Approach: [ ] Full | [ ] Minimal | [ ] Defer
-2. Utility Base Extraction: [ ] Yes | [ ] No
-
-**Architectural:**
-3. Effect Application: [ ] Immediate | [ ] Batch
-4. Multi-tick State: [ ] Effect-based | [ ] Protocol-managed
-5. Versioning: [ ] Semantic | [ ] Date | [ ] Integer
-
-**Priority:**
-6. First Protocols: [ ] Bargaining | [ ] Search | [ ] Phase C
-7. Performance Target: [ ] <5% | [ ] <10% | [ ] <20%
-
-**Resource:**
-8. Development: [ ] Dedicated | [ ] Part-time | [ ] Team
-9. Testing: [ ] Minimum | [ ] Recommended | [ ] Comprehensive
-
-**Optional:**
-10. Utility Phase 2: [ ] After | [ ] New Dev | [ ] Defer
-11. Onboarding: [ ] During | [ ] After | [ ] Separate
-12. GUI: [ ] Dropdown | [ ] Dialog | [ ] Config
+**Decision:** Config file only for minimal implementation (GUI integration deferred until multiple protocols exist)
 
 ---
 
-## BLOCKERS
+## DECISION SUMMARY FORM ✅ COMPLETE
 
-**Cannot proceed without decisions on:**
-1. Overall implementation approach (A/B/C)
-2. Effect application strategy
-3. Multi-tick state storage
+All decisions have been made:
 
-**Can proceed but need soon:**
-4. Protocol versioning
-5. First alternative protocols
-6. Performance targets
+**Immediate:** ✅
+1. Implementation Approach: [ ] Full | [✅] Minimal | [ ] Defer
+2. Utility Base Extraction: [✅] Yes | [ ] No
 
----
+**Architectural:** ✅
+3. Effect Application: [✅] Immediate | [ ] Batch
+4. Multi-tick State: [✅] Effect-based | [ ] Protocol-managed
+5. Versioning: [ ] Semantic | [✅] Date | [ ] Integer
 
-## RECOMMENDATIONS SUMMARY
+**Priority:** ✅
+6. First Protocols: [ ] Bargaining | [ ] Search | [ ] Phase C | [✅] Deferred (N/A for minimal)
+7. Performance Target: [ ] <5% | [✅] <10% | [ ] <20%
 
-Based on the analysis, here are the recommended choices:
+**Resource:** ✅
+8. Development: [ ] Dedicated | [✅] Part-time | [ ] Team
+9. Testing: [ ] Minimum | [✅] Recommended | [ ] Comprehensive
 
-1. **Full Implementation** - Worth the investment
-2. **Yes to Utility Base** - Quick win
-3. **Immediate Application** - Simpler
-4. **Effect-based State** - Better audit trail
-5. **Semantic Versioning** - Industry standard
-6. **Phase C Protocols First** - Aligned with goals
-7. **<10% Performance** - Good balance
-8. **Part-time Development** - Sustainable
-9. **Recommended Testing** - Ensures quality
-10. **New Dev for Utilities** - Good learning
-11. **After for Onboarding** - Logical sequence
-12. **Dropdown GUI** - User-friendly
+**Optional:** ✅
+10. Utility Phase 2: [ ] After | [✅] New Dev | [ ] Defer
+11. Onboarding: [ ] During | [✅] After | [ ] Separate
+12. GUI: [ ] Dropdown | [ ] Dialog | [✅] Config
 
 ---
 
-## NEXT STEPS
+## BLOCKERS ✅ RESOLVED
 
-1. Review this document
-2. Fill out Decision Summary Form
-3. Identify any additional concerns
-4. Approve to proceed with implementation
+**All blockers resolved:**
+1. ✅ Overall implementation approach: Minimal Implementation
+2. ✅ Effect application strategy: Immediate Application
+3. ✅ Multi-tick state storage: Effect-based State
 
-**Timeline Impact:**
-- If approved today: Can start Phase 0 immediately
-- Each day of delay: Pushes timeline by one day
-- Decision deadline: End of this week for Q1 completion
+**All decisions made:**
+4. ✅ Protocol versioning: Date-based (YYYY.MM.DD)
+5. ✅ First alternative protocols: Deferred (N/A for minimal)
+6. ✅ Performance targets: <10% regression
+
+**Status:** Ready to proceed with implementation
 
 ---
 
-**Document Status:** Awaiting user decisions  
-**Response Needed By:** End of week  
-**Contact:** Reply with completed Decision Summary Form
+## FINAL DECISIONS SUMMARY ✅
+
+Based on the analysis and user input, these decisions were made:
+
+1. **Minimal Implementation** ✅ - Lower risk, faster delivery, extensible foundation
+2. **Yes to Utility Base** ✅ - Quick win, 2-hour task
+3. **Immediate Application** ✅ - Simpler implementation and debugging
+4. **Effect-based State** ✅ - Better audit trail, determinism
+5. **Date-based Versioning** ✅ - Aligns with VMT standards, simpler for research
+6. **<10% Performance Target** ✅ - Standard for VMT refactoring
+7. **Part-time Development** ✅ - Appropriate for 4-week minimal implementation
+8. **Recommended Testing Level** ✅ - Includes golden standard tests
+9. **Utility Phase 2 to New Dev** ✅ - Good onboarding exercise
+10. **Onboarding Updates After** ✅ - After protocols stable
+11. **Config-only GUI** ✅ - Minimal implementation, GUI deferred
+12. **Alternative Protocols Deferred** ✅ - Not in minimal implementation scope
+
+---
+
+## NEXT STEPS ✅
+
+All decisions have been made. Ready to proceed:
+
+1. ✅ Review complete - All decisions documented
+2. ✅ Decision Summary Form filled out
+3. ✅ No additional concerns identified
+4. 🚀 **READY:** Begin implementation
+
+**Implementation Timeline:**
+
+- **Now:** Start with utility base extraction (2 hours)
+- **Week 1:** Protocol Phase 0 - Infrastructure setup
+- **Week 2:** Protocol Phase 1 - Legacy adapters
+- **Week 3:** Protocol Phase 2 - Core integration + configuration
+- **Week 4:** Testing, documentation, verification
+
+---
+
+**Document Status:** ✅ All decisions made - ready for implementation  
+**Action Required:** Begin utility base extraction  
+**Timeline:** 4 weeks to extensible foundation  
+**Next Session:** Start implementation work
