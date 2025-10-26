@@ -18,12 +18,18 @@ from .systems.housekeeping import HousekeepingSystem
 # Database-backed telemetry
 from telemetry import TelemetryManager, LogConfig
 
+# Protocol system (Phase 0 - Infrastructure only, not yet wired)
+# from .protocols import SearchProtocol, MatchingProtocol, BargainingProtocol
+
 
 class Simulation:
     """Main simulation class coordinating all phases."""
     
     def __init__(self, scenario_config: ScenarioConfig, seed: int, 
-                 log_config: Optional[LogConfig] = None):
+                 log_config: Optional[LogConfig] = None,
+                 search_protocol: Optional["SearchProtocol"] = None,
+                 matching_protocol: Optional["MatchingProtocol"] = None,
+                 bargaining_protocol: Optional["BargainingProtocol"] = None):
         """
         Initialize simulation from scenario configuration.
         
@@ -31,10 +37,19 @@ class Simulation:
             scenario_config: Loaded and validated scenario
             seed: Random seed for reproducibility
             log_config: Configuration for new database logging system (optional)
+            search_protocol: Optional search protocol (Phase 0 - not yet wired)
+            matching_protocol: Optional matching protocol (Phase 0 - not yet wired)
+            bargaining_protocol: Optional bargaining protocol (Phase 0 - not yet wired)
         """
         self.config = scenario_config
         self.seed = seed
         self.rng = np.random.Generator(np.random.PCG64(seed))
+        
+        # Protocol system (Phase 0 - Infrastructure only, not yet wired)
+        # These will be integrated in Phase 2 (Core Integration)
+        self.search_protocol = search_protocol
+        self.matching_protocol = matching_protocol
+        self.bargaining_protocol = bargaining_protocol
         
         # Simulation state - initialize params first
         self.tick = 0
