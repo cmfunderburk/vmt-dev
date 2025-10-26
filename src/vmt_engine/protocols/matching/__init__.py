@@ -4,12 +4,15 @@ Matching Protocols
 Matching protocols determine how agents form bilateral pairs for trading.
 
 Available Protocols:
-- (To be implemented in Phase 1: Legacy three-pass algorithm)
+- LegacyMatchingProtocol: Three-pass algorithm (mutual consent + greedy fallback)
 - (Future: Greedy surplus, Stable matching)
 
-Version: 2025.10.26 (Phase 0 - Infrastructure)
+Version: 2025.10.26 (Phase 1 - Legacy Implementation)
 """
 
-# Protocol implementations will be added in Phase 1
-__all__: list[str] = []
+from .legacy import LegacyMatchingProtocol
+
+__all__ = [
+    "LegacyMatchingProtocol",
+]
 

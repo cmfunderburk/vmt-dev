@@ -1,7 +1,27 @@
+"""
+Trading System - Protocol Orchestrator
+
+Coordinates bargaining protocols to execute trades between paired agents.
+
+Phase 4 of the 7-phase simulation tick:
+1. Process paired agents within interaction radius
+2. Call bargaining protocol to negotiate
+3. Apply trade or unpair effects
+4. Log trades to telemetry
+
+Version: 2025.10.26 (Phase 1 - Refactored for Protocol System)
+"""
+
 from __future__ import annotations
-from typing import TYPE_CHECKING
 from dataclasses import dataclass
-from .matching import trade_pair, find_best_trade, find_all_feasible_trades, execute_trade_generic
+from typing import TYPE_CHECKING, Optional
+from ..protocols import (
+    BargainingProtocol,
+    Trade,
+    Unpair,
+    build_trade_world_view,
+)
+from .matching import execute_trade_generic
 
 if TYPE_CHECKING:
     from ..simulation import Simulation
@@ -13,18 +33,8 @@ class TradeCandidate:
     """
     Represents a potential trade between two agents.
     
-    Used for ranking and selecting trades in mixed exchange regimes where
-    multiple trade types (barter, monetary) may be available simultaneously.
-    
-    Attributes:
-        buyer_id: ID of the agent receiving the good
-        seller_id: ID of the agent providing the good
-        good_sold: Good being sold ("A" or "B")
-        good_paid: Good used for payment ("A", "B", or "M")
-        dX: Quantity of good being sold (positive integer)
-        dY: Quantity of good used for payment (positive integer)
-        buyer_surplus: Surplus gained by buyer (ΔU > 0)
-        seller_surplus: Surplus gained by seller (ΔU > 0)
+    DEPRECATED: This class is kept for backward compatibility with tests.
+    The protocol system uses Effect types instead.
     """
     buyer_id: int
     seller_id: int
@@ -47,103 +57,26 @@ class TradeCandidate:
 
 
 class TradeSystem:
-    """Phase 4: Agents trade with nearby partners."""
-
-    def _get_allowed_pairs(self, regime: str) -> list[str]:
-        """
-        Get allowed exchange pair types based on exchange regime.
-        
-        Returns pair identifiers from buyer's perspective:
-        - "A<->B": Barter (goods-for-goods)
-        - "A<->M": Buy good A with money
-        - "B<->M": Buy good B with money
-        
-        Args:
-            regime: Exchange regime string ("barter_only", "money_only", "mixed", "mixed_liquidity_gated")
-            
-        Returns:
-            List of allowed pair type strings. Order is deterministic for reproducibility.
-            
-        Raises:
-            ValueError: If regime is not recognized
-        """
-        if regime == "barter_only":
-            return ["A<->B"]
-        elif regime == "money_only":
-            return ["A<->M", "B<->M"]
-        elif regime in ["mixed", "mixed_liquidity_gated"]:
-            # All three exchange types allowed
-            # Order matters for deterministic tie-breaking (implemented in Phase 3c)
-            return ["A<->B", "A<->M", "B<->M"]
-        else:
-            raise ValueError(
-                f"Unknown exchange_regime: '{regime}'. "
-                f"Must be one of: 'barter_only', 'money_only', 'mixed', 'mixed_liquidity_gated'"
-            )
+    """
+    Phase 4: Orchestrate protocol-based trade negotiation.
     
-    def _rank_trade_candidates(self, candidates: list[TradeCandidate]) -> list[TradeCandidate]:
-        """
-        Rank trade candidates with deterministic three-level tie-breaking.
-        
-        Sorting priority (money-first policy for mixed regimes):
-        1. Total surplus (descending) - maximize welfare
-        2. Pair type priority (ascending) - money-first:
-           - Priority 0: A↔M (good A for money)
-           - Priority 1: B↔M (good B for money) 
-           - Priority 2: A↔B (barter)
-        3. Agent pair (min_id, max_id) (ascending) - deterministic tie-breaker
-        
-        This ensures that when multiple trade types offer equal surplus,
-        monetary exchanges are preferred (liquidity advantage), and remaining
-        ties are broken deterministically by agent ID for reproducibility.
-        
-        Args:
-            candidates: List of TradeCandidate objects to rank
-            
-        Returns:
-            Sorted list of candidates (highest priority first)
-            
-        Example:
-            If two trades both offer surplus=10.0, and one is A↔M while the 
-            other is A↔B, the A↔M trade will be ranked higher (executed first).
-        """
-        # Define pair type priority for money-first policy
-        # Lower number = higher priority (executed first when surplus equal)
-        PAIR_PRIORITY = {
-            "A<->M": 0,  # Highest priority: monetary exchange for A
-            "B<->M": 1,  # Second priority: monetary exchange for B
-            "A<->B": 2,  # Lowest priority: barter
-            "B<->A": 2,  # Barter (equivalent to A<->B)
-            "M<->A": 0,  # Seller perspective of A↔M (treated same as A<->M)
-            "M<->B": 1,  # Seller perspective of B↔M (treated same as B<->M)
-        }
-        
-        def sort_key(candidate: TradeCandidate) -> tuple:
-            """Generate sort key for a candidate."""
-            # 1. Negate surplus for descending order (higher surplus first)
-            surplus_key = -candidate.total_surplus
-            
-            # 2. Get pair type priority (lower is better)
-            pair_type = candidate.pair_type
-            pair_priority = PAIR_PRIORITY.get(pair_type, 99)  # Unknown pairs last
-            
-            # 3. Agent pair for deterministic tie-breaking (ascending)
-            agent_pair = (
-                min(candidate.buyer_id, candidate.seller_id),
-                max(candidate.buyer_id, candidate.seller_id)
-            )
-            
-            return (surplus_key, pair_priority, agent_pair)
-        
-        # Sort and return
-        return sorted(candidates, key=sort_key)
-
+    Responsibilities:
+    - Find paired agents within interaction radius
+    - Build WorldView for trade negotiation
+    - Call bargaining protocol
+    - Apply trade/unpair effects
+    - Log trades to telemetry
+    
+    The actual bargaining logic is delegated to protocols.
+    """
+    
+    def __init__(self):
+        self.bargaining_protocol: Optional[BargainingProtocol] = None
+    
     def execute(self, sim: "Simulation") -> None:
-        # Check if using money-aware matching (Phase 2+)
-        exchange_regime = sim.params.get("exchange_regime", "barter_only")
-        use_generic_matching = exchange_regime in ("money_only", "mixed")
+        """Execute trade phase using bargaining protocol."""
         
-        # Process ONLY paired agents (pairing replaces spatial matching)
+        # Track processed pairs to avoid double-processing
         processed_pairs = set()
         
         for agent in sorted(sim.agents, key=lambda a: a.id):
@@ -164,243 +97,135 @@ class TradeSystem:
             distance = abs(agent.pos[0] - partner.pos[0]) + abs(agent.pos[1] - partner.pos[1])
             
             if distance <= sim.params["interaction_radius"]:
-                # Within range: attempt trade
-                if use_generic_matching:
-                    # Phase 2+: Money-aware matching
-                    self._trade_generic(agent, partner, sim)
-                else:
-                    # Barter-only matching
-                    trade_pair(agent, partner, sim.params, sim.telemetry, sim.tick)
+                # Within range: attempt trade via bargaining protocol
+                self._negotiate_trade(agent, partner, sim)
             # else: Too far apart, stay paired and keep moving
     
-    def _convert_to_trade_candidate(
-        self, 
-        agent_i: 'Agent', 
-        agent_j: 'Agent', 
-        pair_name: str, 
-        trade: tuple
-    ) -> TradeCandidate:
+    def _negotiate_trade(self, agent_a: "Agent", agent_b: "Agent", sim: "Simulation") -> None:
         """
-        Convert a trade tuple from matching to a TradeCandidate object.
+        Negotiate trade between two agents using bargaining protocol.
         
         Args:
-            agent_i: First agent
-            agent_j: Second agent
-            pair_name: Pair type ("A<->B", "A<->M", "B<->M")
-            trade: Tuple (dA_i, dB_i, dM_i, dA_j, dB_j, dM_j, surplus_i, surplus_j)
-            
-        Returns:
-            TradeCandidate with buyer/seller roles determined by trade direction
+            agent_a: First agent in pair
+            agent_b: Second agent in pair
+            sim: Current simulation state
         """
-        dA_i, dB_i, dM_i, dA_j, dB_j, dM_j, surplus_i, surplus_j = trade
+        # Build WorldView for trade negotiation
+        world = build_trade_world_view(agent_a, agent_b, sim)
         
-        # Determine buyer/seller and good/payment based on pair type
-        if pair_name == "A<->B":
-            # Barter: whoever receives A is the buyer
-            if dA_i > 0:  # agent_i receives A (buyer)
-                return TradeCandidate(
-                    buyer_id=agent_i.id, seller_id=agent_j.id,
-                    good_sold="A", good_paid="B",
-                    dX=dA_i, dY=-dB_i,
-                    buyer_surplus=surplus_i, seller_surplus=surplus_j
-                )
-            else:  # agent_j receives A (buyer)
-                return TradeCandidate(
-                    buyer_id=agent_j.id, seller_id=agent_i.id,
-                    good_sold="A", good_paid="B",
-                    dX=-dA_i, dY=dB_i,
-                    buyer_surplus=surplus_j, seller_surplus=surplus_i
-                )
+        # Call bargaining protocol
+        effects = self.bargaining_protocol.negotiate((agent_a.id, agent_b.id), world)
         
-        elif pair_name == "A<->M":
-            # Monetary: whoever receives A is the buyer
-            if dA_i > 0:  # agent_i receives A (buyer)
-                return TradeCandidate(
-                    buyer_id=agent_i.id, seller_id=agent_j.id,
-                    good_sold="A", good_paid="M",
-                    dX=dA_i, dY=-dM_i,
-                    buyer_surplus=surplus_i, seller_surplus=surplus_j
-                )
-            else:  # agent_j receives A (buyer)
-                return TradeCandidate(
-                    buyer_id=agent_j.id, seller_id=agent_i.id,
-                    good_sold="A", good_paid="M",
-                    dX=-dA_i, dY=dM_i,
-                    buyer_surplus=surplus_j, seller_surplus=surplus_i
-                )
+        # Apply effects
+        for effect in effects:
+            if isinstance(effect, Trade):
+                self._apply_trade_effect(effect, sim)
+            elif isinstance(effect, Unpair):
+                self._apply_unpair_effect(effect, sim)
+    
+    def _apply_trade_effect(self, effect: Trade, sim: "Simulation") -> None:
+        """
+        Apply trade effect: update inventories and log to telemetry.
+        
+        Note: Agents REMAIN PAIRED after successful trade (can trade again next tick).
+        """
+        buyer = sim.agent_by_id[effect.buyer_id]
+        seller = sim.agent_by_id[effect.seller_id]
+        
+        # Determine trade tuple format for execute_trade_generic
+        # Need to convert from Trade effect to (dA_i, dB_i, dM_i, dA_j, dB_j, dM_j, surplus_i, surplus_j)
+        
+        # Determine which agent is buyer/seller relative to agent_i/agent_j
+        if buyer.id < seller.id:
+            agent_i, agent_j = buyer, seller
+            is_i_buyer = True
+        else:
+            agent_i, agent_j = seller, buyer
+            is_i_buyer = False
+        
+        # Build trade tuple based on pair type and direction
+        if effect.pair_type == "A<->B":
+            if is_i_buyer:
+                # agent_i (buyer) receives A, pays B
+                dA_i, dB_i, dM_i = effect.dA, -effect.dB, 0
+                dA_j, dB_j, dM_j = -effect.dA, effect.dB, 0
+            else:
+                # agent_i (seller) pays A, receives B
+                dA_i, dB_i, dM_i = -effect.dA, effect.dB, 0
+                dA_j, dB_j, dM_j = effect.dA, -effect.dB, 0
+        
+        elif effect.pair_type == "A<->M":
+            if is_i_buyer:
+                # agent_i (buyer) receives A, pays M
+                dA_i, dB_i, dM_i = effect.dA, 0, -effect.dM
+                dA_j, dB_j, dM_j = -effect.dA, 0, effect.dM
+            else:
+                # agent_i (seller) pays A, receives M
+                dA_i, dB_i, dM_i = -effect.dA, 0, effect.dM
+                dA_j, dB_j, dM_j = effect.dA, 0, -effect.dM
         
         else:  # "B<->M"
-            # Monetary: whoever receives B is the buyer
-            if dB_i > 0:  # agent_i receives B (buyer)
-                return TradeCandidate(
-                    buyer_id=agent_i.id, seller_id=agent_j.id,
-                    good_sold="B", good_paid="M",
-                    dX=dB_i, dY=-dM_i,
-                    buyer_surplus=surplus_i, seller_surplus=surplus_j
-                )
-            else:  # agent_j receives B (buyer)
-                return TradeCandidate(
-                    buyer_id=agent_j.id, seller_id=agent_i.id,
-                    good_sold="B", good_paid="M",
-                    dX=-dB_i, dY=dM_i,
-                    buyer_surplus=surplus_j, seller_surplus=surplus_i
-                )
-    
-    def _trade_generic(self, agent_i, agent_j, sim):
-        """
-        Execute money-aware trade using generic matching primitives.
+            if is_i_buyer:
+                # agent_i (buyer) receives B, pays M
+                dA_i, dB_i, dM_i = 0, effect.dB, -effect.dM
+                dA_j, dB_j, dM_j = 0, -effect.dB, effect.dM
+            else:
+                # agent_i (seller) pays B, receives M
+                dA_i, dB_i, dM_i = 0, -effect.dB, effect.dM
+                dA_j, dB_j, dM_j = 0, effect.dB, -effect.dM
         
-        For mixed regimes (Phase 3+), evaluates ALL feasible trade types,
-        ranks them using money-first tie-breaking, and executes the best trade.
+        # Get surpluses from metadata
+        surplus_buyer = effect.metadata.get("surplus_buyer", 0.0)
+        surplus_seller = effect.metadata.get("surplus_seller", 0.0)
         
-        For barter_only and money_only regimes, uses Phase 2 logic (first feasible trade).
-        """
-        exchange_regime = sim.params.get("exchange_regime", "barter_only")
-        epsilon = sim.params.get("epsilon", 1e-9)
-        
-        # Phase 3: Mixed regime logic with tie-breaking
-        if exchange_regime in ["mixed", "mixed_liquidity_gated"]:
-            # Find ALL feasible trades
-            feasible_trades = find_all_feasible_trades(
-                agent_i, agent_j, exchange_regime, sim.params, epsilon
-            )
-            
-            if not feasible_trades:
-                # No mutually beneficial trade found - UNPAIR and set cooldown
-                agent_i.paired_with_id = None
-                agent_j.paired_with_id = None
-                
-                cooldown_until = sim.tick + sim.params.get('trade_cooldown_ticks', 10)
-                agent_i.trade_cooldowns[agent_j.id] = cooldown_until
-                agent_j.trade_cooldowns[agent_i.id] = cooldown_until
-                
-                # Log unpair event
-                sim.telemetry.log_pairing_event(
-                    sim.tick, agent_i.id, agent_j.id, "unpair", "trade_failed"
-                )
-                return
-            
-            # Convert to TradeCandidate objects
-            candidates = [
-                self._convert_to_trade_candidate(agent_i, agent_j, pair_name, trade)
-                for pair_name, trade in feasible_trades
-            ]
-            
-            # Rank using money-first tie-breaking
-            ranked_candidates = self._rank_trade_candidates(candidates)
-            
-            # Execute the best trade
-            best_candidate = ranked_candidates[0]
-            
-            # Find the original trade tuple for execution
-            # (need to match it back to the pair_name, trade format)
-            best_pair_name = best_candidate.pair_type
-            best_trade = None
-            for pair_name, trade in feasible_trades:
-                if pair_name == best_pair_name:
-                    best_trade = trade
-                    break
-            
-            if best_trade is None:
-                # Should never happen, but defensive programming
-                return
-            
-            # Execute the trade
-            execute_trade_generic(agent_i, agent_j, best_trade)
-            
-            # REMAIN PAIRED - agents will attempt another trade next tick
-            
-            # Log to telemetry
-            self._log_generic_trade(agent_i, agent_j, best_pair_name, best_trade, sim)
-        
+        if is_i_buyer:
+            surplus_i, surplus_j = surplus_buyer, surplus_seller
         else:
-            # Phase 2 logic: barter_only or money_only (first feasible trade)
-            result = find_best_trade(
-                agent_i, agent_j, exchange_regime, sim.params, epsilon
-            )
-            
-            if result is None:
-                # No mutually beneficial trade found - UNPAIR and set cooldown
-                agent_i.paired_with_id = None
-                agent_j.paired_with_id = None
-                
-                cooldown_until = sim.tick + sim.params.get('trade_cooldown_ticks', 10)
-                agent_i.trade_cooldowns[agent_j.id] = cooldown_until
-                agent_j.trade_cooldowns[agent_i.id] = cooldown_until
-                
-                # Log unpair event
-                sim.telemetry.log_pairing_event(
-                    sim.tick, agent_i.id, agent_j.id, "unpair", "trade_failed"
-                )
-                return
-            
-            pair_name, trade = result
-            
-            # Execute the trade
-            execute_trade_generic(agent_i, agent_j, trade)
-            
-            # REMAIN PAIRED - agents will attempt another trade next tick
-            
-            # Log to telemetry
-            self._log_generic_trade(agent_i, agent_j, pair_name, trade, sim)
+            surplus_i, surplus_j = surplus_seller, surplus_buyer
+        
+        # Execute trade
+        trade_tuple = (dA_i, dB_i, dM_i, dA_j, dB_j, dM_j, surplus_i, surplus_j)
+        execute_trade_generic(agent_i, agent_j, trade_tuple)
+        
+        # Log to telemetry
+        self._log_trade(effect, sim)
     
-    def _log_generic_trade(self, agent_i, agent_j, pair_name, trade, sim):
-        """Log money-aware trade to telemetry."""
-        dA_i, dB_i, dM_i, dA_j, dB_j, dM_j, surplus_i, surplus_j = trade
+    def _apply_unpair_effect(self, effect: Unpair, sim: "Simulation") -> None:
+        """
+        Apply unpair effect: dissolve pairing and set trade cooldown.
+        """
+        agent_a = sim.agent_by_id[effect.agent_a]
+        agent_b = sim.agent_by_id[effect.agent_b]
         
-        # Determine buyer/seller and trade direction based on pair
-        if pair_name == "A<->B":
-            # Barter: whoever gives A is selling A for B
-            if dA_i < 0:  # agent_i sells A
-                buyer_id, seller_id = agent_j.id, agent_i.id
-                dA, dB = -dA_i, dB_i
-                direction = "i_sells_A"
-            else:  # agent_i buys A
-                buyer_id, seller_id = agent_i.id, agent_j.id
-                dA, dB = dA_i, -dB_i
-                direction = "j_sells_A"
-            dM = 0
-            
-        elif pair_name == "A<->M":
-            # Monetary: whoever gives A is selling A for M
-            if dA_i < 0:  # agent_i sells A for M
-                seller_id, buyer_id = agent_i.id, agent_j.id
-                dA, dM = -dA_i, dM_i
-                direction = "i_sells_A_for_M"
-            else:  # agent_i buys A with M
-                seller_id, buyer_id = agent_j.id, agent_i.id
-                dA, dM = dA_i, -dM_i
-                direction = "j_sells_A_for_M"
-            dB = 0
-            
-        else:  # B<->M
-            # Monetary: whoever gives B is selling B for M
-            if dB_i < 0:  # agent_i sells B for M
-                seller_id, buyer_id = agent_i.id, agent_j.id
-                dB, dM = -dB_i, dM_i
-                direction = "i_sells_B_for_M"
-            else:  # agent_i buys B with M
-                seller_id, buyer_id = agent_j.id, agent_i.id
-                dB, dM = dB_i, -dM_i
-                direction = "j_sells_B_for_M"
-            dA = 0
+        # Dissolve pairing
+        agent_a.paired_with_id = None
+        agent_b.paired_with_id = None
         
-        # Compute price
-        if dA > 0:
-            if dB > 0:
-                price = dB / dA  # Price of A in B
-            else:  # dM > 0
-                price = dM / dA  # Price of A in M
-        elif dB > 0:
-            price = dM / dB  # Price of B in M
-        else:
-            price = 0.0
+        # Set trade cooldown
+        cooldown_until = sim.tick + sim.params.get('trade_cooldown_ticks', 10)
+        agent_a.trade_cooldowns[effect.agent_b] = cooldown_until
+        agent_b.trade_cooldowns[effect.agent_a] = cooldown_until
         
-        # Log trade (Phase 2+: include dM and exchange_pair_type)
+        # Log unpair event
+        sim.telemetry.log_pairing_event(
+            sim.tick, effect.agent_a, effect.agent_b, "unpair", effect.reason
+        )
+    
+    def _log_trade(self, effect: Trade, sim: "Simulation") -> None:
+        """Log trade to telemetry."""
+        buyer = sim.agent_by_id[effect.buyer_id]
+        seller = sim.agent_by_id[effect.seller_id]
+        
+        # Log trade event
         sim.telemetry.log_trade(
-            sim.tick,
-            agent_i.pos[0], agent_i.pos[1],
-            buyer_id, seller_id,
-            dA, dB, price, direction, dM,
-            exchange_pair_type=pair_name  # Phase 3: log pair type for analysis
+            tick=sim.tick,
+            buyer_id=effect.buyer_id,
+            seller_id=effect.seller_id,
+            good_sold=effect.pair_type.split("<->")[0],  # "A" or "B"
+            good_paid=effect.pair_type.split("<->")[1],  # "B" or "M"
+            dX=effect.dA if "A" in effect.pair_type.split("<->")[0] else effect.dB,
+            dY=effect.dB if effect.pair_type == "A<->B" else effect.dM,
+            price=effect.price,
+            buyer_surplus=effect.metadata.get("surplus_buyer", 0.0),
+            seller_surplus=effect.metadata.get("surplus_seller", 0.0)
         )
