@@ -101,9 +101,14 @@ Key points: Inventories, resources are integers; spatial parameters are int not 
 
 **Observation:** Only 1 memory created. This is under-utilized for a project of this scale. Opportunities:
 - Architectural decisions (why 7 phases, not 6 or 8?)
+  > cmf: No particular reason for *7* specifically. The phase-based breakdown is entirely based on the need to cleanly separate the different aspects of the simulation.
 - Performance trade-offs (why target <10% regression?)
+  > cmf: 10% regression is an arbitrary target, large enough to catch big regressions before they compound, small enough to not be too onerous to maintain.
 - User preferences for code review depth
+  > cmf: for markdown documents, going forward: we should standardize around a comment format of "> username: comment" -- including for AI agent revivews of markdown documents. Username for an agent should simply be the model name.
+  > cmf: for code comments, going forward: we should standardize around a comment format of "# username: comment" -- including for AI agent revivews of code. Username for an agent should simply be the model name.
 - Protocols that worked vs failed in past sessions
+  > cmf: I've not kept track of this in the past. To faciliate this, I'll consider adding new memories for each session.
 
 ---
 
