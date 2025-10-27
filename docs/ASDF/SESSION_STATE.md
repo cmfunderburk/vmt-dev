@@ -173,6 +173,11 @@
   - 2025-10-27: Strategic vision document (`docs/BIGGEST_PICTURE/`)
   - 2025-10-27: Phase 2-5 implementation plans (`docs/protocols_10-27/`)
   - 2025-10-27: Protocol implementation review (converted from PDF)
+  - 2025-10-27: Documentation cleanup (archived 4 superseded docs)
+  - 2025-10-27: Updated `1_project_overview.md` to align with strategic vision
+  - 2025-10-27: Updated scenario creation docs to reflect actual workflow (manual YAML editing)
+  - 2025-10-27: Noted CLI generator and GUI builder need updates before production use
+  - 2025-10-27: Corrected money utility documentation (supports linear AND log forms, not just quasilinear)
 
 ---
 
@@ -198,16 +203,24 @@
   - Impact: Clean separation of interface vs implementation
 
 ### Documentation
-- [ ] **Documentation sprawl** (Priority: Medium)
-  - Problem: `docs/proposals/` contains superseded content
-  - Superseded: `protocol_modularization_plan_v*.md`, `session_reentry_*.md`
-  - Current: `docs/ssot/` is authoritative
-  - Solution: Consolidation task in workflow proposals (2 hours)
+- [x] **Documentation cleanup** ✅ **RESOLVED (2025-10-27)**
+  - Archived 4 superseded documents to `docs/archive/`
+  - Cleaned up `docs/ssot/` (9 → 6 files)
+  - Created strategic vision in `docs/BIGGEST_PICTURE/`
+  - Updated `1_project_overview.md` to align with vision
 
-- [ ] **Stale metadata** (Priority: Low)
-  - Kernel version in rules: 6.17.4 → 6.17.5 (current)
-  - Test count claims need verification
-  - Solution: Periodic metadata refresh task
+### Tooling
+- [ ] **CLI Scenario Generator outdated** (Priority: Medium)
+  - Location: `src/vmt_tools/generate_scenario.py`
+  - Problem: Doesn't support protocol system, may have stale parameters
+  - Solution: Needs refactoring after Phase 2 protocols stabilize
+  - Workaround: Use manual YAML editing with `docs/structures/` templates
+
+- [ ] **GUI Builder outdated** (Priority: Medium)  
+  - Location: launcher.py → "Create Custom Scenario"
+  - Problem: Doesn't reflect protocol architecture changes
+  - Solution: Schedule for updates after Phase 2 protocols
+  - Workaround: Use manual YAML editing with `docs/structures/` templates
 
 ### Architectural
 - [x] **Protocol modularization decision made** ✅ (Priority: Critical - RESOLVED)

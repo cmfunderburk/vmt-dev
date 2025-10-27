@@ -1,22 +1,33 @@
 # VMT - Visualizing Microeconomic Theory
 
-[![Tests](https://img.shields.io/badge/tests-316%2B%20passing-brightgreen)]()
-[![Python](https://img.shields.io/badge/python-3.11-blue)]()
-[![GUI](https://img.shields.io/badge/GUI-PyQt6-green)]()
+**A spatial agent-based simulation investigating how market phenomena emerge from micro-level interactions.**
 
-**A spatial agent-based simulation for teaching and researching microeconomic behavior through visualization.**
+> **Core Research/Pedagogical Question:** Under what institutional conditions do market-like phenomena actually emerge from individual agent behaviors?
 
-Agents with heterogeneous preferences forage for resources on a grid and engage in bilateral trade (barter or monetary exchange) using reservation-price-based negotiation. The system demonstrates complex economic phenomena including price discovery, gains from trade, pairing dynamics, and sustainable resource management.
+Rather than assuming equilibrium prices exist and agents take them as given, VMT demonstrates how markets form (or fail to form) through explicit institutional mechanisms—search protocols, matching algorithms, and bargaining rules. Agents with heterogeneous preferences forage for resources on a spatial grid and discover exchange opportunities through bilateral negotiation, with prices emerging endogenously from their interactions.
 
-<p align="center">
-  <img src="https://img.shields.io/badge/🎯-Agents%20Successfully%20Trading-success" />
-  <img src="https://img.shields.io/badge/♻️-Sustainable%20Foraging-success" />
-  <img src="https://img.shields.io/badge/📊-Enhanced%20Telemetry-success" />
-</p>
+**For the complete strategic vision and research agenda, see:** [`docs/BIGGEST_PICTURE/vision_and_architecture.md`](BIGGEST_PICTURE/vision_and_architecture.md)
 
 ---
 
-## 🚀 Quick Start
+## Philosophy: Markets as Emergent Phenomena
+
+Traditional economics education jumps quickly from individual agents to abstract equilibrium concepts, treating markets and prices as given primitives. VMT inverts this approach:
+
+**Standard Economics:** Utility → Demand → Market Clearing → Equilibrium Price *(assumed to exist/be supported by some ill-defined institutions)*
+
+**VMT Approach:** Utility → MRS → Reservation Prices → **Search** → **Matching** → **Bargaining** → Trade → *Observed Exchange Ratios*
+
+The middle steps—search, matching, and bargaining—are **explicit institutional mechanisms** that may or may not produce price convergence. This enables:
+
+- **Institutional Comparison:** Different protocols produce different market outcomes
+- **Emergence Analysis:** When do bilateral negotiations converge to uniform prices?
+- **Pedagogical Clarity:** Markets don't "just happen"—they require specific institutions
+- **Research Applications:** Systematic study of market formation conditions
+
+---
+
+## Quick Start
 
 ### Installation
 
@@ -72,25 +83,57 @@ python main.py scenarios/single_agent_forage.yaml 123
 
 ---
 
-## ✨ Features
+##  Protocol Architecture (Phase 1 Complete!)
+
+VMT implements a **modular protocol system** where institutional rules are swappable components:
+
+### Current Status (October 2025)
+✅ **Phase 1 Complete:** Protocol architecture implemented with legacy adapters  
+✅ **Production Ready:** Spatial foraging, bilateral trade, money system  
+🚀 **Next:** Alternative protocol implementation (Phase 2a starting)
+
+### Implemented Architecture
+- **Legacy Protocols:** Distance-based search, three-pass matching, compensating block bargaining
+- **Effect-Based Architecture:** Protocols produce declarative effects applied to state
+- **WorldView Pattern:** Immutable snapshots for protocol decisions
+- **Full Determinism:** Reproducible simulations with seeded randomness
+
+### Planned Protocol Library (70-90 hour roadmap)
+**Phase 2a: Baselines** (8-10 hours)
+- Random Walk Search, Random Matching, Split-the-Difference Bargaining
+
+**Phase 3: Centralized Markets** ⭐ **KEY MILESTONE** (25-30 hours)
+- Walrasian Auctioneer, Posted-Price Market, Continuous Double Auction
+- *Enables core research: Do bilateral prices converge to centralized equilibrium?*
+
+**Phase 4-5: Advanced Mechanisms** (35-45 hours)
+- Memory-Based Search, Stable Matching (Gale-Shapley), Nash Bargaining
+- Rubinstein Alternating Offers, Network Formation, Auction Mechanisms
+
+**See:** [`docs/protocols_10-27/master_implementation_plan.md`](protocols_10-27/master_implementation_plan.md) for detailed specifications
+
+---
+
+## Features
 
 ### Economic Systems
-- **🎲 CES Utility Functions** - Constant elasticity of substitution (including Cobb-Douglas)
-- **📏 Linear Utility Functions** - Perfect substitutes
-- **🎯 Quadratic Utility Functions** - Bliss points and satiation behavior
-- **📊 Translog Utility Functions** - Flexible second-order approximation for empirical work
-- **🏠 Stone-Geary Utility Functions** - Subsistence constraints and hierarchical needs (LES foundation)
-- **💱 Generic Matching Algorithm** - Supports barter (A↔B) and monetary exchange (A↔M, B↔M)
-- **💰 Money System (v1.0)** - Complete monetary economics simulation
+- **CES Utility Functions** - Constant elasticity of substitution (including Cobb-Douglas)
+- **Linear Utility Functions** - Perfect substitutes
+- **Quadratic Utility Functions** - Bliss points and satiation behavior
+- **Translog Utility Functions** - Flexible second-order approximation for empirical work
+- **Stone-Geary Utility Functions** - Subsistence constraints and hierarchical needs (LES foundation)
+- **Generic Matching Algorithm** - Supports barter (A↔B) and monetary exchange (A↔M, B↔M)
+- **Money System** - Flexible monetary economics simulation
   - Three exchange regimes: `barter_only`, `money_only`, `mixed` (fully implemented)
-  - Quasilinear utility mode with heterogeneous λ values
+  - Two utility forms: linear (constant MU) or logarithmic (diminishing MU)
+  - Heterogeneous λ values supported for agent diversity
   - Money-first tie-breaking in mixed economies
   - Mode × regime interaction for temporal control
   - Rich telemetry and analysis tools
-  - **Planned:** `kkt_lambda` mode, `mixed_liquidity_gated` regime
-- **🤝 Trade Pairing** - Three-pass algorithm with mutual consent and surplus-based fallback
-- **💱 Price Search Algorithm** - Finds mutually beneficial prices despite integer rounding
-- **📈 Reservation Pricing** - True economic reservation prices (zero bid-ask spread default)
+  - **Planned:** `mixed_liquidity_gated` regime
+- **Trade Pairing** - Three-pass algorithm with mutual consent and surplus-based fallback
+- **Price Search Algorithm** - Finds mutually beneficial prices despite integer rounding
+- **Reservation Pricing** - True economic reservation prices (zero bid-ask spread default)
 
 ### Behavioral Systems
 - **🌾 Foraging** - Distance-discounted utility-seeking movement
@@ -100,15 +143,13 @@ python main.py scenarios/single_agent_forage.yaml 123
 - **⏰ Trade Cooldown** - Prevents futile re-targeting when trades impossible
 - **🎯 Partner Selection** - Distance-discounted surplus ranking with three-pass pairing algorithm
 
-### Technical Excellence
-- **🔬 316+ Passing Tests** - Comprehensive coverage including pairing, money system, and performance benchmarks
+### Technical
 - **🎮 Pygame Visualization** - Interactive real-time rendering with smart co-location and target arrows
 - **🖥️ GUI Launcher** - Browse scenarios and create custom ones through forms
 - **⚡ CLI Scenario Generator** - Generate valid scenarios in < 0.1s with random parameters
 - **📊 SQLite Telemetry** - High-performance database logging with interactive PyQt6 viewer
 - **🎯 Deterministic** - Same seed → identical results every time
 - **⚙️ YAML Configuration** - Easy scenario customization (manual, GUI, or CLI)
-- **⚡ Performance Optimized** - O(N) agent interactions via spatial indexing and trade pairing
 
 ### Visualization Features
 - **🎯 Target Arrows** - Press **T** to toggle visualization of agent targets and pairings:
@@ -129,7 +170,7 @@ python main.py scenarios/single_agent_forage.yaml 123
 
 ## 📊 Telemetry & Analysis
 
-VMT uses a high-performance **SQLite database** (`./logs/telemetry.db`) for all logging. This results in a ~99% reduction in log file size compared to legacy CSV systems and enables sub-second data queries.
+VMT uses a **SQLite database** (`./logs/telemetry.db`) for all logging.
 
 ### Database Schema
 
@@ -184,69 +225,45 @@ for agent in sim.agents:
 
 ---
 
-## ✨ Creating Custom Scenarios
+## Creating Custom Scenarios
 
-VMT provides **three methods** for creating scenarios, each optimized for different workflows:
+### Current Recommended Workflow: Manual YAML Creation
 
-### Method 1: CLI Scenario Generator (Developer Workflow) ⚡
+**The canonical method for creating scenarios is to use the templates and examples in [`docs/structures/`](docs/structures/):**
 
-**Best for:** Rapid iteration, test suites, scripting, batch generation
+1. **Browse Templates:**
+   - [`minimal_working_example.yaml`](docs/structures/minimal_working_example.yaml) - Simplest valid scenario
+   - [`comprehensive_scenario_template.yaml`](docs/structures/comprehensive_scenario_template.yaml) - All parameters documented
+   - [`money_example.yaml`](docs/structures/money_example.yaml) - Monetary economy setup
+   - [`parameter_quick_reference.md`](docs/structures/parameter_quick_reference.md) - Parameter documentation
 
-The command-line scenario generator creates valid YAML files in seconds:
+2. **Copy and Modify:**
+   ```bash
+   # Copy a template
+   cp docs/structures/minimal_working_example.yaml scenarios/my_scenario.yaml
+   
+   # Edit with your preferred editor
+   vim scenarios/my_scenario.yaml  # or code, nano, etc.
+   ```
 
-```bash
-# Basic usage - generates scenarios/my_test.yaml
-python3 -m src.vmt_tools.generate_scenario my_test \
-  --agents 20 --grid 30 --inventory-range 10,50 \
-  --utilities ces,linear --resources 0.3,5,1 --seed 42
+3. **Review Examples:**
+   - Check `scenarios/demos/` for annotated pedagogical scenarios
+   - Review `scenarios/test/` for specific feature demonstrations
+   - See existing scenarios for parameter combinations that work well
 
-# With presets (Phase 2)
-python3 -m src.vmt_tools.generate_scenario demo --preset money_demo
+### Tool Status (October 2025)
 
-# Money economy (Phase 2)
-python3 -m src.vmt_tools.generate_scenario money_test \
-  --agents 20 --grid 30 --inventory-range 10,50 \
-  --utilities linear --resources 0.3,5,1 \
-  --exchange-regime money_only
-```
+**⚠️ CLI Scenario Generator:** Exists but needs updates
+- Located at `src/vmt_tools/generate_scenario.py`
+- May not support all current features (protocol system, latest parameters)
+- **Status:** Needs refactoring before production use
 
-**Current Status: Phase 2 Complete ✅ (2025-10-21)**
-- ✅ All 5 utility types with conservative parameter randomization
-- ✅ Deterministic generation with `--seed` flag
-- ✅ Automatic validation (schema-compliant YAML)
-- ✅ Generation time < 0.1 seconds per scenario
-- ✅ Exchange regime selection (`--exchange-regime {barter_only|money_only|mixed}`)
-- ✅ Scenario presets (`--preset {minimal|standard|large|money_demo|mixed_economy}`)
-- ✅ Automatic money inventory generation for monetary economies
+**⚠️ GUI Builder:** Available but outdated
+- Accessible via launcher.py → "Create Custom Scenario"
+- Does not reflect recent architectural changes
+- **Status:** Scheduled for updates after Phase 2 protocols
 
-**Future Phases (Based on Feedback):**
-- 🔮 Phase 3: Weighted utility mixes (`--utilities ces:0.6,linear:0.4`)
-- 🔮 Phase 3: Custom money inventory ranges
-- 🔮 Phase 3: Parameter validation mode
-- 🔮 Phase 3: Unit test integration
-
-See [`docs/guides/scenario_generator.md`](docs/guides/scenario_generator.md) for complete guide.
-
-### Method 2: GUI Builder (Interactive)
-
-**Best for:** Exploration, one-off scenarios, learning
-
-The graphical scenario builder provides a form-based interface:
-
-1. **Launch the GUI**: `python launcher.py`
-2. **Click "Create Custom Scenario"** at the top
-3. **Fill in the tabs**:
-   - **Basic Settings**: Name, grid size, agents, initial inventories
-   - **Simulation Parameters**: Spread, vision, movement, trade parameters
-   - **Resources**: Density, growth rate, regeneration cooldown
-   - **Utility Functions**: Define a population mix. You can add multiple utility function types (CES, Linear, Quadratic, Translog, Stone-Geary) with different parameters and weights. Each agent created for the simulation will be randomly assigned *one* of these utility functions according to the specified weights.
-4. **Click "Generate Scenario"**
-5. **Save the YAML file** (default: `scenarios/` folder)
-6. **New scenario automatically appears** in the launcher list
-
-### Method 3: Manual YAML Editing (Advanced)
-
-**Best for:** Fine-grained control, advanced features, documentation
+**Note:** Both tools were developed before the protocol architecture refactoring and need significant updates to be reliable for workflow use. Manual YAML editing with templates is currently the most reliable method.
 
 ### Scenario Example
 
@@ -305,9 +322,9 @@ See [Technical Manual](./2_technical_manual.md#resource-claiming-system) for imp
 
 ---
 
-## 💰 Money System (Phases 1-2)
+## 💰 Money System
 
-VMT implements a money system with **quasilinear utility** and configurable **exchange regimes**:
+VMT implements a flexible money system with configurable **utility forms** and **exchange regimes**:
 
 ### Exchange Regimes
 
@@ -317,17 +334,31 @@ The `exchange_regime` parameter controls allowed exchange types:
 - **`"mixed"`** — All exchange pairs allowed; generic matching selects highest-surplus pair
 - **`"mixed_liquidity_gated"`** — (PLANNED) Barter fallback when money market is thin
 
-### Quasilinear Utility
+### Money Utility Forms
 
+VMT supports two functional forms for money utility:
+
+#### 1. Linear Form (Quasilinear)
+```
 U_total = U_goods(A, B) + λ·M
+∂U/∂M = λ (constant marginal utility)
+```
+
+#### 2. Logarithmic Form (Diminishing MU)
+```
+U_total = U_goods(A, B) + λ·log(M + M_0)
+∂U/∂M = λ/(M + M_0) (diminishing marginal utility)
+```
 
 Where:
 - **U_goods** — Utility from goods (CES, Linear, Quadratic, Translog, or Stone-Geary)
-- **λ** (`lambda_money`) — Marginal utility of money (default: 1.0)
+- **λ** (`lambda_money`) — Base marginal utility parameter (default: 1.0)
 - **M** — Money holdings in minor units (e.g., cents)
+- **M_0** — Shift parameter for log form (subsistence money level, default: 0.0)
 
-### Configuration Example
+### Configuration Examples
 
+#### Linear Form (Constant MU)
 ```yaml
 initial_inventories:
   A: { uniform_int: [5, 15] }
@@ -335,11 +366,28 @@ initial_inventories:
   M: 100  # Give each agent 100 units of money
 
 params:
-  exchange_regime: "mixed"         # Allow all exchange types (barter_only, money_only, mixed)
-  money_mode: "quasilinear"        # Fixed lambda (quasilinear mode - kkt_lambda planned)
+  exchange_regime: "mixed"         # Allow all exchange types
+  money_utility_form: "linear"     # Constant marginal utility (default)
+  lambda_money: 1.0                # Marginal utility of money
   money_scale: 1                   # Minor units scale
-  lambda_money: 1.0                # Marginal utility of money (can be list for heterogeneous agents)
 ```
+
+#### Logarithmic Form (Diminishing MU)
+```yaml
+initial_inventories:
+  A: { uniform_int: [5, 15] }
+  B: { uniform_int: [5, 15] }
+  M: 100  # Give each agent 100 units of money
+
+params:
+  exchange_regime: "mixed"         # Allow all exchange types
+  money_utility_form: "log"        # Diminishing marginal utility
+  lambda_money: 10.0               # Base MU parameter
+  M_0: 10.0                       # Subsistence money level
+  money_scale: 1                   # Minor units scale
+```
+
+**Note:** `lambda_money` can be a list for heterogeneous agents (e.g., `[1.0, 2.0, 0.5]`)
 
 ### Telemetry
 
@@ -349,19 +397,26 @@ Money trades are logged with full context:
 - **`trades.buyer_lambda`**, **`trades.seller_lambda`** — Lambda values at trade time
 - **`tick_states.active_pairs`** — JSON array of active exchange pairs per tick
 
-See [Technical Manual](./2_technical_manual.md#money-system-phases-1-2) and [Type Specification](./4_typing_overview.md#7-money--market-contracts) for complete details.
+See [Technical Manual](./2_technical_manual.md#money-system) and [Type Specification](./4_typing_overview.md#7-money--market-contracts) for complete details.
 
 ---
 
-## 🎓 Academic Use & Key Concepts
+## 🎓 Academic Use & Key Research Themes
 
-This simulation is designed for **teaching microeconomic theory** through visualization. Key pedagogical features:
+This project makes 'institutional' details, like bargaining protocols/price discovery mechanisms, explicit:
 
-- **Observable Convergence:** Watch agents reach equilibrium step-by-step
-- **Edgeworth Box Dynamics:** Visualize gains from trade spatially
-- **Price Discovery:** See how reservation prices lead to mutually beneficial terms
-- **Resource Economics:** Demonstrate sustainable vs. extractive strategies
-- **Heterogeneous Preferences:** Show how different utility functions interact
+### Research Applications
+- **Price Convergence Conditions:** When do exchange ratios converge to uniform "prices"?
+- **Bilateral vs Centralized:** When does decentralized exchange approximate Walrasian equilibrium?
+- **Institutional Details:** How do specific protocol features affect market outcomes?
+- **Spatial Dynamics:** How do search costs and market thickness affect efficiency?
+
+### Pedagogical Features
+- **Markets as Constructions:** Students see markets built from institutional rules
+- **Comparative Analysis:** Different protocols produce visibly different outcomes
+- **Observable Convergence:** Watch price formation (or dispersion) tick-by-tick
+- **No Assumptions:** Price-taking emerges (or doesn't) from mechanisms, not axioms
+- **Spatial Reasoning:** Information frictions and search costs are endogenous
 
 ### Suggested Exercises
 
@@ -396,30 +451,36 @@ The following scenarios demonstrate the three new utility functions:
 
 ## 📚 Documentation
 
-VMT includes comprehensive documentation for developers, researchers, and users:
+VMT includes comprehensive documentation organized by audience and purpose:
 
-### Core Documentation
+### Strategic Vision & Research
+- **[Vision and Architecture](./BIGGEST_PICTURE/vision_and_architecture.md)** - Core philosophy, research agenda, and long-term vision
+- **[Protocol Implementation Plan](./protocols_10-27/master_implementation_plan.md)** - 5-phase roadmap for 18+ protocols
+- **[Protocol Review](./protocols_10-27/protocol_implementation_review.md)** - Economic and pedagogical analysis
 
-- **[Project Overview](./1_project_overview.md)** (this document) - Quick start, features, and high-level architecture
+### Technical Documentation
+- **[Project Overview](./1_project_overview.md)** (this document) - Quick start and feature overview
 - **[Technical Manual](./2_technical_manual.md)** - Detailed implementation, algorithms, and system design
-- **[Scenario Configuration Guide](./scenario_configuration_guide.md)** - Complete reference for creating YAML scenarios
 - **[Type Specifications](./4_typing_overview.md)** - Language-agnostic type contracts and data schemas
-- **[Strategic Roadmap](./3_strategic_roadmap.md)** - Future plans and enhancement priorities
+- **[Scenario Configuration Guide](./scenario_configuration_guide.md)** - Complete reference for creating YAML scenarios
 
 ### Getting Started
-
-- **New to VMT?** Start with [Project Overview](./1_project_overview.md) and run `python launcher.py`
+- **Understanding the vision?** Read [Vision and Architecture](./BIGGEST_PICTURE/vision_and_architecture.md)
+- **New to VMT?** Start here and run `python launcher.py`
 - **Creating scenarios?** See [Scenario Configuration Guide](./scenario_configuration_guide.md)
-- **Understanding internals?** Read [Technical Manual](./2_technical_manual.md)
-- **Analyzing data?** Check [Type Specifications](./4_typing_overview.md) for telemetry schema
+- **Implementing protocols?** Check [Protocol Implementation Plan](./protocols_10-27/master_implementation_plan.md)
+- **Analyzing data?** Review [Type Specifications](./4_typing_overview.md) for telemetry schema
 
 ### Demo Scenarios
 
 The `scenarios/demos/` directory contains annotated pedagogical scenarios:
 
-1. **demo_01_simple_money.yaml** - Why money? (double coincidence of wants)
+1. **demo_01_simple_money.yaml** - Why money? (double coincidence of wants -- note: as-is, this does *not* adequately demonstrate the issue, as agents' value money directly via utility functions, rather than instrumentally for the trading opportunities it opens up) 
 2. **demo_02_barter_vs_money.yaml** - Direct comparison of exchange systems
 3. **demo_03_mixed_regime.yaml** - Hybrid economy (barter + money coexistence)
 4. **demo_04_mode_schedule.yaml** - Temporal control (forage/trade cycles)
 5. **demo_05_liquidity_zones.yaml** - Market thickness and spatial variation
 6. **demo_06_money_aware_pairing.yaml** - Money-aware pairing mechanics
+7. **demo_06b_heterogeneous_utilities.yaml** - Mixed utility populations
+8. **demo_07_batch_trades.yaml** - Batch trading mechanics
+9. **demo_log_money.yaml** - Logarithmic money utility demonstration

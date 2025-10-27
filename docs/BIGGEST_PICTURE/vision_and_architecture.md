@@ -3,7 +3,6 @@
 
 **Document Type:** Strategic Vision and Research Framework  
 **Purpose:** High-level overview of project goals, current state, and future directions  
-**Audience:** Researchers, collaborators, and future contributors  
 **Date:** 2025-10-27
 
 ---
@@ -31,8 +30,6 @@ Rather than assuming equilibrium prices exist and agents take them as given, VMT
 - When do bilateral negotiations yield uniform exchange ratios?
 - Under what conditions does decentralized exchange approximate Walrasian equilibrium?
 - How do spatial patterns, information frictions, and bargaining power affect market formation?
-
-This is not merely a pedagogical reframing—it's a **research program** investigating the microfoundations of market institutions.
 
 ---
 
