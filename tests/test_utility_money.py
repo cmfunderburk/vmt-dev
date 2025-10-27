@@ -57,10 +57,11 @@ class TestUGoodsConsistency:
         """CES with negative rho: u_goods() handles zero inventory correctly."""
         utility = UCES(rho=-0.5, wA=0.5, wB=0.5)
         
-        # Zero in either good should give zero utility for negative rho
-        assert utility.u_goods(0, 10) == 0.0
-        assert utility.u_goods(10, 0) == 0.0
-        assert utility.u_goods(0, 0) == 0.0
+        # Zero in either good gives small positive utility (epsilon-shift)
+        # This prevents division by zero and allows agents to value first units
+        assert 0 < utility.u_goods(0, 10) < 1e-8
+        assert 0 < utility.u_goods(10, 0) < 1e-8
+        assert utility.u_goods(0, 0) == 0.0  # Both zero still zero
         
         # Non-zero should be positive
         assert utility.u_goods(10, 10) > 0.0

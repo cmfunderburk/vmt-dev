@@ -45,8 +45,18 @@ class Simulation:
         self.seed = seed
         self.rng = np.random.Generator(np.random.PCG64(seed))
         
-        # Protocol system (Phase 0 - Infrastructure only, not yet wired)
-        # These will be integrated in Phase 2 (Core Integration)
+        # Protocol system (Phase 1 - Integrated with legacy adapters)
+        # Initialize default protocols if not provided
+        if search_protocol is None:
+            from .protocols.search import LegacySearchProtocol
+            search_protocol = LegacySearchProtocol()
+        if matching_protocol is None:
+            from .protocols.matching import LegacyMatchingProtocol
+            matching_protocol = LegacyMatchingProtocol()
+        if bargaining_protocol is None:
+            from .protocols.bargaining import LegacyBargainingProtocol
+            bargaining_protocol = LegacyBargainingProtocol()
+        
         self.search_protocol = search_protocol
         self.matching_protocol = matching_protocol
         self.bargaining_protocol = bargaining_protocol
@@ -94,11 +104,20 @@ class Simulation:
         self._mode_change_tick: Optional[int] = None
         
         # Initialize systems in the correct tick order
+        # Create decision system and inject protocols
+        decision_system = DecisionSystem()
+        decision_system.search_protocol = self.search_protocol
+        decision_system.matching_protocol = self.matching_protocol
+        
+        # Create trade system and inject bargaining protocol
+        trade_system = TradeSystem()
+        trade_system.bargaining_protocol = self.bargaining_protocol
+        
         self.systems = [
             PerceptionSystem(),
-            DecisionSystem(),
+            decision_system,
             MovementSystem(),
-            TradeSystem(),
+            trade_system,
             ForageSystem(),
             ResourceRegenerationSystem(),
             HousekeepingSystem(),

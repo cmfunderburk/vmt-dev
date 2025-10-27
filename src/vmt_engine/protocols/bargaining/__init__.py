@@ -4,12 +4,15 @@ Bargaining Protocols
 Bargaining protocols determine how paired agents negotiate trade terms.
 
 Available Protocols:
-- (To be implemented in Phase 1: Legacy compensating blocks)
+- LegacyBargainingProtocol: Compensating block with money-aware matching
 - (Future: Take-it-or-leave-it, Rubinstein, Nash)
 
-Version: 2025.10.26 (Phase 0 - Infrastructure)
+Version: 2025.10.26 (Phase 1 - Legacy Implementation)
 """
 
-# Protocol implementations will be added in Phase 1
-__all__: list[str] = []
+from .legacy import LegacyBargainingProtocol
+
+__all__ = [
+    "LegacyBargainingProtocol",
+]
 

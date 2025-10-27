@@ -51,9 +51,12 @@ def test_ces_utility_zero_inventory():
     # Both zero
     assert u.u(0, 0) == 0.0
     
-    # One zero (with negative rho, utility should be 0)
-    assert u.u(10, 0) == 0.0
-    assert u.u(0, 10) == 0.0
+    # One zero (with negative rho and epsilon-shift, utility should be small but positive)
+    # This ensures agents still value acquiring the first unit of a good
+    assert u.u(10, 0) > 0.0
+    assert u.u(10, 0) < 1e-8  # Very small value due to epsilon shift
+    assert u.u(0, 10) > 0.0
+    assert u.u(0, 10) < 1e-8
 
 
 def test_ces_mrs():

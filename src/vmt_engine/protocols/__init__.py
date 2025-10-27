@@ -59,6 +59,11 @@ from .context import (
 )
 
 from .registry import ProtocolRegistry
+from .context_builders import (
+    build_world_view_for_agent,
+    build_protocol_context,
+    build_trade_world_view,
+)
 
 __all__ = [
     # Effects
@@ -88,5 +93,9 @@ __all__ = [
     "create_protocol_context",
     # Registry
     "ProtocolRegistry",
+    # Context builders
+    "build_world_view_for_agent",
+    "build_protocol_context",
+    "build_trade_world_view",
 ]
 

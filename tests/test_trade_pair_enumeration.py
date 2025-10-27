@@ -1,31 +1,27 @@
 """
 Unit tests for trade pair enumeration (Money Phase 3).
 
-Tests the _get_allowed_pairs() method that determines which exchange
+Tests the get_allowed_exchange_pairs() function that determines which exchange
 types are permitted based on the exchange_regime parameter.
 """
 
 import pytest
-from src.vmt_engine.systems.trading import TradeSystem
+from src.vmt_engine.systems.matching import get_allowed_exchange_pairs
 
 
 class TestTradePairEnumeration:
     """Test trade pair enumeration for different exchange regimes."""
     
-    def setup_method(self):
-        """Create TradeSystem instance for testing."""
-        self.trade_system = TradeSystem()
-    
     def test_barter_only_regime(self):
         """Barter-only regime should return only goods-for-goods pair."""
-        pairs = self.trade_system._get_allowed_pairs("barter_only")
+        pairs = get_allowed_exchange_pairs("barter_only")
         
         assert pairs == ["A<->B"], "Barter-only should only allow A<->B"
         assert len(pairs) == 1, "Barter-only should have exactly 1 pair type"
     
     def test_money_only_regime(self):
         """Money-only regime should return only monetary pairs."""
-        pairs = self.trade_system._get_allowed_pairs("money_only")
+        pairs = get_allowed_exchange_pairs("money_only")
         
         assert "A<->M" in pairs, "Money-only should allow A<->M"
         assert "B<->M" in pairs, "Money-only should allow B<->M"
@@ -34,7 +30,7 @@ class TestTradePairEnumeration:
     
     def test_mixed_regime(self):
         """Mixed regime should return all three exchange types."""
-        pairs = self.trade_system._get_allowed_pairs("mixed")
+        pairs = get_allowed_exchange_pairs("mixed")
         
         assert "A<->B" in pairs, "Mixed should allow barter (A<->B)"
         assert "A<->M" in pairs, "Mixed should allow A<->M"
@@ -43,7 +39,7 @@ class TestTradePairEnumeration:
     
     def test_mixed_liquidity_gated_regime(self):
         """Mixed liquidity-gated regime should return all three types."""
-        pairs = self.trade_system._get_allowed_pairs("mixed_liquidity_gated")
+        pairs = get_allowed_exchange_pairs("mixed_liquidity_gated")
         
         assert "A<->B" in pairs, "Mixed liquidity-gated should allow barter"
         assert "A<->M" in pairs, "Mixed liquidity-gated should allow A<->M"
@@ -53,7 +49,7 @@ class TestTradePairEnumeration:
     def test_invalid_regime_raises_error(self):
         """Unknown regime should raise ValueError."""
         with pytest.raises(ValueError) as exc_info:
-            self.trade_system._get_allowed_pairs("invalid_regime")
+            get_allowed_exchange_pairs("invalid_regime")
         
         assert "Unknown exchange_regime" in str(exc_info.value)
         assert "invalid_regime" in str(exc_info.value)
@@ -61,9 +57,9 @@ class TestTradePairEnumeration:
     def test_pair_order_deterministic(self):
         """Pair order should be deterministic for reproducibility."""
         # Call multiple times to ensure consistency
-        pairs1 = self.trade_system._get_allowed_pairs("mixed")
-        pairs2 = self.trade_system._get_allowed_pairs("mixed")
-        pairs3 = self.trade_system._get_allowed_pairs("mixed")
+        pairs1 = get_allowed_exchange_pairs("mixed")
+        pairs2 = get_allowed_exchange_pairs("mixed")
+        pairs3 = get_allowed_exchange_pairs("mixed")
         
         assert pairs1 == pairs2 == pairs3, "Pair order must be deterministic"
         
@@ -74,20 +70,20 @@ class TestTradePairEnumeration:
     def test_no_duplicates(self):
         """No regime should return duplicate pairs."""
         for regime in ["barter_only", "money_only", "mixed", "mixed_liquidity_gated"]:
-            pairs = self.trade_system._get_allowed_pairs(regime)
+            pairs = get_allowed_exchange_pairs(regime)
             assert len(pairs) == len(set(pairs)), \
                 f"Regime '{regime}' returned duplicate pairs: {pairs}"
     
     def test_barter_excludes_money(self):
         """Barter-only should not include money pairs."""
-        pairs = self.trade_system._get_allowed_pairs("barter_only")
+        pairs = get_allowed_exchange_pairs("barter_only")
         
         for pair in pairs:
             assert "M" not in pair, f"Barter-only should not include money: {pair}"
     
     def test_money_only_excludes_barter(self):
         """Money-only should not include barter pairs."""
-        pairs = self.trade_system._get_allowed_pairs("money_only")
+        pairs = get_allowed_exchange_pairs("money_only")
         
         for pair in pairs:
             assert "M" in pair, f"Money-only pairs must involve M: {pair}"
@@ -97,7 +93,7 @@ class TestTradePairEnumeration:
     
     def test_return_type(self):
         """Method should return a list of strings."""
-        pairs = self.trade_system._get_allowed_pairs("mixed")
+        pairs = get_allowed_exchange_pairs("mixed")
         
         assert isinstance(pairs, list), "Should return a list"
         assert all(isinstance(p, str) for p in pairs), "All elements should be strings"
@@ -105,34 +101,30 @@ class TestTradePairEnumeration:
     def test_empty_regime_string_raises_error(self):
         """Empty string should raise ValueError."""
         with pytest.raises(ValueError):
-            self.trade_system._get_allowed_pairs("")
+            get_allowed_exchange_pairs("")
     
     def test_case_sensitive_regime(self):
         """Regime strings should be case-sensitive."""
         # Correct case should work
-        pairs = self.trade_system._get_allowed_pairs("barter_only")
+        pairs = get_allowed_exchange_pairs("barter_only")
         assert pairs == ["A<->B"]
         
         # Wrong case should fail
         with pytest.raises(ValueError):
-            self.trade_system._get_allowed_pairs("Barter_Only")
+            get_allowed_exchange_pairs("Barter_Only")
         
         with pytest.raises(ValueError):
-            self.trade_system._get_allowed_pairs("MONEY_ONLY")
+            get_allowed_exchange_pairs("MONEY_ONLY")
 
 
 class TestTradePairSemantics:
     """Test semantic correctness of pair types."""
     
-    def setup_method(self):
-        """Create TradeSystem instance for testing."""
-        self.trade_system = TradeSystem()
-    
     def test_pair_format(self):
         """All pairs should follow X<->Y format."""
         all_pairs = []
         for regime in ["barter_only", "money_only", "mixed"]:
-            all_pairs.extend(self.trade_system._get_allowed_pairs(regime))
+            all_pairs.extend(get_allowed_exchange_pairs(regime))
         
         # Remove duplicates
         unique_pairs = list(set(all_pairs))
@@ -150,7 +142,7 @@ class TestTradePairSemantics:
         
         all_pairs = []
         for regime in ["barter_only", "money_only", "mixed"]:
-            all_pairs.extend(self.trade_system._get_allowed_pairs(regime))
+            all_pairs.extend(get_allowed_exchange_pairs(regime))
         
         for pair in all_pairs:
             parts = pair.split("<->")
@@ -162,7 +154,7 @@ class TestTradePairSemantics:
         """No pair should have same good on both sides (e.g., A<->A)."""
         all_pairs = []
         for regime in ["barter_only", "money_only", "mixed"]:
-            all_pairs.extend(self.trade_system._get_allowed_pairs(regime))
+            all_pairs.extend(get_allowed_exchange_pairs(regime))
         
         for pair in all_pairs:
             parts = pair.split("<->")
