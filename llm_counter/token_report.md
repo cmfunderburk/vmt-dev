@@ -1,23 +1,23 @@
 # vmt-dev - Token Analysis Report
 
-*Generated on 2025-10-27 21:55:15*
+*Generated on 2025-10-27 23:40:13*
 
 ## 📊 Executive Summary
 
 | Metric | Value |
 |--------|--------|
-| **Total Tokens** | 221.4K tokens |
-| **Total Files** | 133 files |
-| **Repository Size** | 0.9 MB |
-| **Average Tokens/File** | 1665 tokens |
+| **Total Tokens** | 203.3K tokens |
+| **Total Files** | 129 files |
+| **Repository Size** | 0.8 MB |
+| **Average Tokens/File** | 1576 tokens |
 
 ## 📄 File Type Breakdown
 
 | File Type | Token Count | Percentage | Files |
 |-----------|-------------|------------|-------|
-| Python | 101.0K | 45.6% | 62 |
-| Markdown | 80.7K | 36.5% | 26 |
-| YAML | 38.8K | 17.5% | 39 |
+| Python | 101.0K | 49.7% | 62 |
+| Markdown | 62.7K | 30.8% | 22 |
+| YAML | 38.8K | 19.1% | 39 |
 | Other | 556 | 0.3% | 3 |
 | Build/Meta | 222 | 0.1% | 1 |
 | Text | 41 | 0.0% | 1 |
@@ -33,20 +33,20 @@
 | `docs/protocols_10-27/master_implementation_plan.md` | 6.8K | 0.0 MB |
 | `docs/2_technical_manual.md` | 6.2K | 0.0 MB |
 | `src/vmt_engine/econ/utility.py` | 6.2K | 0.0 MB |
-| `docs/ssot/protocol_modularization_master_plan.md` | 5.5K | 0.0 MB |
 | `docs/structures/comprehensive_scenario_template.yaml` | 5.2K | 0.0 MB |
 | `docs/BIGGEST_PICTURE/vision_and_architecture.md` | 5.2K | 0.0 MB |
 | `docs/protocols_10-27/protocol_implementation_review.md` | 5.2K | 0.0 MB |
-| `docs/ASDF/asdf1.md` | 5.1K | 0.0 MB |
 | `src/telemetry/db_loggers.py` | 4.9K | 0.0 MB |
-| `docs/1_project_overview.md` | 4.8K | 0.0 MB |
-| `docs/ASDF/SESSION_STATE.md` | 4.7K | 0.0 MB |
+| `docs/1_project_overview.md` | 4.9K | 0.0 MB |
 | `src/vmt_log_viewer/viewer.py` | 3.9K | 0.0 MB |
 | `CHANGELOG.md` | 3.9K | 0.0 MB |
 | `src/scenarios/schema.py` | 3.8K | 0.0 MB |
 | `src/vmt_engine/simulation.py` | 3.5K | 0.0 MB |
 | `src/vmt_engine/protocols/search/legacy.py` | 3.5K | 0.0 MB |
-| `docs/ssot/testing_validation_strategy.md` | 3.4K | 0.0 MB |
+| `scenarios/big_test_money.yaml` | 3.3K | 0.0 MB |
+| `scenarios/perf_both_modes.yaml` | 3.3K | 0.0 MB |
+| `docs/structures/parameter_quick_reference.md` | 3.2K | 0.0 MB |
+| `scenarios/perf_exchange_only.yaml` | 3.1K | 0.0 MB |
 
 
 ## 🤖 LLM Context Analysis
@@ -55,24 +55,24 @@
 
 | Model | Context Window | Repo Coverage |
 |-------|---------------|---------------|
-| GPT-4 | ~128K tokens | 57.8% |
-| Claude 3 | ~200K tokens | 90.3% |
-| Claude 3.5 Sonnet | ~200K tokens | 90.3% |
-| Gemini 1.5 Pro | ~1M tokens | 451.7% |
+| GPT-4 | ~128K tokens | 63.0% |
+| Claude 3 | ~200K tokens | 98.4% |
+| Claude 3.5 Sonnet | ~200K tokens | 98.4% |
+| Gemini 1.5 Pro | ~1M tokens | 491.8% |
 
 ### Recommendations
 
-- **Full Repository**: 221.4K tokens fits in: Gemini 1.5 Pro (~1.0M)
+- **Full Repository**: 203.3K tokens fits in: Gemini 1.5 Pro (~1.0M)
 - **Targeted Analysis**: Consider focusing on 40-60% of files for detailed reviews
 - **Code Reviews**: Use token counts to prioritize which files/modules to include
-- **Documentation**: 36.5% of tokens are documentation (substantial docs available)
+- **Documentation**: 30.8% of tokens are documentation (substantial docs available)
 
 
 ## 📈 Analysis Metadata
 
 - **Analysis Tool**: Repository Token Counter (full version with repotokens)
 - **Tokenization**: Accurate repotokens library
-- **Files Processed**: 133 code files
+- **Files Processed**: 129 code files
 - **Excluded**: Binary files, caches, logs, virtual environments
 - **Repository**: vmt-dev
 
