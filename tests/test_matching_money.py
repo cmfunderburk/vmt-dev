@@ -9,10 +9,10 @@ Verifies:
 """
 
 import pytest
-from src.vmt_engine.core.agent import Agent
-from src.vmt_engine.core.state import Inventory
-from src.vmt_engine.econ.utility import UCES, ULinear
-from src.vmt_engine.systems.matching import (
+from vmt_engine.core.agent import Agent
+from vmt_engine.core.state import Inventory
+from vmt_engine.econ.utility import UCES, ULinear
+from vmt_engine.systems.matching import (
     find_compensating_block_generic,
     find_best_trade,
     execute_trade_generic

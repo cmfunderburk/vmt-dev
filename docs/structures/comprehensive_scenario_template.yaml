@@ -236,6 +236,35 @@ mode_schedule:
                                    # "forage" (start with resource gathering), "trade" (start with trading)
 
 # =============================================================================
+# PROTOCOL CONFIGURATION (Optional - defaults to legacy protocols)
+# =============================================================================
+
+# Search protocol - determines how agents select movement/interaction targets
+search_protocol: "legacy_distance_discounted"           # Options: "legacy_distance_discounted", "random_walk"
+                                   # Default: "legacy_distance_discounted" (distance-discounted utility-based search)
+                                   # If omitted, uses legacy_distance_discounted protocol
+
+# Matching protocol - determines how agents form bilateral pairs
+matching_protocol: "legacy_three_pass"  # Options: "legacy_three_pass", "random_matching"
+                                   # Default: "legacy_three_pass" (mutual consent + greedy surplus)
+                                   # If omitted, uses legacy protocol
+
+# Bargaining protocol - determines how paired agents negotiate trades
+bargaining_protocol: "legacy_compensating_block"  # Options: "legacy_compensating_block", "split_difference"
+                                   # Default: "legacy_compensating_block" (first feasible trade)
+                                   # If omitted, uses legacy protocol
+
+# Protocol Resolution Order:
+# 1. CLI arguments (--search-protocol, --matching-protocol, --bargaining-protocol) - highest priority
+# 2. YAML configuration (above fields) - medium priority
+# 3. Legacy defaults - fallback if neither CLI nor YAML specified
+
+# Phase 2a Protocol Options:
+# - search_protocol: "random_walk" - Pure stochastic exploration baseline
+# - matching_protocol: "random_matching" - Random pairing baseline
+# - bargaining_protocol: "split_difference" - Equal surplus division baseline
+
+# =============================================================================
 # PARAMETER SELECTION GUIDELINES
 # =============================================================================
 

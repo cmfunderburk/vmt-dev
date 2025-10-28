@@ -5,14 +5,21 @@ Search protocols determine how agents select targets for movement and interactio
 
 Available Protocols:
 - LegacySearchProtocol: Distance-discounted search (original VMT algorithm)
-- (Future: Random walk, Memory-based)
+- RandomWalkSearch: Stochastic exploration baseline (Phase 2a)
 
-Version: 2025.10.26 (Phase 1 - Legacy Implementation)
+Version: 2025.10.28 (Phase 2a - Baseline Protocols)
 """
 
 from .legacy import LegacySearchProtocol
+from .random_walk import RandomWalkSearch
+
+from ..registry import ProtocolRegistry  # Crash-fast check
+_reg = ProtocolRegistry.list_protocols()
+assert "legacy_distance_discounted" in _reg.get("search", []), "Search registry missing 'legacy_distance_discounted'"
+assert "random_walk" in _reg.get("search", []), "Search registry missing 'random_walk'"
 
 __all__ = [
     "LegacySearchProtocol",
+    "RandomWalkSearch",
 ]
 

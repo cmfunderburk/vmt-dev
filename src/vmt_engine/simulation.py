@@ -37,29 +37,44 @@ class Simulation:
             scenario_config: Loaded and validated scenario
             seed: Random seed for reproducibility
             log_config: Configuration for new database logging system (optional)
-            search_protocol: Optional search protocol (Phase 0 - not yet wired)
-            matching_protocol: Optional matching protocol (Phase 0 - not yet wired)
-            bargaining_protocol: Optional bargaining protocol (Phase 0 - not yet wired)
+            search_protocol: Optional search protocol (CLI override)
+            matching_protocol: Optional matching protocol (CLI override)
+            bargaining_protocol: Optional bargaining protocol (CLI override)
+        
+        Protocol Resolution Order:
+            1. CLI argument (if provided) - overrides everything
+            2. Scenario YAML configuration (if specified)
+            3. Legacy defaults (fallback)
         """
         self.config = scenario_config
         self.seed = seed
         self.rng = np.random.Generator(np.random.PCG64(seed))
         
-        # Protocol system (Phase 1 - Integrated with legacy adapters)
-        # Initialize default protocols if not provided
-        if search_protocol is None:
-            from .protocols.search import LegacySearchProtocol
-            search_protocol = LegacySearchProtocol()
-        if matching_protocol is None:
-            from .protocols.matching import LegacyMatchingProtocol
-            matching_protocol = LegacyMatchingProtocol()
-        if bargaining_protocol is None:
-            from .protocols.bargaining import LegacyBargainingProtocol
-            bargaining_protocol = LegacyBargainingProtocol()
+        # Protocol system with YAML configuration support
+        # CLI arguments override YAML config, which overrides legacy defaults
+        from scenarios.protocol_factory import (
+            get_search_protocol,
+            get_matching_protocol,
+            get_bargaining_protocol
+        )
         
-        self.search_protocol = search_protocol
-        self.matching_protocol = matching_protocol
-        self.bargaining_protocol = bargaining_protocol
+        # Search protocol: CLI > YAML > legacy default
+        if search_protocol is not None:
+            self.search_protocol = search_protocol  # CLI override
+        else:
+            self.search_protocol = get_search_protocol(scenario_config.search_protocol)
+        
+        # Matching protocol: CLI > YAML > legacy default
+        if matching_protocol is not None:
+            self.matching_protocol = matching_protocol  # CLI override
+        else:
+            self.matching_protocol = get_matching_protocol(scenario_config.matching_protocol)
+        
+        # Bargaining protocol: CLI > YAML > legacy default
+        if bargaining_protocol is not None:
+            self.bargaining_protocol = bargaining_protocol  # CLI override
+        else:
+            self.bargaining_protocol = get_bargaining_protocol(scenario_config.bargaining_protocol)
         
         # Simulation state - initialize params first
         self.tick = 0

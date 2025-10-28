@@ -9,8 +9,8 @@ Verifies:
 """
 
 import pytest
-from src.vmt_engine.econ.utility import UCES, ULinear, u_total
-from src.vmt_engine.core.state import Inventory
+from vmt_engine.econ.utility import UCES, ULinear, u_total
+from vmt_engine.core.state import Inventory
 
 
 class TestUGoodsConsistency:

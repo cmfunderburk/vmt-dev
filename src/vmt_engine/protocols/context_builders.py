@@ -58,6 +58,7 @@ def build_world_view_for_agent(agent: "Agent", sim: "Simulation") -> WorldView:
     # Build params dict with essential simulation parameters
     params = {
         # Core parameters
+        "grid_size": sim.grid.N,  # Grid dimension for bounds checking
         "beta": sim.params.get("beta", 0.95),
         "forage_rate": sim.params.get("forage_rate", 1),
         "vision_radius": sim.params.get("vision_radius", 5),
@@ -162,6 +163,7 @@ def build_protocol_context(sim: "Simulation") -> ProtocolContext:
         current_pairings=current_pairings,
         protocol_state=protocol_state,
         params=params,
+        rng=sim.rng,  # Pass simulation's deterministic RNG
     )
 
 

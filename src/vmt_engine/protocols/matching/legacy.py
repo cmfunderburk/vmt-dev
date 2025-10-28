@@ -12,11 +12,21 @@ Version: 2025.10.26 (Phase 1 - Legacy Adapter)
 """
 
 from typing import Optional
+from ..registry import register_protocol
 from ..base import MatchingProtocol, Effect, Pair, Unpair, SetTarget
 from ..context import ProtocolContext, AgentView
 from ...systems.matching import compute_surplus, estimate_money_aware_surplus
 
 
+@register_protocol(
+    category="matching",
+    name="legacy_three_pass",
+    description="Legacy three-pass matching (mutual consent + greedy fallback)",
+    properties=["deterministic", "legacy"],
+    complexity="O(n^2)",
+    references=[],
+    phase="1",
+)
 class LegacyMatchingProtocol(MatchingProtocol):
     """
     Legacy three-pass matching algorithm.
@@ -43,6 +53,9 @@ class LegacyMatchingProtocol(MatchingProtocol):
     @property
     def version(self) -> str:
         return "2025.10.26"
+    
+    # Class-level for registry
+    VERSION = "2025.10.26"
     
     def find_matches(
         self,

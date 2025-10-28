@@ -306,6 +306,13 @@ class SearchProtocol(ProtocolBase):
     - Memory-based search
     """
     
+    # Class-level version to avoid instantiation during registration
+    VERSION = "unknown"
+
+    @property
+    def version(self) -> str:
+        return getattr(self.__class__, "VERSION", "unknown")
+
     @abstractmethod
     def build_preferences(
         self, world: "WorldView"
@@ -357,6 +364,13 @@ class MatchingProtocol(ProtocolBase):
     - Stable matching (Gale-Shapley)
     """
     
+    # Class-level version to avoid instantiation during registration
+    VERSION = "unknown"
+
+    @property
+    def version(self) -> str:
+        return getattr(self.__class__, "VERSION", "unknown")
+
     @abstractmethod
     def find_matches(
         self,
@@ -397,6 +411,13 @@ class BargainingProtocol(ProtocolBase):
     - Nash bargaining solution
     """
     
+    # Class-level version to avoid instantiation during registration
+    VERSION = "unknown"
+
+    @property
+    def version(self) -> str:
+        return getattr(self.__class__, "VERSION", "unknown")
+
     @abstractmethod
     def negotiate(
         self, pair: tuple[int, int], world: "WorldView"
