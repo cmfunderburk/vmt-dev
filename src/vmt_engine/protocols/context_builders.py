@@ -98,6 +98,7 @@ def build_world_view_for_agent(agent: "Agent", sim: "Simulation") -> WorldView:
         visible_agents=visible_agents,
         visible_resources=visible_resources,
         params=params,
+        rng=sim.rng,  # Pass simulation's deterministic RNG to protocols
     )
 
 
@@ -214,5 +215,6 @@ def build_trade_world_view(
         visible_agents=world.visible_agents,
         visible_resources=world.visible_resources,
         params=params_with_partner,
+        rng=world.rng,  # Preserve RNG from original WorldView
     )
 

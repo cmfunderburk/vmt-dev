@@ -70,11 +70,7 @@ A search protocol where agents move randomly instead of rationally. This is your
 
 **1. Create:** `src/vmt_engine/protocols/search/random_walk.py`
 ```python
-from dataclasses import dataclass
-from typing import Optional
-import random
-
-from vmt_engine.protocols.base import SearchProtocol, SetTargetEffect
+from vmt_engine.protocols.base import SearchProtocol, SetTarget
 from vmt_engine.protocols.context import WorldView
 
 class RandomWalkSearch(SearchProtocol):
@@ -86,38 +82,52 @@ class RandomWalkSearch(SearchProtocol):
     Demonstrates value of information vs rational search.
     """
     
-    name = "random_walk"
-    version = "2025.10.28"
+    @property
+    def name(self) -> str:
+        return "random_walk"
     
-    def execute(self, world: WorldView) -> list[SetTargetEffect]:
-        effects = []
+    @property
+    def version(self) -> str:
+        return "2025.10.28"
+    
+    def build_preferences(self, world: WorldView) -> list[tuple]:
+        """Build randomly ordered preferences."""
+        # Get visible positions
+        visible = self._get_visible_positions(
+            world.pos,
+            world.params.get("vision_radius", 5),
+            world.params.get("grid_size", 32)
+        )
         
-        for agent in world.agents:
-            # Skip if already paired (honor commitments)
-            if agent.is_paired:
-                continue
-                
-            # Get visible cells within vision radius
-            visible_positions = self._get_visible_positions(
-                agent.position, 
-                world.parameters.vision_radius,
-                world.grid_size
-            )
-            
-            # Filter out current position
-            targets = [pos for pos in visible_positions 
-                      if pos != agent.position]
-            
-            if targets:
-                # Use world's RNG for determinism!
-                target = world.rng.choice(targets)
-                effects.append(SetTargetEffect(
-                    agent_id=agent.id,
-                    target_position=target,
-                    target_type="explore"  # New type for random walk
-                ))
+        # Filter out current position
+        targets = [pos for pos in visible if pos != world.pos]
         
-        return effects
+        if not targets:
+            return []
+        
+        # Shuffle using deterministic RNG
+        shuffled = targets.copy()
+        world.rng.shuffle(shuffled)
+        
+        # Return as preferences with equal scores
+        return [(pos, 0.0, {"type": "random_move"}) for pos in shuffled]
+    
+    def select_target(self, world: WorldView) -> list:
+        """Select best target from preferences."""
+        prefs = self.build_preferences(world)
+        
+        if not prefs:
+            return []
+        
+        # Select first (random due to shuffle)
+        target_pos, score, metadata = prefs[0]
+        
+        return [SetTarget(
+            protocol_name=self.name,
+            tick=world.tick,
+            agent_id=world.agent_id,
+            target=target_pos
+        )]
     
     def _get_visible_positions(self, center, radius, grid_size):
         """Get all positions within Manhattan distance radius."""

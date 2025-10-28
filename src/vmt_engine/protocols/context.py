@@ -15,6 +15,7 @@ Version: 2025.10.26 (Phase 0 - Infrastructure)
 
 from dataclasses import dataclass
 from typing import Any, Optional
+import numpy as np
 
 from ..econ.base import Utility
 
@@ -129,12 +130,10 @@ class WorldView:
     # - trade_cooldown_ticks: int
     
     # -------------------------------------------------------------------------
-    # Deterministic RNG Stream (Per-Agent)
+    # Deterministic RNG Stream
     # -------------------------------------------------------------------------
     
-    # Note: RNG stream implementation deferred to Phase 1
-    # For now, protocols should be deterministic without randomness
-    # or use global RNG from simulation (for legacy compatibility)
+    rng: np.random.Generator  # Simulation's deterministic RNG (shared, not per-agent)
 
 
 # =============================================================================
@@ -194,6 +193,7 @@ def create_world_view(
     visible_agents: list[AgentView],
     visible_resources: list[ResourceView],
     params: dict[str, Any],
+    rng: np.random.Generator,
 ) -> WorldView:
     """
     Factory function for creating WorldView instances.
@@ -216,6 +216,7 @@ def create_world_view(
         visible_agents=visible_agents,
         visible_resources=visible_resources,
         params=params,
+        rng=rng,
     )
 
 
