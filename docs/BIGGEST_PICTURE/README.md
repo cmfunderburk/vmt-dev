@@ -11,15 +11,17 @@ This directory holds **strategic, enduring documentation** that captures:
 - Economic and pedagogical philosophy
 - High-level architecture (conceptual, not implementation)
 - Long-term research agenda
+- **Quick reorientation guides for getting back up to speed**
 
 **These documents are:**
-- ✅ Code-agnostic (concepts, not implementation)
+- ✅ Code-agnostic (concepts, not implementation) 
 - ✅ Stable (updated infrequently, only for major direction changes)
 - ✅ Strategic (the "why" and "what", not the "how")
 - ✅ Accessible (readable by non-programmers: economists, educators, collaborators)
+- ✅ **Actionable** (new: includes reorientation guides with clear next steps)
 
 **These documents are NOT:**
-- ❌ Implementation guides (see `docs/protocols_10-27/` or `docs/ssot/`)
+- ❌ Implementation guides (see `docs/protocols_10-27/`)
 - ❌ Living/evolving plans (see `docs/ASDF/SESSION_STATE.md`)
 - ❌ Code documentation (see source code docstrings)
 - ❌ Technical manuals (see `docs/2_technical_manual.md`)
@@ -27,6 +29,22 @@ This directory holds **strategic, enduring documentation** that captures:
 ---
 
 ## Current Documents
+
+### 🚀 [`CURRENT_STATE_AND_NEXT_STEPS.md`](CURRENT_STATE_AND_NEXT_STEPS.md) **START HERE**
+
+**Your 5-minute reorientation guide** when you're lost in the complexity:
+
+1. **Where You Are** — Quick summary of what's working and what you just completed
+2. **Exact Roadmap Position** — Shows you're at Phase 2a, ready to implement Random Walk Search  
+3. **Next Implementation** — Complete specification with template code for your next 2-3 hours
+4. **Development Checklist** — Step-by-step tasks for Phase 2a (8-10 hours total)
+5. **Success Metrics** — How to know when you've succeeded
+
+**Read this when:**
+- ✓ Starting a new session and feeling lost
+- ✓ Need to remember where you left off
+- ✓ Want clear, actionable next steps
+- ✓ Need template code to start from
 
 ### [`vision_and_architecture.md`](vision_and_architecture.md)
 
@@ -114,11 +132,8 @@ docs/ASDF/
   └── PHASE_1_COMPLETION.md        ← "What was accomplished?"
 ```
 
-### For Implementation Plans → Read ssot or protocols_10-27
+### For Implementation Plans → Read protocols_10-27
 ```
-docs/ssot/
-  └── protocol_modularization_master_plan.md  ← "How is it architected?"
-
 docs/protocols_10-27/
   ├── master_implementation_plan.md           ← "What are we building next?"
   ├── phase2a_quick_start.md                  ← "How do I start coding?"
@@ -164,11 +179,33 @@ docs/
 | Date | Document | Change | Reason |
 |------|----------|--------|--------|
 | 2025-10-27 | vision_and_architecture.md | Created | Consolidate strategic vision after Phase 1 completion |
+| 2025-10-28 | CURRENT_STATE_AND_NEXT_STEPS.md | Created | Provide quick reorientation and actionable next steps |
 
 ---
 
-**Directory Purpose:** Enduring strategic vision, not ephemeral implementation details  
+## 🧭 Quick Navigation Guide
+
+### Based on Your Current Need:
+
+**"I'm lost and need to get coding again quickly"**
+→ Read [`CURRENT_STATE_AND_NEXT_STEPS.md`](CURRENT_STATE_AND_NEXT_STEPS.md)
+
+**"I want to understand the big vision"**  
+→ Read [`vision_and_architecture.md`](vision_and_architecture.md)
+
+**"I need implementation details for protocols"**  
+→ Go to [`docs/protocols_10-27/master_implementation_plan.md`](../protocols_10-27/master_implementation_plan.md)
+
+**"I need to check today's session progress"**  
+→ Check [`docs/ASDF/SESSION_STATE.md`](../ASDF/SESSION_STATE.md)
+
+**"I need technical specifications"**  
+→ See [`docs/2_technical_manual.md`](../2_technical_manual.md)
+
+---
+
+**Directory Purpose:** Enduring strategic vision + quick reorientation guides  
 **Update Frequency:** Rarely (major milestones only)  
-**Audience:** Broad (economists, educators, researchers, collaborators)  
+**Audience:** Broad (economists, educators, researchers, collaborators) + solo developer  
 **Maintained By:** Project lead
 

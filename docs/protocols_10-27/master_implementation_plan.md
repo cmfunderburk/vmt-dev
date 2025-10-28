@@ -229,7 +229,7 @@ class SplitDifference(BargainingProtocol):
 **Documentation:**
 - [ ] Docstrings with economic properties
 - [ ] `docs/protocols_10-27/phase2a_results.md` - Comparison analysis
-- [ ] Update `docs/ssot/README.md` with completion
+- [ ] Update `docs/ASDF/SESSION_STATE.md` with completion
 
 **Validation Criteria:**
 - [ ] All tests passing

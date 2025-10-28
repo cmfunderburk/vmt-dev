@@ -379,7 +379,6 @@ def test_split_difference_vs_legacy_prices():
 - [ ] Docstrings complete with economic properties
 - [ ] `docs/protocols_10-27/phase2a_results.md` written
 - [ ] Comparison analysis documented
-- [ ] Update `docs/ssot/README.md`
 - [ ] Update `docs/ASDF/SESSION_STATE.md`
 
 ### Validation

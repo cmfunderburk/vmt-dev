@@ -205,11 +205,10 @@ Code with the full vision in mind:
 
 ## Related Documentation
 
-**SSOT (Single Source of Truth):**
-- `docs/ssot/README.md` - Overall project status
-- `docs/ssot/alternative_protocol_planning.md` - Initial planning
-- `docs/ssot/protocol_modularization_master_plan.md` - Architecture
-- `docs/ssot/testing_validation_strategy.md` - Testing approach
+**Historical Planning (Archived):**
+- `docs/archive/ssot_phase1_planning/` - Phase 0-1 planning documents
+  - Served their purpose; protocol architecture now implemented
+  - Superseded by this directory's documentation
 
 **ASDF (As-Developed Files):**
 - `docs/ASDF/SESSION_STATE.md` - Current session state

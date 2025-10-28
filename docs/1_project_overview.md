@@ -449,6 +449,7 @@ VMT includes comprehensive documentation organized by audience and purpose:
 ### Technical Documentation
 - **[Project Overview](./1_project_overview.md)** (this document) - Quick start and feature overview
 - **[Technical Manual](./2_technical_manual.md)** - Detailed implementation, algorithms, and system design
+- **[Enhancement Backlog](./3_enhancement_backlog.md)** - Collection of improvement ideas and quality-of-life enhancements
 - **[Type Specifications](./4_typing_overview.md)** - Language-agnostic type contracts and data schemas
 - **[Scenario Configuration Guide](./scenario_configuration_guide.md)** - Complete reference for creating YAML scenarios
 

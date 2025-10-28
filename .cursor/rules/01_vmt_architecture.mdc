@@ -1,0 +1,58 @@
+---
+alwaysApply: true
+---
+
+# VMT (Visualizing Microeconomic Theory) Architecture Rules
+
+## Protocol → Effect → State Pattern
+This is the fundamental architecture of VMT. NO EXCEPTIONS.
+
+### The Flow
+1. **Protocols** generate agent decisions (e.g., DecentralizedMarketProtocol)
+2. **Effects** represent intended actions (e.g., MoveEffect, TradeEffect)
+3. **Engine** validates and applies Effects to update State
+
+### Implementation Rules
+- Agents receive read-only `WorldView` snapshots, never mutable World
+- Protocols return lists of Effects, never modify state directly
+- Example of CORRECT pattern:
+  ```python
+  # CORRECT: Agent decides to move
+  effects.append(MoveEffect(agent_id=agent.id, new_position=(x, y)))
+  
+  # WRONG: Direct mutation
+  # agent.position = (x, y)  # NEVER DO THIS
+  ```
+
+## 7-Phase Tick Cycle
+Each simulation tick follows this exact sequence:
+
+1. **Phase 0**: Resource regeneration
+2. **Phase 1**: Agent movement decisions → MoveEffects
+3. **Phase 2**: Movement execution
+4. **Phase 3**: Agent foraging/mining → ResourceEffects  
+5. **Phase 4**: Trading negotiations → TradeEffects
+6. **Phase 5**: Trade execution and inventory updates
+7. **Phase 6**: Consumption and utility calculation
+
+### Phase Discipline
+- Each phase has a specific purpose - respect it
+- Agent decisions happen in odd phases (1, 3)
+- World updates happen in even phases (2, 4, 6)
+- Never mix decision and execution logic
+
+## Module Structure
+Maintain clear separation of concerns:
+
+- `[protocols/](mdc:src/vmt_engine/protocols/)` - Market mechanisms and decision algorithms
+- `[systems/](mdc:src/vmt_engine/systems/)` - Phase-specific system implementations  
+- `[protocols/base.py](mdc:src/vmt_engine/protocols/base.py)` - All Effect classes
+- `[core/](mdc:src/vmt_engine/core/)` - Grid, Agent, State, and spatial primitives
+- `[telemetry/](mdc:src/telemetry/)` - Database logging and metrics
+
+## Protocol Implementation
+When implementing new protocols:
+- Extend appropriate base class from `[protocols/base.py](mdc:src/vmt_engine/protocols/base.py)`
+- Implement required methods: `execute()` for each protocol type
+- Return proper Effects, never modify state  
+- Include docstring explaining economic mechanism
