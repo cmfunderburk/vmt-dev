@@ -171,6 +171,9 @@ class ProtocolContext:
     
     # Global parameters
     params: dict[str, Any]
+    
+    # Deterministic RNG
+    rng: np.random.Generator  # Simulation's deterministic RNG (shared)
 
 
 # =============================================================================

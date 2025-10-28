@@ -163,6 +163,7 @@ def build_protocol_context(sim: "Simulation") -> ProtocolContext:
         current_pairings=current_pairings,
         protocol_state=protocol_state,
         params=params,
+        rng=sim.rng,  # Pass simulation's deterministic RNG
     )
 
 
