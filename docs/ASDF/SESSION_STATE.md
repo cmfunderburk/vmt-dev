@@ -176,7 +176,7 @@
   - 2025-10-27: Documentation cleanup (archived 4 superseded docs)
   - 2025-10-27: Updated `1_project_overview.md` to align with strategic vision
   - 2025-10-27: Updated scenario creation docs to reflect actual workflow (manual YAML editing)
-  - 2025-10-27: Noted CLI generator and GUI builder need updates before production use
+  - 2025-10-27: Removed broken CLI and GUI scenario generation tools completely
   - 2025-10-27: Corrected money utility documentation (supports linear AND log forms, not just quasilinear)
 
 ---
@@ -210,17 +210,10 @@
   - Updated `1_project_overview.md` to align with vision
 
 ### Tooling
-- [ ] **CLI Scenario Generator outdated** (Priority: Medium)
-  - Location: `src/vmt_tools/generate_scenario.py`
-  - Problem: Doesn't support protocol system, may have stale parameters
-  - Solution: Needs refactoring after Phase 2 protocols stabilize
-  - Workaround: Use manual YAML editing with `docs/structures/` templates
-
-- [ ] **GUI Builder outdated** (Priority: Medium)  
-  - Location: launcher.py → "Create Custom Scenario"
-  - Problem: Doesn't reflect protocol architecture changes
-  - Solution: Schedule for updates after Phase 2 protocols
-  - Workaround: Use manual YAML editing with `docs/structures/` templates
+- [x] **CLI/GUI Scenario Generators removed** ✅ **RESOLVED (2025-10-27)**
+  - Removed outdated CLI and GUI builders (didn't support current parameters)
+  - Canonical workflow: Manual YAML editing with `docs/structures/` templates
+  - See: `docs/REMOVED.md`
 
 ### Architectural
 - [x] **Protocol modularization decision made** ✅ (Priority: Critical - RESOLVED)

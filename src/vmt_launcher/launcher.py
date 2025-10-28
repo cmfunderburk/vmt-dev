@@ -12,7 +12,6 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIntValidator, QKeySequence, QShortcut, QCloseEvent
-from .scenario_builder import ScenarioBuilderDialog
 
 # Assumes the script is run from the project root
 SCENARIOS_DIR = "scenarios"
@@ -84,14 +83,6 @@ class LauncherWindow(QMainWindow):
         layout = QVBoxLayout()
         central_widget.setLayout(layout)
         
-        # Create Custom Scenario button at top
-        self.create_scenario_btn = QPushButton("Create Custom Scenario")
-        self.create_scenario_btn.clicked.connect(self.open_scenario_builder)
-        layout.addWidget(self.create_scenario_btn)
-        
-        # Separator
-        layout.addSpacing(10)
-        
         # Scenario selection label
         scenario_label = QLabel("Select Scenario:")
         scenario_label.setStyleSheet("font-weight: bold;")
@@ -155,24 +146,6 @@ class LauncherWindow(QMainWindow):
         self.selected_scenario = item.data(Qt.ItemDataRole.UserRole)
         self.status_label.setText(f"Status: Selected {item.text()}")
         self.status_label.setStyleSheet("color: blue;")
-    
-    def open_scenario_builder(self):
-        """Open the scenario builder dialog."""
-        dialog = ScenarioBuilderDialog(self)
-        if dialog.exec():
-            # Scenario was created, refresh the list
-            self.refresh_scenarios()
-            
-            # Auto-select the new scenario if it was saved in scenarios/
-            new_file_path = dialog.saved_path
-            if new_file_path:
-                # Find item by matching the full path stored in UserRole
-                for i in range(self.scenario_list.count()):
-                    item = self.scenario_list.item(i)
-                    if item.data(Qt.ItemDataRole.UserRole) == str(new_file_path):
-                        self.scenario_list.setCurrentItem(item)
-                        self.on_scenario_selected(item)
-                        break
     
     def run_simulation(self):
         """Run the selected simulation."""

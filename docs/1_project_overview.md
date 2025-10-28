@@ -251,19 +251,7 @@ for agent in sim.agents:
    - Review `scenarios/test/` for specific feature demonstrations
    - See existing scenarios for parameter combinations that work well
 
-### Tool Status (October 2025)
-
-**⚠️ CLI Scenario Generator:** Exists but needs updates
-- Located at `src/vmt_tools/generate_scenario.py`
-- May not support all current features (protocol system, latest parameters)
-- **Status:** Needs refactoring before production use
-
-**⚠️ GUI Builder:** Available but outdated
-- Accessible via launcher.py → "Create Custom Scenario"
-- Does not reflect recent architectural changes
-- **Status:** Scheduled for updates after Phase 2 protocols
-
-**Note:** Both tools were developed before the protocol architecture refactoring and need significant updates to be reliable for workflow use. Manual YAML editing with templates is currently the most reliable method.
+**Note:** CLI and GUI scenario generation tools were removed (2025-10-27) as they were outdated. Manual YAML editing with templates is the canonical workflow.
 
 ### Scenario Example
 
