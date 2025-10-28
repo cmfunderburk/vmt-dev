@@ -244,12 +244,12 @@ class MyopicSearch(SearchProtocol):
 
 ### Configuring Protocols in Scenarios
 
-Set optional fields in scenario YAML (CLI args override):
+Set optional fields in scenario YAML (CLI args override). Use canonical names (no aliases):
 
 ```yaml
-search_protocol: "legacy"              # legacy | random_walk
-matching_protocol: "legacy_three_pass" # legacy_three_pass | random
-bargaining_protocol: "legacy_compensating_block" # legacy_compensating_block | split_difference
+search_protocol: "legacy_distance_discounted"     # legacy_distance_discounted | random_walk
+matching_protocol: "legacy_three_pass"            # legacy_three_pass | random_matching
+bargaining_protocol: "legacy_compensating_block"  # legacy_compensating_block | split_difference
 ```
 
 ### Discovering Available Protocols
@@ -259,7 +259,7 @@ from vmt_engine.protocols import list_all_protocols, describe_all_protocols
 print(list_all_protocols())
 ```
 
-Note: Configuration handles (e.g., `legacy`) can differ from telemetry protocol names (e.g., `legacy_distance_discounted`).
+Canonical naming: Same string across YAML, registry, and telemetry. No aliases.
 
 **Directory Status:** Active implementation planning  
 **Current Phase:** Phase 2a ready to start  

@@ -240,12 +240,12 @@ mode_schedule:
 # =============================================================================
 
 # Search protocol - determines how agents select movement/interaction targets
-search_protocol: "legacy"           # Options: "legacy", "random_walk"
-                                   # Default: "legacy" (distance-discounted utility-based search)
-                                   # If omitted, uses legacy protocol
+search_protocol: "legacy_distance_discounted"           # Options: "legacy_distance_discounted", "random_walk"
+                                   # Default: "legacy_distance_discounted" (distance-discounted utility-based search)
+                                   # If omitted, uses legacy_distance_discounted protocol
 
 # Matching protocol - determines how agents form bilateral pairs
-matching_protocol: "legacy_three_pass"  # Options: "legacy_three_pass", "random"
+matching_protocol: "legacy_three_pass"  # Options: "legacy_three_pass", "random_matching"
                                    # Default: "legacy_three_pass" (mutual consent + greedy surplus)
                                    # If omitted, uses legacy protocol
 
@@ -261,7 +261,7 @@ bargaining_protocol: "legacy_compensating_block"  # Options: "legacy_compensatin
 
 # Phase 2a Protocol Options:
 # - search_protocol: "random_walk" - Pure stochastic exploration baseline
-# - matching_protocol: "random" - Random pairing baseline
+# - matching_protocol: "random_matching" - Random pairing baseline
 # - bargaining_protocol: "split_difference" - Equal surplus division baseline
 
 # =============================================================================

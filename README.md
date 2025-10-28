@@ -120,12 +120,12 @@ vmt-dev/
 
 ### Configure Protocols in YAML (with CLI override)
 
-Add optional fields in your scenario YAML (see comprehensive template):
+Add optional fields in your scenario YAML (see comprehensive template). Use canonical protocol names (no aliases):
 
 ```yaml
-search_protocol: "legacy"              # options: legacy, random_walk
-matching_protocol: "legacy_three_pass" # options: legacy_three_pass, random
-bargaining_protocol: "legacy_compensating_block" # options: legacy_compensating_block, split_difference
+search_protocol: "legacy_distance_discounted"     # options: legacy_distance_discounted, random_walk
+matching_protocol: "legacy_three_pass"            # options: legacy_three_pass, random_matching
+bargaining_protocol: "legacy_compensating_block"  # options: legacy_compensating_block, split_difference
 ```
 
 Resolution order (highest → lowest): CLI args (--search-protocol, etc.) → YAML → legacy defaults.
@@ -135,10 +135,10 @@ Resolution order (highest → lowest): CLI args (--search-protocol, etc.) → YA
 ```python
 from vmt_engine.protocols import list_all_protocols, describe_all_protocols
 print(list_all_protocols())
-# {'search': ['legacy', 'random_walk'], 'matching': ['legacy_three_pass', 'random'], 'bargaining': ['legacy_compensating_block', 'split_difference']}
+# {'search': ['legacy_distance_discounted', 'random_walk'], 'matching': ['legacy_three_pass', 'random_matching'], 'bargaining': ['legacy_compensating_block', 'split_difference']}
 ```
 
-Note: Configuration handles (e.g., `legacy`) may differ from telemetry-facing protocol names (e.g., `legacy_distance_discounted`).
+Canonical naming: The same name is used across YAML, registry, and telemetry (no aliases).
 
 ---
 
