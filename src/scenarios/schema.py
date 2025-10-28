@@ -235,6 +235,11 @@ class ScenarioConfig:
     resource_seed: ResourceSeed
     mode_schedule: Optional[ModeSchedule] = None
     
+    # Protocol configuration (optional - defaults to legacy protocols)
+    search_protocol: Optional[str] = None  # e.g., "legacy", "random_walk"
+    matching_protocol: Optional[str] = None  # e.g., "legacy_three_pass", "random"
+    bargaining_protocol: Optional[str] = None  # e.g., "legacy_compensating_block", "split_difference"
+    
     def validate(self) -> None:
         """Validate scenario parameters."""
         # Grid size
@@ -363,4 +368,27 @@ class ScenarioConfig:
                 raise ValueError(
                     f"exchange_regime={self.params.exchange_regime} requires M in initial_inventories"
                 )
+        
+        # Validate protocol names if specified
+        valid_search_protocols = {"legacy", "random_walk"}
+        valid_matching_protocols = {"legacy_three_pass", "random"}
+        valid_bargaining_protocols = {"legacy_compensating_block", "split_difference"}
+        
+        if self.search_protocol is not None and self.search_protocol not in valid_search_protocols:
+            raise ValueError(
+                f"Invalid search_protocol '{self.search_protocol}'. "
+                f"Valid options: {', '.join(sorted(valid_search_protocols))}"
+            )
+        
+        if self.matching_protocol is not None and self.matching_protocol not in valid_matching_protocols:
+            raise ValueError(
+                f"Invalid matching_protocol '{self.matching_protocol}'. "
+                f"Valid options: {', '.join(sorted(valid_matching_protocols))}"
+            )
+        
+        if self.bargaining_protocol is not None and self.bargaining_protocol not in valid_bargaining_protocols:
+            raise ValueError(
+                f"Invalid bargaining_protocol '{self.bargaining_protocol}'. "
+                f"Valid options: {', '.join(sorted(valid_bargaining_protocols))}"
+            )
 

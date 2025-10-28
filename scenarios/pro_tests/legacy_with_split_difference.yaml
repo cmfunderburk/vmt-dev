@@ -1,0 +1,42 @@
+schema_version: 1
+name: legacy_with_split_difference
+N: 8
+agents: 10
+
+initial_inventories:
+  A: [8, 2, 8, 2, 8, 2, 8, 2, 8, 2]
+  B: [2, 8, 2, 8, 2, 8, 2, 8, 2, 8]
+
+utilities:
+  mix:
+    - {type: ces, weight: 0.4, params: {rho: 0.5, wA: 0.5, wB: 0.5}}
+    - {type: translog, weight: 0.4, params: {alpha_0: 0.0, alpha_A: 0.5, alpha_B: 0.5, beta_AA: -0.1, beta_BB: -0.1, beta_AB: 0.05}}
+    - {type: linear, weight: 0.2, params: {vA: 1.0, vB: 1.2}}
+
+params:
+  spread: 0.0
+  vision_radius: 6
+  interaction_radius: 1
+  move_budget_per_tick: 1
+  dA_max: 3
+  forage_rate: 1
+  epsilon: 0.000000001
+  beta: 0.95
+  resource_growth_rate: 1
+  resource_max_amount: 3
+  resource_regen_cooldown: 8
+  trade_cooldown_ticks: 5
+
+resource_seed:
+  density: 0.05
+  amount: 1
+
+# Isolate bargaining protocol impact
+# search_protocol: defaults to "legacy"
+# matching_protocol: defaults to "legacy_three_pass"
+bargaining_protocol: "split_difference"
+
+# Notes:
+# Tests ONLY split-difference bargaining while keeping legacy search and matching.
+# Use for: Comparing distributional effects (equal splits vs first feasible).
+

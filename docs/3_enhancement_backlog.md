@@ -305,11 +305,17 @@ scenario = ScenarioBuilder() \
 
 ### Archive of implemented ideas with completion dates
 
-<!-- Move completed items here with format:
-### Enhancement Name ✅ [DONE - YYYY-MM-DD]
-Original description...
-**Implemented in:** commit hash or PR number
--->
+### Runtime Protocol Configuration via GUI ✅ [DONE - 2025-10-28]
+**Problem:** Protocols can only be set via command-line arguments or code  
+**Solution:** 
+- Protocols now configurable in YAML scenario files
+- CLI arguments override YAML settings (for GUI/runtime changes)
+- Protocol resolution order: CLI > YAML > legacy defaults
+- Added validation for protocol names in schema
+
+**Benefit:** Self-contained reproducible scenarios, enables future GUI protocol selector  
+**Implemented in:** Phase 2a completion (protocols_in_yaml feature)  
+**Future:** GUI dropdown to change protocols during simulation (deferred to later phase)
 
 ---
 

@@ -1,0 +1,45 @@
+schema_version: 1
+name: protocol_comparison_baseline
+N: 8  # 8x8 grid
+agents: 10
+
+# Complementary endowments to encourage trade
+initial_inventories:
+  A: [8, 2, 8, 2, 8, 2, 8, 2, 8, 2]
+  B: [2, 8, 2, 8, 2, 8, 2, 8, 2, 8]
+
+# Mixed utility functions - 40% CES, 40% Translog, 20% Linear
+utilities:
+  mix:
+    - {type: ces, weight: 0.4, params: {rho: 0.5, wA: 0.5, wB: 0.5}}
+    - {type: translog, weight: 0.4, params: {alpha_0: 0.0, alpha_A: 0.5, alpha_B: 0.5, beta_AA: -0.1, beta_BB: -0.1, beta_AB: 0.05}}
+    - {type: linear, weight: 0.2, params: {vA: 1.0, vB: 1.2}}
+
+params:
+  spread: 0.0
+  vision_radius: 6
+  interaction_radius: 1
+  move_budget_per_tick: 1
+  dA_max: 3
+  forage_rate: 1
+  epsilon: 0.000000001
+  beta: 0.95
+  resource_growth_rate: 1
+  resource_max_amount: 3
+  resource_regen_cooldown: 8
+  trade_cooldown_ticks: 5
+
+resource_seed:
+  density: 0.05
+  amount: 1
+
+# ALL THREE NEW PHASE 2a PROTOCOLS
+search_protocol: "random_walk"
+matching_protocol: "random"
+bargaining_protocol: "split_difference"
+
+# Notes:
+# This scenario uses ALL THREE new baseline protocols simultaneously.
+# Expected: Lowest efficiency due to random search, random matching, and equal-split bargaining.
+# Use for: Demonstrating full baseline behavior and protocol architecture validation.
+

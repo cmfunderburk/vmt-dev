@@ -99,6 +99,11 @@ def load_scenario(path: str) -> ScenarioConfig:
                 start_mode=mode_data.get('start_mode', 'forage')
             )
         
+        # Parse protocol configuration (optional)
+        search_protocol = data.get('search_protocol', None)
+        matching_protocol = data.get('matching_protocol', None)
+        bargaining_protocol = data.get('bargaining_protocol', None)
+        
         # Create scenario config
         scenario = ScenarioConfig(
             schema_version=data['schema_version'],
@@ -109,7 +114,10 @@ def load_scenario(path: str) -> ScenarioConfig:
             utilities=utilities,
             params=params,
             resource_seed=resource_seed,
-            mode_schedule=mode_schedule
+            mode_schedule=mode_schedule,
+            search_protocol=search_protocol,
+            matching_protocol=matching_protocol,
+            bargaining_protocol=bargaining_protocol
         )
         
         # Validate
