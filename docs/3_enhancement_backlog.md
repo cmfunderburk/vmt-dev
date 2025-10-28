@@ -105,6 +105,17 @@
 **Benefit:** Avoid duplicate experiments  
 **Effort:** 2 hours
 
+### Post-Simulation Summary Output 🟡 [PLANNED]
+**Problem:** No quick summary is shown when a simulation ends  
+**Solution:** On any simulation termination path (renderer quit, headless completion, launcher exit, or controlled end), print to console:
+- Inventory deltas per agent (per good): start → end and Δ
+- Utility change per agent: start → end and Δ
+- Per-agent totals: resources gathered and trades executed
+
+**Benefit:** Immediate, lightweight sanity check without opening telemetry  
+**Effort:** 1-2 hours  
+**Location:** Centralized in `src/vmt_engine/simulation.py` (e.g., `Simulation.close()` or `print_summary()`), invoked from `main.py`, `scripts/run_headless.py`, `src/vmt_launcher/launcher.py`, and `src/vmt_pygame/renderer.py`
+
 ---
 
 ## 🛠️ Development Experience
