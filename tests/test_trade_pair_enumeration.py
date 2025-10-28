@@ -6,7 +6,7 @@ types are permitted based on the exchange_regime parameter.
 """
 
 import pytest
-from src.vmt_engine.systems.matching import get_allowed_exchange_pairs
+from vmt_engine.systems.matching import get_allowed_exchange_pairs
 
 
 class TestTradePairEnumeration:

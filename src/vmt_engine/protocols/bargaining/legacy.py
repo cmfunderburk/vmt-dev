@@ -10,6 +10,7 @@ Version: 2025.10.26 (Phase 1 - Legacy Adapter)
 """
 
 from typing import Optional
+from ..registry import register_protocol
 from ..base import BargainingProtocol, Effect, Trade, Unpair
 from ..context import WorldView
 from ...systems.matching import (
@@ -18,6 +19,15 @@ from ...systems.matching import (
 )
 
 
+@register_protocol(
+    category="bargaining",
+    name="legacy_compensating_block",
+    description="Legacy compensating block bargaining",
+    properties=["deterministic", "legacy"],
+    complexity="O(K)",  # K = number of feasible trades examined
+    references=[],
+    phase="1",
+)
 class LegacyBargainingProtocol(BargainingProtocol):
     """
     Legacy compensating block bargaining.
@@ -36,6 +46,9 @@ class LegacyBargainingProtocol(BargainingProtocol):
     @property
     def version(self) -> str:
         return "2025.10.26"
+    
+    # Class-level for registry
+    VERSION = "2025.10.26"
     
     def negotiate(self, pair: tuple[int, int], world: WorldView) -> list[Effect]:
         """

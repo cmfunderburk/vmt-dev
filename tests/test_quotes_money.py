@@ -9,10 +9,10 @@ Verifies:
 """
 
 import pytest
-from src.vmt_engine.core.agent import Agent
-from src.vmt_engine.core.state import Inventory, Position
-from src.vmt_engine.econ.utility import UCES, ULinear
-from src.vmt_engine.systems.quotes import compute_quotes, filter_quotes_by_regime, refresh_quotes_if_needed
+from vmt_engine.core.agent import Agent
+from vmt_engine.core.state import Inventory, Position
+from vmt_engine.econ.utility import UCES, ULinear
+from vmt_engine.systems.quotes import compute_quotes, filter_quotes_by_regime, refresh_quotes_if_needed
 
 
 class TestComputeQuotesStructure:

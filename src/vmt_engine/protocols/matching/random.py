@@ -17,11 +17,24 @@ Version: 2025.10.28 (Phase 2a - Baseline Protocol)
 """
 
 from typing import Any
+from ..registry import register_protocol
 
 from ..base import MatchingProtocol, Effect, Pair
 from ..context import ProtocolContext
 
 
+@register_protocol(
+    category="matching",
+    name="random",
+    description="Random pairing baseline (null hypothesis)",
+    properties=["stochastic", "baseline"],
+    complexity="O(n)",
+    references=[
+        "Random assignment as null in market design",
+        "Gale-Shapley benchmarking"
+    ],
+    phase="2a",
+)
 class RandomMatching(MatchingProtocol):
     """
     Random pairing for null hypothesis.
@@ -48,6 +61,9 @@ class RandomMatching(MatchingProtocol):
     @property
     def version(self) -> str:
         return "2025.10.28"
+    
+    # Class-level for registry
+    VERSION = "2025.10.28"
     
     def find_matches(
         self,

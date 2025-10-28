@@ -17,11 +17,24 @@ Version: 2025.10.28 (Phase 2a - Baseline Protocol)
 """
 
 from typing import Any
+from ..registry import register_protocol
 
 from ..base import SearchProtocol, SetTarget
 from ..context import WorldView
 
 
+@register_protocol(
+    category="search",
+    name="random_walk",
+    description="Pure stochastic exploration for baseline comparison",
+    properties=["stochastic", "baseline", "pedagogical"],
+    complexity="O(V)",
+    references=[
+        "Stigler (1961) The Economics of Information",
+        "Random search models in labor economics",
+    ],
+    phase="2a",
+)
 class RandomWalkSearch(SearchProtocol):
     """
     Stochastic exploration for baseline comparison.
@@ -50,6 +63,9 @@ class RandomWalkSearch(SearchProtocol):
     @property
     def version(self) -> str:
         return "2025.10.28"
+    
+    # Class-level for registry
+    VERSION = "2025.10.28"
     
     def build_preferences(self, world: WorldView) -> list[tuple[Any, float, dict]]:
         """

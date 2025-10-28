@@ -11,6 +11,7 @@ Version: 2025.10.26 (Phase 1 - Legacy Adapter)
 """
 
 from typing import Optional
+from ..registry import register_protocol
 from ..base import SearchProtocol, Effect, SetTarget, ClaimResource
 from ..context import WorldView, AgentView, ResourceView
 from ...systems.matching import compute_surplus, estimate_money_aware_surplus
@@ -22,6 +23,15 @@ from ...core.state import Position
 Preference = tuple[int, float, float, int, str]
 
 
+@register_protocol(
+    category="search",
+    name="legacy",
+    description="Legacy distance-discounted search",
+    properties=["deterministic", "legacy"],
+    complexity="O(V log V)",
+    references=[],
+    phase="1",
+)
 class LegacySearchProtocol(SearchProtocol):
     """
     Legacy distance-discounted search protocol.
@@ -50,6 +60,9 @@ class LegacySearchProtocol(SearchProtocol):
     @property
     def version(self) -> str:
         return "2025.10.26"
+    
+    # Class-level for registry (no instantiation required)
+    VERSION = "2025.10.26"
     
     def build_preferences(self, world: WorldView) -> list[tuple[int | Position, float, dict]]:
         """

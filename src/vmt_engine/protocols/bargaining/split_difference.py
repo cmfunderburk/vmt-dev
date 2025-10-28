@@ -17,11 +17,24 @@ Version: 2025.10.28 (Phase 2a - Baseline Protocol)
 """
 
 from typing import Optional
+from ..registry import register_protocol
 from ..base import BargainingProtocol, Effect, Trade, Unpair
 from ..context import WorldView
 from ...systems.matching import find_all_feasible_trades
 
 
+@register_protocol(
+    category="bargaining",
+    name="split_difference",
+    description="Equal surplus division (fairness baseline)",
+    properties=["deterministic", "baseline"],
+    complexity="O(K)",  # K = number of feasible trades examined
+    references=[
+        "Nash (1950) The Bargaining Problem",
+        "Equal-surplus fairness criteria"
+    ],
+    phase="2a",
+)
 class SplitDifference(BargainingProtocol):
     """
     Equal surplus division for fairness baseline.
@@ -48,6 +61,9 @@ class SplitDifference(BargainingProtocol):
     @property
     def version(self) -> str:
         return "2025.10.28"
+    
+    # Class-level for registry
+    VERSION = "2025.10.28"
     
     def negotiate(self, pair: tuple[int, int], world: WorldView) -> list[Effect]:
         """

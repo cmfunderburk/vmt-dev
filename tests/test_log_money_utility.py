@@ -12,11 +12,11 @@ Tests cover:
 
 import pytest
 import math
-from src.vmt_engine.econ.utility import mu_money, u_total, UCES, ULinear
-from src.vmt_engine.core.state import Inventory
-from src.vmt_engine.core.agent import Agent
-from src.vmt_engine.systems.quotes import compute_quotes
-from src.scenarios.schema import ScenarioParams
+from vmt_engine.econ.utility import mu_money, u_total, UCES, ULinear
+from vmt_engine.core.state import Inventory
+from vmt_engine.core.agent import Agent
+from vmt_engine.systems.quotes import compute_quotes
+from scenarios.schema import ScenarioParams
 
 
 class TestMuMoney:

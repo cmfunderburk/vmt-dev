@@ -11,9 +11,9 @@ Tests that mixed regimes work end-to-end, including:
 import pytest
 import sqlite3
 import tempfile
-from src.vmt_engine.simulation import Simulation
-from src.scenarios.loader import load_scenario
-from src.telemetry.config import LogConfig
+from vmt_engine.simulation import Simulation
+from scenarios.loader import load_scenario
+from telemetry.config import LogConfig
 
 
 class TestMixedRegimeIntegration:

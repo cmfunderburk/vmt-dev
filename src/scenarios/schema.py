@@ -369,26 +369,27 @@ class ScenarioConfig:
                     f"exchange_regime={self.params.exchange_regime} requires M in initial_inventories"
                 )
         
-        # Validate protocol names if specified
-        valid_search_protocols = {"legacy", "random_walk"}
-        valid_matching_protocols = {"legacy_three_pass", "random"}
-        valid_bargaining_protocols = {"legacy_compensating_block", "split_difference"}
-        
-        if self.search_protocol is not None and self.search_protocol not in valid_search_protocols:
+        # Validate protocol names if specified (lazy import to ensure registry is populated)
+        # Force protocol modules to import so decorators run and register entries
+        import vmt_engine.protocols.search as _protocols_search  # noqa: F401
+        import vmt_engine.protocols.matching as _protocols_matching  # noqa: F401
+        import vmt_engine.protocols.bargaining as _protocols_bargaining  # noqa: F401
+
+        from vmt_engine.protocols.registry import ProtocolRegistry
+        registered = ProtocolRegistry.list_protocols()
+
+        if self.search_protocol is not None and self.search_protocol not in registered.get('search', []):
             raise ValueError(
-                f"Invalid search_protocol '{self.search_protocol}'. "
-                f"Valid options: {', '.join(sorted(valid_search_protocols))}"
+                f"Invalid search_protocol '{self.search_protocol}'. Available: {registered.get('search', [])}"
             )
         
-        if self.matching_protocol is not None and self.matching_protocol not in valid_matching_protocols:
+        if self.matching_protocol is not None and self.matching_protocol not in registered.get('matching', []):
             raise ValueError(
-                f"Invalid matching_protocol '{self.matching_protocol}'. "
-                f"Valid options: {', '.join(sorted(valid_matching_protocols))}"
+                f"Invalid matching_protocol '{self.matching_protocol}'. Available: {registered.get('matching', [])}"
             )
         
-        if self.bargaining_protocol is not None and self.bargaining_protocol not in valid_bargaining_protocols:
+        if self.bargaining_protocol is not None and self.bargaining_protocol not in registered.get('bargaining', []):
             raise ValueError(
-                f"Invalid bargaining_protocol '{self.bargaining_protocol}'. "
-                f"Valid options: {', '.join(sorted(valid_bargaining_protocols))}"
+                f"Invalid bargaining_protocol '{self.bargaining_protocol}'. Available: {registered.get('bargaining', [])}"
             )
 

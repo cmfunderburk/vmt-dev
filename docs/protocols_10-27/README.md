@@ -221,6 +221,46 @@ Code with the full vision in mind:
 
 ---
 
+## Protocol Registry (Phase 2a)
+
+### Registering a New Protocol
+
+```python
+from vmt_engine.protocols.registry import register_protocol
+from vmt_engine.protocols.base import SearchProtocol
+
+@register_protocol(
+    category="search",
+    name="myopic",
+    description="Greedy immediate-neighbor search",
+    properties=["deterministic", "local"],
+    complexity="O(vision_radius)",
+    phase="2b",
+)
+class MyopicSearch(SearchProtocol):
+    VERSION = "2025.11.01"
+    # implement build_preferences and select_target
+```
+
+### Configuring Protocols in Scenarios
+
+Set optional fields in scenario YAML (CLI args override):
+
+```yaml
+search_protocol: "legacy"              # legacy | random_walk
+matching_protocol: "legacy_three_pass" # legacy_three_pass | random
+bargaining_protocol: "legacy_compensating_block" # legacy_compensating_block | split_difference
+```
+
+### Discovering Available Protocols
+
+```python
+from vmt_engine.protocols import list_all_protocols, describe_all_protocols
+print(list_all_protocols())
+```
+
+Note: Configuration handles (e.g., `legacy`) can differ from telemetry protocol names (e.g., `legacy_distance_discounted`).
+
 **Directory Status:** Active implementation planning  
 **Current Phase:** Phase 2a ready to start  
 **Next Milestone:** Phase 3 centralized markets  

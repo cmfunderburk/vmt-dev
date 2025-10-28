@@ -14,10 +14,11 @@ Version: 2025.10.28 (Phase 2a)
 import pytest
 import numpy as np
 from scenarios.schema import ScenarioConfig, ScenarioParams, UtilitiesMix, UtilityConfig, ResourceSeed
-from src.vmt_engine.simulation import Simulation
-from src.vmt_engine.protocols.search import RandomWalkSearch
-from src.vmt_engine.protocols.context import WorldView, AgentView, ResourceView
-from src.vmt_engine.econ.utility import UCES
+from vmt_engine.simulation import Simulation
+from tests.helpers import builders, run as run_helpers
+from vmt_engine.protocols.search import RandomWalkSearch
+from vmt_engine.protocols.context import WorldView, AgentView, ResourceView
+from vmt_engine.econ.utility import UCES
 
 
 def create_test_world_view(seed: int = 42) -> WorldView:
@@ -281,18 +282,7 @@ class TestRandomWalkIntegration:
     def test_can_inject_into_simulation(self):
         """Protocol can be injected into Simulation."""
         # Create minimal scenario
-        scenario = ScenarioConfig(
-            schema_version=1,
-            name="test_random_walk",
-            N=10,
-            agents=2,
-            initial_inventories={"A": 10, "B": 10},
-            utilities=UtilitiesMix(mix=[
-                UtilityConfig(type="ces", weight=1.0, params={"rho": 0.5, "wA": 1.0, "wB": 1.0})
-            ]),
-            params=ScenarioParams(),
-            resource_seed=ResourceSeed(density=0.1, amount=5),
-        )
+        scenario = builders.build_scenario(N=10, agents=2, name="test_random_walk")
         
         # Create protocol
         protocol = RandomWalkSearch()
@@ -306,24 +296,13 @@ class TestRandomWalkIntegration:
     
     def test_runs_in_simulation(self):
         """Protocol executes successfully in simulation."""
-        scenario = ScenarioConfig(
-            schema_version=1,
-            name="test_random_walk_run",
-            N=10,
-            agents=3,
-            initial_inventories={"A": [10, 5, 15], "B": [5, 10, 20]},
-            utilities=UtilitiesMix(mix=[
-                UtilityConfig(type="ces", weight=1.0, params={"rho": 0.5, "wA": 1.0, "wB": 1.0})
-            ]),
-            params=ScenarioParams(vision_radius=3),
-            resource_seed=ResourceSeed(density=0.1, amount=5),
-        )
+        scenario = builders.build_scenario(N=10, agents=3, name="test_random_walk_run")
         
         protocol = RandomWalkSearch()
         sim = Simulation(scenario, seed=42, search_protocol=protocol)
         
         # Run simulation (should not crash)
-        sim.run(max_ticks=5)
+        run_helpers.run_ticks(sim, 5)
         
         # Verify agents moved (random walk should cause movement)
         initial_positions = [(0, 0), (0, 1), (0, 2)]  # Example

@@ -13,6 +13,11 @@ Version: 2025.10.28 (Phase 2a - Baseline Protocols)
 from .legacy import LegacySearchProtocol
 from .random_walk import RandomWalkSearch
 
+from ..registry import ProtocolRegistry  # Crash-fast check
+_reg = ProtocolRegistry.list_protocols()
+assert "legacy" in _reg.get("search", []), "Search registry missing 'legacy'"
+assert "random_walk" in _reg.get("search", []), "Search registry missing 'random_walk'"
+
 __all__ = [
     "LegacySearchProtocol",
     "RandomWalkSearch",

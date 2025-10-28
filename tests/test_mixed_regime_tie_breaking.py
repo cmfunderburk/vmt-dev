@@ -11,8 +11,8 @@ rather than accessing private TradeSystem methods. Currently skipped pending ref
 import pytest
 
 pytestmark = pytest.mark.skip(reason="Tests need refactoring for protocol interface")
-from src.vmt_engine.protocols.bargaining.legacy import LegacyBargainingProtocol
-from src.vmt_engine.systems.trading import TradeCandidate
+from vmt_engine.protocols.bargaining.legacy import LegacyBargainingProtocol
+from vmt_engine.systems.trading import TradeCandidate
 
 
 class TestMoneyFirstTieBreaking:

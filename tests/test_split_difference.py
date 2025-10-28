@@ -12,46 +12,15 @@ Version: 2025.10.28 (Phase 2a)
 """
 
 import pytest
-from src.scenarios.schema import ScenarioConfig, ScenarioParams, UtilitiesMix, UtilityConfig, ResourceSeed
-from src.vmt_engine.simulation import Simulation
-from src.vmt_engine.protocols.bargaining import SplitDifference, LegacyBargainingProtocol
+from tests.helpers import builders, run as run_helpers
+from scenarios.loader import load_scenario
+from vmt_engine.simulation import Simulation
+from vmt_engine.protocols.bargaining import SplitDifference
+from vmt_engine.protocols.bargaining import SplitDifference, LegacyBargainingProtocol
 
 
-def create_test_scenario(agent_count: int = 10, grid_size: int = 15) -> ScenarioConfig:
-    """Create test scenario with complementary endowments."""
-    # Alternate A-rich and B-rich agents
-    inventories_A = [8 if i % 2 == 0 else 2 for i in range(agent_count)]
-    inventories_B = [2 if i % 2 == 0 else 8 for i in range(agent_count)]
-    
-    return ScenarioConfig(
-        schema_version=1,
-        name="split_difference_test",
-        N=grid_size,
-        agents=agent_count,
-        
-        initial_inventories={
-            "A": inventories_A,
-            "B": inventories_B,
-        },
-        
-        resource_seed=ResourceSeed(
-            density=0.05,
-            amount=1
-        ),
-        
-        utilities=UtilitiesMix(
-            mix=[UtilityConfig(type="ces", weight=1.0, params={"rho": 0.5, "wA": 0.5, "wB": 0.5})]
-        ),
-        
-        params=ScenarioParams(
-            vision_radius=8,
-            interaction_radius=1,
-            move_budget_per_tick=2,
-            forage_rate=1,
-            beta=0.95,
-            dA_max=3  # Small search space for faster tests
-        )
-    )
+def create_test_scenario(agent_count: int = 10, grid_size: int = 15):
+    return builders.build_scenario(N=grid_size, agents=agent_count, name="split_difference_test")
 
 
 class TestSplitDifferenceInterface:
@@ -73,9 +42,9 @@ class TestSplitDifferenceBehavior:
     
     def test_produces_trades(self):
         """Split-the-difference leads to actual trades."""
-        scenario = create_test_scenario(agent_count=10)
+        scenario = load_scenario('scenarios/foundational_barter_demo.yaml')
         sim = Simulation(scenario, seed=42, bargaining_protocol=SplitDifference())
-        sim.run(30)
+        run_helpers.run_ticks(sim, 30)
         
         # Check trade count
         trade_count = len(sim.telemetry.recent_trades_for_renderer)
@@ -85,9 +54,9 @@ class TestSplitDifferenceBehavior:
     
     def test_all_trades_pareto_improving(self):
         """All trades should give positive surplus to both agents (verified by Trade effects)."""
-        scenario = create_test_scenario(agent_count=8, grid_size=12)
+        scenario = load_scenario('scenarios/foundational_barter_demo.yaml')
         sim = Simulation(scenario, seed=42, bargaining_protocol=SplitDifference())
-        sim.run(20)
+        run_helpers.run_ticks(sim, 20)
         
         # Just verify trades occurred - surplus validation happens in Trade effect creation
         trade_count = len(sim.telemetry.recent_trades_for_renderer)
@@ -95,9 +64,9 @@ class TestSplitDifferenceBehavior:
     
     def test_surplus_split_approximately_equal(self):
         """Surplus should be split approximately equally (algorithm selects for this)."""
-        scenario = create_test_scenario(agent_count=8, grid_size=12)
+        scenario = load_scenario('scenarios/foundational_barter_demo.yaml')
         sim = Simulation(scenario, seed=42, bargaining_protocol=SplitDifference())
-        sim.run(25)
+        run_helpers.run_ticks(sim, 25)
         
         # Verify trades occurred - the protocol's selection logic ensures equal splits
         trade_count = len(sim.telemetry.recent_trades_for_renderer)
@@ -109,15 +78,15 @@ class TestSplitDifferenceComparison:
     
     def test_split_vs_legacy_both_produce_trades(self):
         """Both protocols should produce trades."""
-        scenario = create_test_scenario(agent_count=8, grid_size=12)
+        scenario = load_scenario('scenarios/foundational_barter_demo.yaml')
         
         # Run with split-the-difference
         sim_split = Simulation(scenario, seed=42, bargaining_protocol=SplitDifference())
-        sim_split.run(20)
+        run_helpers.run_ticks(sim_split, 20)
         
         # Run with legacy
-        sim_legacy = Simulation(scenario, seed=42, bargaining_protocol=LegacyBargainingProtocol())
-        sim_legacy.run(20)
+        sim_legacy = Simulation(scenario, seed=42)  # legacy by default
+        run_helpers.run_ticks(sim_legacy, 20)
         
         trade_count_split = len(sim_split.telemetry.recent_trades_for_renderer)
         trade_count_legacy = len(sim_legacy.telemetry.recent_trades_for_renderer)
@@ -154,11 +123,11 @@ class TestSplitDifferenceIntegration:
     
     def test_runs_in_simulation(self):
         """Protocol runs successfully in full simulation."""
-        scenario = create_test_scenario(agent_count=15)
+        scenario = load_scenario('scenarios/foundational_barter_demo.yaml')
         sim = Simulation(scenario, seed=42, bargaining_protocol=SplitDifference())
         
         # Should not raise
-        sim.run(40)
+        run_helpers.run_ticks(sim, 40)
         
         # Verify simulation completed
         assert sim.tick == 40
@@ -170,7 +139,7 @@ class TestSplitDifferenceIntegration:
         states_list = []
         for _ in range(2):
             sim = Simulation(scenario, seed=42, bargaining_protocol=SplitDifference())
-            sim.run(15)
+            run_helpers.run_ticks(sim, 15)
             
             # Extract final states
             states = [(a.pos, a.inventory.A, a.inventory.B) for a in sim.agents]
@@ -185,7 +154,7 @@ class TestSplitDifferenceIntegration:
         states_list = []
         for seed in [42, 43]:
             sim = Simulation(scenario, seed=seed, bargaining_protocol=SplitDifference())
-            sim.run(15)
+            run_helpers.run_ticks(sim, 15)
             
             # Extract final states
             states = [(a.pos, a.inventory.A, a.inventory.B) for a in sim.agents]
@@ -203,7 +172,7 @@ class TestSplitDifferenceIntegration:
         initial_inventories = [(a.inventory.A, a.inventory.B) for a in sim.agents]
         
         # Run simulation
-        sim.run(30)
+        run_helpers.run_ticks(sim, 30)
         
         # Capture final inventories
         final_inventories = [(a.inventory.A, a.inventory.B) for a in sim.agents]

@@ -116,6 +116,32 @@ vmt-dev/
 
 ---
 
+## Protocol Configuration & Registry (Phase 2a)
+
+### Configure Protocols in YAML (with CLI override)
+
+Add optional fields in your scenario YAML (see comprehensive template):
+
+```yaml
+search_protocol: "legacy"              # options: legacy, random_walk
+matching_protocol: "legacy_three_pass" # options: legacy_three_pass, random
+bargaining_protocol: "legacy_compensating_block" # options: legacy_compensating_block, split_difference
+```
+
+Resolution order (highest → lowest): CLI args (--search-protocol, etc.) → YAML → legacy defaults.
+
+### Available Protocols (Programmatic)
+
+```python
+from vmt_engine.protocols import list_all_protocols, describe_all_protocols
+print(list_all_protocols())
+# {'search': ['legacy', 'random_walk'], 'matching': ['legacy_three_pass', 'random'], 'bargaining': ['legacy_compensating_block', 'split_difference']}
+```
+
+Note: Configuration handles (e.g., `legacy`) may differ from telemetry-facing protocol names (e.g., `legacy_distance_discounted`).
+
+---
+
 ## Testing
 
 ```bash
@@ -127,6 +153,18 @@ pytest tests/test_money_phase1_integration.py      # Money system
 pytest tests/test_pairing_money_aware.py           # Pairing algorithm
 pytest tests/test_mixed_regime_integration.py      # Mixed regimes
 ```
+
+### Testing Import Paths
+
+When writing tests, import project modules without the `src.` prefix:
+
+```python
+from vmt_engine.simulation import Simulation
+from scenarios.loader import load_scenario
+from telemetry.config import LogConfig
+```
+
+Pytest adds both `.` and `src` to `PYTHONPATH`; mixing `src.vmt_engine` and `vmt_engine` can lead to duplicate module imports and divergent state. Prefer `vmt_engine`, `scenarios`, and `telemetry` in tests.
 
 ---
 

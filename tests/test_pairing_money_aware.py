@@ -8,12 +8,12 @@ regimes, while preserving barter_only behavior unchanged.
 import pytest
 import tempfile
 import sqlite3
-from src.vmt_engine.simulation import Simulation
-from src.scenarios.loader import load_scenario
-from src.telemetry.config import LogConfig
-from src.vmt_engine.systems.matching import estimate_money_aware_surplus, compute_surplus
-from src.vmt_engine.core import Agent, Inventory
-from src.vmt_engine.econ.utility import UCES
+from vmt_engine.simulation import Simulation
+from scenarios.loader import load_scenario
+from telemetry.config import LogConfig
+from vmt_engine.systems.matching import estimate_money_aware_surplus, compute_surplus
+from vmt_engine.core import Agent, Inventory
+from vmt_engine.econ.utility import UCES
 
 
 class TestMoneyAwarePairing:
