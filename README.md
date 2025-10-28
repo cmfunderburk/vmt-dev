@@ -105,6 +105,7 @@ vmt-dev/
 - [Parameter Reference](docs/structures/parameter_quick_reference.md) - All parameters and typical values
 
 **For Developers:**
+- [Developer Onboarding](docs/onboarding/README.md) - Setup, architecture, and deep dives
 - [Technical Manual](docs/2_technical_manual.md) - Implementation details and algorithms
 - [Strategic Roadmap](docs/3_strategic_roadmap.md) - Development priorities
 - [Type Specifications](docs/4_typing_overview.md) - Type system and invariants
