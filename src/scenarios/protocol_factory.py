@@ -8,10 +8,10 @@ from typing import Optional
 def get_search_protocol(protocol_name: Optional[str]):
     """
     Instantiate a search protocol via the registry.
-    Defaults to legacy when protocol_name is None.
+    Defaults to legacy_distance_discounted when protocol_name is None.
     """
     from vmt_engine.protocols.registry import ProtocolRegistry
-    name = protocol_name or "legacy"
+    name = protocol_name or "legacy_distance_discounted"
     cls = ProtocolRegistry.get_protocol_class(name, "search")
     return cls()
 

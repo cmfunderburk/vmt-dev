@@ -35,7 +35,7 @@ class TestRandomMatchingInterface:
         assert hasattr(protocol, "name")
         assert hasattr(protocol, "version")
         assert hasattr(protocol, "find_matches")
-        assert protocol.name == "random"
+        assert protocol.name == "random_matching"
         assert isinstance(protocol.version, str)
     
     def test_find_matches_signature(self):
@@ -74,7 +74,7 @@ class TestRandomMatchingDeterminism:
         # Run twice with same seed and capture final agent states
         states_list = []
         for _ in range(2):
-            sim = builders.make_sim(scenario, seed=42, matching="random")
+            sim = builders.make_sim(scenario, seed=42, matching="random_matching")
             run_helpers.run_ticks(sim, 10)
             
             # Extract final agent states (positions and inventories)
@@ -90,7 +90,7 @@ class TestRandomMatchingDeterminism:
         # Run with different seeds and capture final states
         states_list = []
         for seed in [42, 43]:
-            sim = builders.make_sim(scenario, seed=seed, matching="random")
+            sim = builders.make_sim(scenario, seed=seed, matching="random_matching")
             run_helpers.run_ticks(sim, 10)
             
             # Extract final agent states
@@ -132,7 +132,7 @@ class TestRandomMatchingBehavior:
     def test_handles_odd_number_of_agents(self):
         """Handles odd number of trade seekers gracefully."""
         scenario = create_test_scenario(agent_count=9)  # Odd number
-        sim = builders.make_sim(scenario, seed=42, matching="random")
+        sim = builders.make_sim(scenario, seed=42, matching="random_matching")
         
         # Should not crash with odd number
         run_helpers.run_ticks(sim, 10)

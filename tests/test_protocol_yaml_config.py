@@ -28,7 +28,7 @@ class TestProtocolYAMLConfiguration:
         
         # Check protocols are set in config
         assert scenario.search_protocol == "random_walk"
-        assert scenario.matching_protocol == "random"
+        assert scenario.matching_protocol == "random_matching"
         assert scenario.bargaining_protocol == "split_difference"
         
         # Create simulation - should use protocols from YAML
@@ -36,7 +36,7 @@ class TestProtocolYAMLConfiguration:
         
         # Verify correct protocols instantiated
         assert sim.search_protocol.name == "random_walk"
-        assert sim.matching_protocol.name == "random"
+        assert sim.matching_protocol.name == "random_matching"
         assert sim.bargaining_protocol.name == "split_difference"
         
         # Run should work
@@ -70,7 +70,7 @@ class TestProtocolYAMLConfiguration:
         # CLI override wins
         assert sim.search_protocol.name == "legacy_distance_discounted"
         # Other protocols from YAML
-        assert sim.matching_protocol.name == "random"
+        assert sim.matching_protocol.name == "random_matching"
         assert sim.bargaining_protocol.name == "split_difference"
     
     def test_legacy_scenario_without_protocols(self):

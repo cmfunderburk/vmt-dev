@@ -1,7 +1,7 @@
 # Protocol Registry System - Implementation Plan
 **Priority:** 🔴 HIGH - Blocks scalability  
 **Effort:** 3-4 hours  
-**Status:** Ready to implement  
+**Status:** Partially implemented (registry, decorators, factory, schema, tests). This doc now tracks alignment and next steps.  
 **Date:** 2025-10-28
 
 ---
@@ -107,8 +107,8 @@ class ProtocolRegistry:
         ...
     
     @classmethod
-    def validate_all_registered(cls) -> bool:
-        """Verify all protocol modules are imported and registered."""
+    def get_all_metadata(cls) -> dict[str, dict[str, ProtocolMetadata]]:
+        """Return copy of registry mapping for all categories."""
         ...
 ```
 
@@ -132,7 +132,9 @@ def register_protocol(
     - Version sourced from CLASS attribute `VERSION` (no instantiation)
     - Crash on registration/assert failures (fast feedback)
     - Docstring parsing fallback for description when omitted
-    - Validate decorator `name` matches protocol `.name` if present
+    - Validate decorator `name` matches protocol class attribute `name` if present (string only)
+      (Properties are not inspected; however, we standardize on a single canonical name per
+      protocol. Avoid aliases; the class `.name` and decorator `name` should match.)
     """
     def _first_line(doc: str | None) -> str:
         return (doc or "").strip().split("\n")[0].strip() if doc else ""
@@ -214,7 +216,7 @@ from ..registry import register_protocol
     name="random_walk",
     description="Pure stochastic exploration for baseline comparison",
     properties=["stochastic", "baseline", "pedagogical"],
-    complexity="O(vision_radius²)",
+    complexity="O(V)",
     references=["Stigler (1961) The Economics of Information"],
     phase="2a"
 )
@@ -223,7 +225,9 @@ class RandomWalkSearch(SearchProtocol):
     ...
 ```
 
-**Key:** Decorator doesn't change class behavior, just registers metadata
+**Key:** Decorator doesn't change class behavior, just registers metadata. Use a single canonical
+name per protocol (no aliases). For example, search legacy should be registered and presented as
+`"legacy_distance_discounted"` everywhere (YAML, registry, telemetry).
 
 ---
 
@@ -278,26 +282,30 @@ valid_matching_protocols = {"legacy_three_pass", "random"}
 valid_bargaining_protocols = {"legacy_compensating_block", "split_difference"}
 ```
 
-**After (LAZY inside `validate()`):**
+**After (inside `validate()`; force imports to trigger decorators):**
 ```python
 def validate(self):
     # ... existing validation ...
 
-    # Lazy import: ensures protocol modules have been imported and registered
+    # Force protocol modules to import so decorators run and register entries
+    import vmt_engine.protocols.search as _protocols_search  # noqa: F401
+    import vmt_engine.protocols.matching as _protocols_matching  # noqa: F401
+    import vmt_engine.protocols.bargaining as _protocols_bargaining  # noqa: F401
+
     from vmt_engine.protocols.registry import ProtocolRegistry
     registered = ProtocolRegistry.list_protocols()
 
-    if self.search_protocol and self.search_protocol not in registered['search']:
+    if self.search_protocol is not None and self.search_protocol not in registered.get('search', []):
         raise ValueError(
-            f"Unknown search protocol: {self.search_protocol}. Available: {registered['search']}"
+            f"Invalid search_protocol '{self.search_protocol}'. Available: {registered.get('search', [])}"
         )
-    if self.matching_protocol and self.matching_protocol not in registered['matching']:
+    if self.matching_protocol is not None and self.matching_protocol not in registered.get('matching', []):
         raise ValueError(
-            f"Unknown matching protocol: {self.matching_protocol}. Available: {registered['matching']}"
+            f"Invalid matching_protocol '{self.matching_protocol}'. Available: {registered.get('matching', [])}"
         )
-    if self.bargaining_protocol and self.bargaining_protocol not in registered['bargaining']:
+    if self.bargaining_protocol is not None and self.bargaining_protocol not in registered.get('bargaining', []):
         raise ValueError(
-            f"Unknown bargaining protocol: {self.bargaining_protocol}. Available: {registered['bargaining']}"
+            f"Invalid bargaining_protocol '{self.bargaining_protocol}'. Available: {registered.get('bargaining', [])}"
         )
 ```
 
@@ -377,69 +385,94 @@ def describe_all_protocols() -> dict:
 **Test coverage:**
 
 ```python
-class TestProtocolRegistration:
-    def test_all_protocols_registered(self):
-        """All implemented protocols are registered."""
-        protocols = ProtocolRegistry.list_protocols()
-        
-        # Search
-        assert "legacy" in protocols['search']
-        assert "random_walk" in protocols['search']
-        
-        # Matching
-        assert "legacy_three_pass" in protocols['matching']
-        assert "random" in protocols['matching']
-        
-        # Bargaining
-        assert "legacy_compensating_block" in protocols['bargaining']
-        assert "split_difference" in protocols['bargaining']
-    
-    def test_get_protocol_class(self):
-        """Can retrieve protocol classes by name."""
-        SearchClass = ProtocolRegistry.get_protocol_class("random_walk", "search")
-        instance = SearchClass()
-        assert instance.name == "random_walk"
-    
-    def test_metadata_complete(self):
-        """Metadata includes all required fields."""
-        meta = ProtocolRegistry.get_metadata("random_walk", "search")
-        assert meta.name == "random_walk"
-        assert meta.category == "search"
-        assert meta.description  # Not empty
-        assert meta.version
-        assert isinstance(meta.properties, list)
-    
-    def test_invalid_protocol_raises_helpful_error(self):
-        """Invalid protocol name gives helpful error."""
-        with pytest.raises(ValueError, match="Available:"):
-            ProtocolRegistry.get_protocol_class("nonexistent", "search")
+import pytest
 
-class TestFactoryUsesRegistry:
-    def test_factory_uses_registry(self):
-        """Protocol factory delegates to registry."""
-        from scenarios.protocol_factory import get_search_protocol
-        protocol = get_search_protocol("random_walk")
-        assert protocol.name == "random_walk"
-    
-    def test_factory_handles_invalid_gracefully(self):
-        """Factory gives good error for invalid names."""
-        from scenarios.protocol_factory import get_search_protocol
-        with pytest.raises(ValueError, match="Unknown.*Available"):
-            get_search_protocol("invalid_name")
+def test_all_protocols_registered():
+    import vmt_engine.protocols as protos  # noqa: F401
+    from vmt_engine.protocols import ProtocolRegistry
 
-class TestRegistryUtilities:
-    def test_list_all_protocols(self):
-        """Can list all protocols across categories."""
-        all_protos = list_all_protocols()
-        assert 'search' in all_protos
-        assert 'matching' in all_protos
-        assert 'bargaining' in all_protos
-    
-    def test_describe_all_protocols(self):
-        """Can generate complete catalog."""
-        catalog = describe_all_protocols()
-        assert catalog['search']['random_walk']['description']
-        assert catalog['search']['random_walk']['complexity']
+    protocols = ProtocolRegistry.list_protocols()
+    assert "legacy" in protocols["search"]
+    assert "random_walk" in protocols["search"]
+    assert "legacy_three_pass" in protocols["matching"]
+    assert "random" in protocols["matching"]
+    assert "legacy_compensating_block" in protocols["bargaining"]
+    assert "split_difference" in protocols["bargaining"]
+
+def test_get_protocol_class_and_instantiate():
+    import vmt_engine.protocols as protos  # noqa: F401
+    from vmt_engine.protocols import ProtocolRegistry
+
+    SearchCls = ProtocolRegistry.get_protocol_class("random_walk", "search")
+    MatchingCls = ProtocolRegistry.get_protocol_class("random", "matching")
+    BargainingCls = ProtocolRegistry.get_protocol_class("split_difference", "bargaining")
+
+    assert SearchCls().__class__.__name__ == "RandomWalkSearch"
+    assert MatchingCls().__class__.__name__ == "RandomMatching"
+    assert BargainingCls().__class__.__name__ == "SplitDifference"
+
+def test_metadata_complete_for_random_walk():
+    import vmt_engine.protocols as protos  # noqa: F401
+    from vmt_engine.protocols import ProtocolRegistry
+
+    meta = ProtocolRegistry.get_metadata("random_walk", "search")
+    assert meta.name == "random_walk"
+    assert meta.category == "search"
+    assert isinstance(meta.version, str) and len(meta.version) > 0
+    assert isinstance(meta.description, str)
+    assert isinstance(meta.properties, list)
+    assert isinstance(meta.complexity, str)
+    assert isinstance(meta.references, list)
+    assert isinstance(meta.phase, str)
+
+def test_invalid_protocol_raises_helpful_error():
+    import vmt_engine.protocols as protos  # noqa: F401
+    from vmt_engine.protocols import ProtocolRegistry
+
+    with pytest.raises(ValueError) as exc:
+        ProtocolRegistry.get_protocol_class("does_not_exist", "search")
+    assert "Available:" in str(exc.value)
+
+def test_factory_uses_registry_for_defaults_and_explicit():
+    import vmt_engine.protocols as protos  # noqa: F401
+    from scenarios.protocol_factory import (
+        get_search_protocol,
+        get_matching_protocol,
+        get_bargaining_protocol,
+    )
+
+    # Defaults
+    assert get_search_protocol(None).__class__.__name__ == "LegacySearchProtocol"
+    assert get_matching_protocol(None).__class__.__name__ == "LegacyMatchingProtocol"
+    assert get_bargaining_protocol(None).__class__.__name__ == "LegacyBargainingProtocol"
+
+    # Explicit
+    assert get_search_protocol("random_walk").__class__.__name__ == "RandomWalkSearch"
+    assert get_matching_protocol("random").__class__.__name__ == "RandomMatching"
+    assert get_bargaining_protocol("split_difference").__class__.__name__ == "SplitDifference"
+
+def test_list_and_describe_helpers():
+    import vmt_engine.protocols as protos  # noqa: F401
+    from vmt_engine.protocols import list_all_protocols, describe_all_protocols
+
+    allp = list_all_protocols()
+    assert set(allp.keys()) == {"search", "matching", "bargaining"}
+    assert "random_walk" in allp["search"]
+
+    desc = describe_all_protocols()
+    assert "random_walk" in desc["search"]
+    rw = desc["search"]["random_walk"]
+    for key in ["version", "description", "properties", "complexity", "references", "phase"]:
+        assert key in rw
+```
+
+Optional: add a factory invalid-name test (factory delegates errors from registry):
+```python
+def test_factory_handles_invalid_gracefully():
+    from scenarios.protocol_factory import get_search_protocol
+    import pytest
+    with pytest.raises(ValueError, match="Available:"):
+        get_search_protocol("invalid_name")
 ```
 
 **Estimated:** 8-10 test functions, ~200 lines
@@ -454,19 +487,20 @@ class TestRegistryUtilities:
 
 **Add at bottom:**
 ```python
-# Import registry to make it available
 from .registry import ProtocolRegistry, register_protocol, list_all_protocols, describe_all_protocols
 
-# Import all protocol modules to trigger registration
-from . import search
-from . import matching
-from . import bargaining
+# Import subpackages to trigger registration and assert baseline names
+from . import search as _protocols_search  # noqa: F401
+from . import matching as _protocols_matching  # noqa: F401
+from . import bargaining as _protocols_bargaining  # noqa: F401
 
-# Verify registration complete
 _registered = ProtocolRegistry.list_protocols()
-assert len(_registered['search']) >= 2, "Search protocols not registered"
-assert len(_registered['matching']) >= 2, "Matching protocols not registered"
-assert len(_registered['bargaining']) >= 2, "Bargaining protocols not registered"
+assert "legacy" in _registered.get("search", [])
+assert "random_walk" in _registered.get("search", [])
+assert "legacy_three_pass" in _registered.get("matching", [])
+assert "random" in _registered.get("matching", [])
+assert "legacy_compensating_block" in _registered.get("bargaining", [])
+assert "split_difference" in _registered.get("bargaining", [])
 
 __all__ = [
     # ... existing exports ...
@@ -497,8 +531,8 @@ __all__ = [
 - [ ] Add decorator to `SplitDifference`
 
 **Metadata to capture for each:**
-- name: From protocol (already has `.name` property)
-- version: From protocol (already has `.version` property)
+- name: From decorator registration (should match class `.name`; avoid aliases)
+- version: From class-level `VERSION` (read via `version` property)
 - description: From class docstring first line
 - properties: Tags like ["stochastic", "baseline", "deterministic"]
 - complexity: Big-O notation
@@ -788,7 +822,7 @@ from ..registry import register_protocol
     name="random_walk",
     description="Pure stochastic exploration for baseline comparison",
     properties=["stochastic", "baseline", "pedagogical", "zero_information"],
-    complexity="O(vision_radius²)",
+    complexity="O(V)",
     references=[
         "Stigler (1961) 'The Economics of Information'",
         "Random search models in labor economics"
@@ -804,9 +838,9 @@ class RandomWalkSearch(SearchProtocol):
 
 ## Step 1.5: Base Class VERSION Support
 
-To avoid instantiating protocols during registration, we standardize on a class-level `VERSION` attribute while retaining the `version` property used throughout the codebase.
+Implemented: class-level `VERSION` on base classes, with `version` property reading it. Prefer setting only `VERSION` in subclasses.
 
-Changes:
+Pattern:
 ```python
 # In protocols/base.py
 class ProtocolBase(ABC):
@@ -823,10 +857,10 @@ class SearchProtocol(ProtocolBase):
     def version(self) -> str:
         return getattr(self.__class__, "VERSION", "unknown")
 
-# Apply the same VERSION + version pattern to MatchingProtocol and BargainingProtocol
+# Same pattern for MatchingProtocol and BargainingProtocol
 ```
 
-All existing protocol classes will be updated to define `VERSION = "YYYY.MM.DD"` and keep their existing `version` property working via the base implementation.
+Subclasses should define `VERSION = "YYYY.MM.DD"`; overriding `version` is unnecessary.
 
 **That's it!** Protocol is now:
 - Registered globally

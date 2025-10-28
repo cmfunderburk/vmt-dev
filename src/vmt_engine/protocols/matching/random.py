@@ -25,7 +25,7 @@ from ..context import ProtocolContext
 
 @register_protocol(
     category="matching",
-    name="random",
+    name="random_matching",
     description="Random pairing baseline (null hypothesis)",
     properties=["stochastic", "baseline"],
     complexity="O(n)",
@@ -56,7 +56,7 @@ class RandomMatching(MatchingProtocol):
     
     @property
     def name(self) -> str:
-        return "random"
+        return "random_matching"
     
     @property
     def version(self) -> str:

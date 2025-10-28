@@ -120,10 +120,10 @@ from . import bargaining as _protocols_bargaining  # noqa: F401
 
 # Crash-fast assertions: ensure baseline protocols are registered
 _registered = ProtocolRegistry.list_protocols()
-assert "legacy" in _registered.get("search", []), "Search protocols not registered: missing 'legacy'"
+assert "legacy_distance_discounted" in _registered.get("search", []), "Search protocols not registered: missing 'legacy_distance_discounted'"
 assert "random_walk" in _registered.get("search", []), "Search protocols not registered: missing 'random_walk'"
 assert "legacy_three_pass" in _registered.get("matching", []), "Matching protocols not registered: missing 'legacy_three_pass'"
-assert "random" in _registered.get("matching", []), "Matching protocols not registered: missing 'random'"
+assert "random_matching" in _registered.get("matching", []), "Matching protocols not registered: missing 'random_matching'"
 assert "legacy_compensating_block" in _registered.get("bargaining", []), "Bargaining protocols not registered: missing 'legacy_compensating_block'"
 assert "split_difference" in _registered.get("bargaining", []), "Bargaining protocols not registered: missing 'split_difference'"
 

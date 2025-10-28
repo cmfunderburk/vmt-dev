@@ -25,7 +25,7 @@ Preference = tuple[int, float, float, int, str]
 
 @register_protocol(
     category="search",
-    name="legacy",
+    name="legacy_distance_discounted",
     description="Legacy distance-discounted search",
     properties=["deterministic", "legacy"],
     complexity="O(V log V)",

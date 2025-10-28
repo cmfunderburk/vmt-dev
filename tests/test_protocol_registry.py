@@ -20,11 +20,11 @@ def test_all_protocols_registered():
 
     protocols = ProtocolRegistry.list_protocols()
 
-    assert "legacy" in protocols["search"]
+    assert "legacy_distance_discounted" in protocols["search"]
     assert "random_walk" in protocols["search"]
 
     assert "legacy_three_pass" in protocols["matching"]
-    assert "random" in protocols["matching"]
+    assert "random_matching" in protocols["matching"]
 
     assert "legacy_compensating_block" in protocols["bargaining"]
     assert "split_difference" in protocols["bargaining"]
@@ -35,7 +35,7 @@ def test_get_protocol_class_and_instantiate():
     from vmt_engine.protocols import ProtocolRegistry
 
     SearchCls = ProtocolRegistry.get_protocol_class("random_walk", "search")
-    MatchingCls = ProtocolRegistry.get_protocol_class("random", "matching")
+    MatchingCls = ProtocolRegistry.get_protocol_class("random_matching", "matching")
     BargainingCls = ProtocolRegistry.get_protocol_class("split_difference", "bargaining")
 
     assert SearchCls().__class__.__name__ == "RandomWalkSearch"
@@ -82,7 +82,7 @@ def test_factory_uses_registry_for_defaults_and_explicit():
 
     # Explicit
     assert get_search_protocol("random_walk").__class__.__name__ == "RandomWalkSearch"
-    assert get_matching_protocol("random").__class__.__name__ == "RandomMatching"
+    assert get_matching_protocol("random_matching").__class__.__name__ == "RandomMatching"
     assert get_bargaining_protocol("split_difference").__class__.__name__ == "SplitDifference"
 
 

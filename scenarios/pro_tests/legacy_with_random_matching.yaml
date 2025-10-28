@@ -33,7 +33,7 @@ resource_seed:
 
 # Isolate matching protocol impact
 # search_protocol: defaults to "legacy"
-matching_protocol: "random"
+matching_protocol: "random_matching"
 # bargaining_protocol: defaults to "legacy_compensating_block"
 
 # Notes:

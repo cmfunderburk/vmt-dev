@@ -236,8 +236,8 @@ class ScenarioConfig:
     mode_schedule: Optional[ModeSchedule] = None
     
     # Protocol configuration (optional - defaults to legacy protocols)
-    search_protocol: Optional[str] = None  # e.g., "legacy", "random_walk"
-    matching_protocol: Optional[str] = None  # e.g., "legacy_three_pass", "random"
+    search_protocol: Optional[str] = None  # e.g., "legacy_distance_discounted", "random_walk"
+    matching_protocol: Optional[str] = None  # e.g., "legacy_three_pass", "random_matching"
     bargaining_protocol: Optional[str] = None  # e.g., "legacy_compensating_block", "split_difference"
     
     def validate(self) -> None:
