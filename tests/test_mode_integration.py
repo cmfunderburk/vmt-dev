@@ -24,7 +24,11 @@ def create_mode_test_scenario(forage_ticks=10, trade_ticks=5):
         mode_schedule=ModeSchedule(
             type="global_cycle", forage_ticks=forage_ticks, 
             trade_ticks=trade_ticks, start_mode="forage"
-        )
+        ),
+        # Set protocol fields explicitly to avoid test failures
+        search_protocol="legacy_distance_discounted",
+        matching_protocol="legacy_three_pass", 
+        bargaining_protocol="legacy_compensating_block",
     )
 
 

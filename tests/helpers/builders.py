@@ -61,6 +61,10 @@ def build_scenario(
         ),
         params=params,
         resource_seed=ResourceSeed(density=resource_density, amount=1),
+        # Set protocol fields explicitly to avoid test failures
+        search_protocol="legacy_distance_discounted",
+        matching_protocol="legacy_three_pass", 
+        bargaining_protocol="legacy_compensating_block",
     )
 
 

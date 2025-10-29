@@ -88,6 +88,10 @@ def create_test_scenario(
         utilities=utilities,
         params=params,
         resource_seed=ResourceSeed(density=0.15, amount=5),
+        # Set protocol fields explicitly to avoid test failures
+        search_protocol="legacy_distance_discounted",
+        matching_protocol="legacy_three_pass", 
+        bargaining_protocol="legacy_compensating_block",
     )
 
 

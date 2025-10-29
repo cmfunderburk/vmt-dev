@@ -31,14 +31,23 @@ initial_inventories:
 utilities:
   mix:
   - type: translog
-    weight: 0.2
+    weight: 0.1
     params:
       alpha_0: 0.43
       alpha_A: 0.32
       alpha_B: 0.43
-      beta_AA: -0.15
-      beta_BB: -0.19
-      beta_AB: -0.07
+      beta_AA: -0.1
+      beta_BB: -0.4
+      beta_AB: -0.15
+  - type: translog
+    weight: 0.1
+    params:
+      alpha_0: 0.43
+      alpha_A: 0.32
+      alpha_B: 0.43
+      beta_AA: -0.4
+      beta_BB: -0.1
+      beta_AB: 0.15 
   - type: ces
     weight: 0.15
     params:
@@ -89,7 +98,7 @@ params:
   dA_max: 5000
   trade_execution_mode: minimum
   forage_rate: 1
-  trade_cooldown_ticks: 1000
+  trade_cooldown_ticks: 300
   beta: 0.95
   epsilon: 1.0e-12
   exchange_regime: mixed
