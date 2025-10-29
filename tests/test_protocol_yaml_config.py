@@ -26,10 +26,10 @@ class TestProtocolYAMLConfiguration:
         """Load scenario with all three Phase 2a protocols specified."""
         scenario = load_scenario("scenarios/pro_tests/protocol_comparison_baseline.yaml")
         
-        # Check protocols are set in config
-        assert scenario.search_protocol == "random_walk"
-        assert scenario.matching_protocol == "random_matching"
-        assert scenario.bargaining_protocol == "split_difference"
+        # Check protocols are set in config (normalized to dict format)
+        assert scenario.search_protocol == {"name": "random_walk"}
+        assert scenario.matching_protocol == {"name": "random_matching"}
+        assert scenario.bargaining_protocol == {"name": "split_difference"}
         
         # Create simulation - should use protocols from YAML
         sim = Simulation(scenario, seed=42)
@@ -47,8 +47,8 @@ class TestProtocolYAMLConfiguration:
         """Protocols can be partially specified with defaults for unspecified."""
         scenario = load_scenario("scenarios/pro_tests/legacy_with_random_walk.yaml")
         
-        # Only search protocol specified
-        assert scenario.search_protocol == "random_walk"
+        # Only search protocol specified (normalized to dict format)
+        assert scenario.search_protocol == {"name": "random_walk"}
         assert scenario.matching_protocol is None  # Will default to legacy
         assert scenario.bargaining_protocol is None  # Will default to legacy
         

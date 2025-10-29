@@ -133,10 +133,11 @@ def filter_quotes_by_regime(quotes: dict[str, float], exchange_regime: str) -> d
     - "barter_only": Only barter keys (A<->B, B<->A)
     - "money_only": Only monetary keys (A<->M, B<->M)
     - "mixed": All keys
+    - "mixed_liquidity_gated": All keys (same as mixed for quote filtering)
     
     Args:
         quotes: Full quotes dictionary
-        exchange_regime: Exchange regime ("barter_only", "money_only", or "mixed")
+        exchange_regime: Exchange regime ("barter_only", "money_only", "mixed", or "mixed_liquidity_gated")
         
     Returns:
         Filtered quotes dictionary
@@ -153,8 +154,8 @@ def filter_quotes_by_regime(quotes: dict[str, float], exchange_regime: str) -> d
             k: v for k, v in quotes.items()
             if 'A_in_M' in k or 'B_in_M' in k
         }
-    elif exchange_regime == "mixed":
-        # All pairs
+    elif exchange_regime in ["mixed", "mixed_liquidity_gated"]:
+        # All pairs (mixed_liquidity_gated uses same quote filtering as mixed)
         return quotes.copy()
     else:
         # Unknown regime, default to barter_only for safety
