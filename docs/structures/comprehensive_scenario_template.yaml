@@ -41,7 +41,7 @@ initial_inventories:
 
 utilities:
   mix:
-    # CES (Constant Elasticity of Substitution) - Most flexible utility
+    # CES (Constant Elasticity of Substitution)
     - type: "ces"
       weight: 0.4                   # Weight in mix, range: > 0, sum must = 1.0
       params:

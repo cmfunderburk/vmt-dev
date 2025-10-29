@@ -20,7 +20,7 @@ vmt-dev/
 │   ├── vmt_log_viewer/      # GUI Log Viewer application
 │   ├── telemetry/           # SQLite logging system
 │   └── scenarios/           # Scenario-related Python code (schema, loader)
-├── tests/                   # Test suite (55+ tests)
+├── tests/                   # Test suite
 ├── launcher.py              # GUI entry point
 └── main.py                  # CLI entry point
 ```
