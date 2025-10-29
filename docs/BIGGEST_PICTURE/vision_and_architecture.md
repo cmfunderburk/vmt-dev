@@ -760,7 +760,7 @@ Understanding **when markets work** (and when they don't) informs:
 
 ---
 
-## The Core Insight
+## Core
 
 **Markets are not natural phenomena that "just work" under ideal conditions.**
 
