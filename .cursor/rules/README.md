@@ -7,6 +7,7 @@ This directory contains the core rules that govern AI assistance in the VMT proj
 ### Always Applied
 - **00_determinism.mdc** - Ensures simulation reproducibility (THE most critical rule)
 - **01_vmt_architecture.mdc** - Enforces Protocol → Effect → State pattern and 7-phase tick cycle
+- **03_test_execution.mdc** - Python environment and test execution pattern (always use venv with bash -c wrapper)
 
 ### Context-Specific  
 - **02_validation.mdc** - Applied to `src/**` and `tests/**` for testing requirements
