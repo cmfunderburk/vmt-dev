@@ -347,6 +347,115 @@ class TelemetryDatabase:
             CREATE INDEX IF NOT EXISTS idx_preferences_agent 
             ON preferences(run_id, agent_id, tick)
         """)
+        
+        # ========================================================================
+        # Endogenous Market Tables (Week 3)
+        # ========================================================================
+        
+        # Market formations - when markets are created
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS market_formations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id INTEGER NOT NULL,
+                market_id INTEGER NOT NULL,
+                center_x INTEGER NOT NULL,
+                center_y INTEGER NOT NULL,
+                formation_tick INTEGER NOT NULL,
+                num_participants INTEGER NOT NULL,
+                FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id),
+                UNIQUE(run_id, market_id)
+            )
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_market_formations_run_tick 
+            ON market_formations(run_id, formation_tick)
+        """)
+        
+        # Market dissolutions - when markets dissolve
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS market_dissolutions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id INTEGER NOT NULL,
+                market_id INTEGER NOT NULL,
+                dissolution_tick INTEGER NOT NULL,
+                age INTEGER NOT NULL,
+                reason TEXT NOT NULL,
+                FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id)
+            )
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_market_dissolutions_run_tick 
+            ON market_dissolutions(run_id, dissolution_tick)
+        """)
+        
+        # Market clears - price discovery results
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS market_clears (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id INTEGER NOT NULL,
+                tick INTEGER NOT NULL,
+                market_id INTEGER NOT NULL,
+                commodity TEXT NOT NULL,
+                clearing_price REAL NOT NULL,
+                quantity_traded REAL NOT NULL,
+                num_participants INTEGER NOT NULL,
+                converged INTEGER NOT NULL,
+                FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id),
+                UNIQUE(run_id, tick, market_id, commodity)
+            )
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_market_clears_run_tick 
+            ON market_clears(run_id, tick)
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_market_clears_market 
+            ON market_clears(run_id, market_id, tick)
+        """)
+        
+        # Market snapshots - periodic state dumps
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS market_snapshots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id INTEGER NOT NULL,
+                tick INTEGER NOT NULL,
+                market_id INTEGER NOT NULL,
+                center_x INTEGER NOT NULL,
+                center_y INTEGER NOT NULL,
+                num_participants INTEGER NOT NULL,
+                age INTEGER NOT NULL,
+                total_trades INTEGER NOT NULL,
+                FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id)
+            )
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_market_snapshots_run_tick 
+            ON market_snapshots(run_id, tick)
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_market_snapshots_market 
+            ON market_snapshots(run_id, market_id, tick)
+        """)
+        
+        # Add market_id column to trades table (migration)
+        try:
+            cursor.execute("""
+                ALTER TABLE trades ADD COLUMN market_id INTEGER DEFAULT NULL
+            """)
+        except sqlite3.OperationalError:
+            # Column already exists, skip
+            pass
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_trades_market 
+            ON trades(run_id, market_id) WHERE market_id IS NOT NULL
+        """)
 
         self.conn.commit()
     

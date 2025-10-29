@@ -1,0 +1,68 @@
+# Demo: Emergent Market - Multiple Markets
+#
+# Pedagogical Goal: Demonstrate multiple coexisting markets
+#
+# This scenario creates conditions for multiple markets to form simultaneously.
+# With high resource density across the grid and sufficient agents, clusters
+# will form in different regions, each potentially spawning its own market.
+# Different markets may have different prices initially, demonstrating spatial
+# price variation before convergence.
+#
+# Key Teaching Points:
+# - Multiple markets can coexist
+# - Spatial separation enables multiple market areas
+# - Markets operate independently
+# - Price differences may exist across markets
+#
+# Expected Behavior:
+# - Two or more markets form at different resource clusters
+# - Each market clears independently
+# - Prices may differ initially, then converge as agents move
+
+schema_version: 1
+name: "Emergent Market - Multiple Markets"
+N: 50
+agents: 30
+
+initial_inventories:
+  A: 5
+  B: 5
+
+utilities:
+  mix:
+    - type: ces
+      weight: 1.0
+      params:
+        rho: 0.4
+        wA: 0.6
+        wB: 0.4
+
+params:
+  spread: 0.05
+  vision_radius: 10
+  interaction_radius: 2
+  move_budget_per_tick: 2
+  dA_max: 5
+  forage_rate: 2
+  epsilon: 0.000000000001
+  beta: 0.95
+  resource_growth_rate: 1
+  resource_max_amount: 5
+  resource_regen_cooldown: 5
+  trade_cooldown_ticks: 3
+  exchange_regime: barter_only
+  
+  # Market formation parameters
+  market_formation_threshold: 5
+  market_dissolution_threshold: 3
+  market_dissolution_patience: 5
+  market_mechanism: "walrasian"
+  walrasian_adjustment_speed: 0.1
+  walrasian_tolerance: 0.01
+  walrasian_max_iterations: 100
+
+resource_seed:
+  density: 0.25  # Distributed resources to encourage multiple clusters
+  amount: 5
+
+# Recommended: Run for 150+ ticks to observe multiple market formation

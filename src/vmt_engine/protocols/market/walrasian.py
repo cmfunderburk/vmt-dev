@@ -66,9 +66,9 @@ class WalrasianAuctioneer:
             )
             trades.extend(commodity_trades)
             
-            # Update commitments based on trades created
+            # Update commitments IMMEDIATELY after each trade is created
+            # This prevents double-spending across commodity clearings
             for trade in commodity_trades:
-                buyer_agent = sim.agent_by_id[trade.buyer_id]
                 if commodity == 'A':
                     # Buyer paid B to get A
                     committed_B[trade.buyer_id] += abs(trade.dB)
@@ -76,11 +76,20 @@ class WalrasianAuctioneer:
                     # Buyer paid A to get B
                     committed_A[trade.buyer_id] += abs(trade.dA)
             
-            # Emit MarketClear effect (telemetry logging will be added in Week 3)
-            # For now, just update market statistics
+            # Log market clearing to telemetry (Week 3)
             if clear_info['converged']:
                 market.total_volume_traded += clear_info['quantity']
                 market.total_trades_executed += len(commodity_trades)
+                
+                sim.telemetry.log_market_clear(
+                    tick=sim.tick,
+                    market_id=market.id,
+                    commodity=commodity,
+                    clearing_price=clear_info['price'],
+                    quantity_traded=clear_info['quantity'],
+                    num_participants=len(market.participant_ids),
+                    converged=clear_info['converged']
+                )
         
         return trades
     
@@ -309,6 +318,10 @@ class WalrasianAuctioneer:
         buyer_remaining = {agent_id: qty for agent_id, qty in buyers}
         seller_remaining = {agent_id: qty for agent_id, qty in sellers}
         
+        # Track running commitments as we create trades to prevent double-spending
+        running_committed_A = committed_A.copy()
+        running_committed_B = committed_B.copy()
+        
         # Match greedily
         for buyer_id, buyer_max_qty in buyers:
             if buyer_max_qty <= 0 or buyer_remaining[buyer_id] <= 0:
@@ -331,23 +344,28 @@ class WalrasianAuctioneer:
                 
                 if commodity == 'A':
                     # Buyer needs A, pays B
-                    # Calculate max buyer can afford based on actual inventory minus committed (from previous clearings)
-                    available_B = buyer_agent.inventory.B - committed_B[buyer_id]
+                    # Calculate max buyer can afford based on actual inventory minus ALL commitments (including running ones)
+                    available_B = buyer_agent.inventory.B - running_committed_B[buyer_id]
                     max_buyer_can_afford = int(available_B / price) if price > 0 and available_B > 0 else 0
                     max_buyer_can_afford = min(max_buyer_can_afford, buyer_remaining[buyer_id])
                     trade_qty = min(available_from_seller, max_buyer_can_afford, buyer_max_qty)
                     
+                    # DEBUG: Add logging for problematic trades
+                    if buyer_id == 2 and trade_qty > 0:
+                        print(f"DEBUG A-trade: Agent {buyer_id} has B={buyer_agent.inventory.B}, committed_B={running_committed_B[buyer_id]}, available_B={available_B}, price={price:.3f}, trade_qty={trade_qty}, payment_B={round(trade_qty * price)}")
+                    
                     # Recalculate payment based on actual quantity
-                    payment_B = int(trade_qty * price)
+                    payment_B = round(trade_qty * price)  # Use proper rounding instead of int()
                     # Ensure payment doesn't exceed buyer's available budget
                     if payment_B > available_B:
                         # Reduce quantity to fit budget
                         trade_qty = int(available_B / price) if price > 0 and available_B > 0 else 0
-                        payment_B = int(trade_qty * price)
+                        payment_B = round(trade_qty * price)
                     
                     # Verify feasibility - all constraints must be satisfied
+                    # CRITICAL: Final check that buyer can actually afford this trade
                     if (trade_qty > 0 and 
-                        payment_B <= available_B and 
+                        payment_B <= available_B and  # This is the correct check - available_B already accounts for commitments
                         trade_qty <= seller_agent.inventory.A and
                         trade_qty <= buyer_remaining[buyer_id] and
                         trade_qty <= seller_remaining[seller_id]):
@@ -374,27 +392,35 @@ class WalrasianAuctioneer:
                         buyer_remaining[buyer_id] -= trade_qty
                         seller_remaining[seller_id] -= trade_qty
                         
+                        # Update running commitments to prevent double-spending
+                        running_committed_B[buyer_id] += payment_B
+                        
                         if buyer_remaining[buyer_id] <= 0:
                             break
                 else:  # commodity == 'B'
                     # Buyer needs B, pays A
-                    # Calculate max buyer can afford based on actual inventory minus committed (from previous clearings)
-                    available_A = buyer_agent.inventory.A - committed_A[buyer_id]
+                    # Calculate max buyer can afford based on actual inventory minus ALL commitments (including running ones)
+                    available_A = buyer_agent.inventory.A - running_committed_A[buyer_id]
                     max_buyer_can_afford = int(available_A / price) if price > 0 and available_A > 0 else 0
                     max_buyer_can_afford = min(max_buyer_can_afford, buyer_remaining[buyer_id])
                     trade_qty = min(available_from_seller, max_buyer_can_afford, buyer_max_qty)
                     
+                    # DEBUG: Add logging for problematic trades
+                    if buyer_id == 2 and trade_qty > 0:
+                        print(f"DEBUG B-trade: Agent {buyer_id} has A={buyer_agent.inventory.A}, committed_A={running_committed_A[buyer_id]}, available_A={available_A}, price={price:.3f}, trade_qty={trade_qty}, payment_A={round(trade_qty * price)}")
+                    
                     # Recalculate payment based on actual quantity
-                    payment_A = int(trade_qty * price)
+                    payment_A = round(trade_qty * price)  # Use proper rounding instead of int()
                     # Ensure payment doesn't exceed buyer's available budget
                     if payment_A > available_A:
                         # Reduce quantity to fit budget
                         trade_qty = int(available_A / price) if price > 0 and available_A > 0 else 0
-                        payment_A = int(trade_qty * price)
+                        payment_A = round(trade_qty * price)
                     
                     # Verify feasibility - all constraints must be satisfied
+                    # CRITICAL: Final check that buyer can actually afford this trade
                     if (trade_qty > 0 and 
-                        payment_A <= available_A and 
+                        payment_A <= available_A and  # This is the correct check - available_A already accounts for commitments
                         trade_qty <= seller_agent.inventory.B and
                         trade_qty <= buyer_remaining[buyer_id] and
                         trade_qty <= seller_remaining[seller_id]):
@@ -420,6 +446,9 @@ class WalrasianAuctioneer:
                         # Update remaining capacities
                         buyer_remaining[buyer_id] -= trade_qty
                         seller_remaining[seller_id] -= trade_qty
+                        
+                        # Update running commitments to prevent double-spending
+                        running_committed_A[buyer_id] += payment_A
                         
                         if buyer_remaining[buyer_id] <= 0:
                             break

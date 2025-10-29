@@ -78,7 +78,15 @@ def load_scenario(path: str) -> ScenarioConfig:
             liquidity_gate=params_data.get('liquidity_gate', {"min_quotes": 3}),
             earn_money_enabled=params_data.get('earn_money_enabled', False),
             # Telemetry params
-            log_preferences=params_data.get('log_preferences', False)
+            log_preferences=params_data.get('log_preferences', False),
+            # Market params (with defaults from schema)
+            market_formation_threshold=params_data.get('market_formation_threshold', None),
+            market_dissolution_threshold=params_data.get('market_dissolution_threshold', 3),
+            market_dissolution_patience=params_data.get('market_dissolution_patience', 5),
+            market_mechanism=params_data.get('market_mechanism', "walrasian"),
+            walrasian_adjustment_speed=params_data.get('walrasian_adjustment_speed', 0.1),
+            walrasian_tolerance=params_data.get('walrasian_tolerance', 0.01),
+            walrasian_max_iterations=params_data.get('walrasian_max_iterations', 100)
         )
         
         # Parse resource seed

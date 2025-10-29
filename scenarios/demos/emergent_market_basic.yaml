@@ -1,0 +1,68 @@
+# Demo: Emergent Market - Basic
+#
+# Pedagogical Goal: Demonstrate endogenous market formation
+#
+# This scenario shows how markets emerge organically when agents cluster around
+# resource-rich areas. With a high resource density in the center of the grid,
+# agents will naturally gather to forage, and once 5+ agents are within
+# interaction_radius of each other, a market forms.
+#
+# Key Teaching Points:
+# - Markets form dynamically based on agent clustering
+# - No pre-placed markets needed
+# - Agent density threshold triggers market formation
+# - Markets clear via Walrasian mechanism
+#
+# Expected Behavior:
+# - Market forms at resource cluster (center area)
+# - Price discovery via tatonnement
+# - Agents trade in centralized market
+
+schema_version: 1
+name: "Emergent Market - Basic"
+N: 40
+agents: 20
+
+initial_inventories:
+  A: 5
+  B: 5
+  M: 100
+
+utilities:
+  mix:
+    - type: ces
+      weight: 1.0
+      params:
+        rho: 0.5
+        wA: 0.5
+        wB: 0.5
+
+params:
+  spread: 0.0
+  vision_radius: 8
+  interaction_radius: 2
+  move_budget_per_tick: 2
+  dA_max: 5
+  forage_rate: 2
+  epsilon: 0.000000000001
+  beta: 0.95
+  resource_growth_rate: 1
+  resource_max_amount: 5
+  resource_regen_cooldown: 5
+  trade_cooldown_ticks: 3
+  exchange_regime: mixed
+  
+  # Market formation parameters
+  market_formation_threshold: 5
+  market_dissolution_threshold: 3
+  market_dissolution_patience: 5
+  market_mechanism: "walrasian"
+  walrasian_adjustment_speed: 0.1
+  walrasian_tolerance: 0.01
+  walrasian_max_iterations: 100
+
+resource_seed:
+  density: 0.3  # Moderate-high density to create resource clusters
+  amount: 5
+
+# Recommended: Run for 100+ ticks to observe market formation and price convergence

@@ -15,6 +15,8 @@ VMT is a research and teaching platform that makes exchange mechanisms explicit 
 - Configurable protocols for search, matching, and bargaining
 - Multiple utility functions (CES, Linear, Quadratic, Stone-Geary, Translog)
 - Money system with quasilinear utility
+- **Endogenous market formation** - markets emerge dynamically from agent clustering
+- **Walrasian market clearing** - centralized price discovery via tatonnement
 - Deterministic simulation (reproducible with seeds)
 - Comprehensive telemetry and visualization
 
@@ -22,6 +24,7 @@ VMT is a research and teaching platform that makes exchange mechanisms explicit 
 - Teaching microeconomics through visualization
 - Research on market mechanisms and institutional design
 - Comparing bilateral vs centralized exchange systems
+- Demonstrating market emergence and price discovery
 
 ## Installation
 

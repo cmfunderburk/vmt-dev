@@ -57,6 +57,8 @@ def main():
     print("  M: Toggle money labels")
     print("  L: Toggle lambda heatmap")
     print("  I: Toggle mode/regime overlay")
+    print("  K: Toggle market areas")
+    print("  J: Toggle market activity")
     print("  Q: Quit")
     print()
     
@@ -139,6 +141,18 @@ def main():
                     renderer.show_mode_regime_overlay = not renderer.show_mode_regime_overlay
                     status = "ON" if renderer.show_mode_regime_overlay else "OFF"
                     print(f"Mode/regime overlay: {status}")
+                
+                elif event.key == pygame.K_k:
+                    # Toggle market areas
+                    renderer.show_markets = not renderer.show_markets
+                    status = "ON" if renderer.show_markets else "OFF"
+                    print(f"Market areas: {status}")
+                
+                elif event.key == pygame.K_j:
+                    # Toggle market activity
+                    renderer.show_market_activity = not renderer.show_market_activity
+                    status = "ON" if renderer.show_market_activity else "OFF"
+                    print(f"Market activity: {status}")
                 
                 elif event.key == pygame.K_LEFTBRACKET:
                     # Toggle left panel

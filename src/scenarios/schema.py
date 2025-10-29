@@ -175,8 +175,8 @@ class ScenarioParams:
     """
     
     # --- Endogenous market parameters (Phase 3) ---
-    market_formation_threshold: int = 5
-    """Minimum number of agents within interaction_radius to form a market."""
+    market_formation_threshold: Optional[int] = None
+    """Minimum number of agents within interaction_radius to form a market. None disables markets."""
     
     market_dissolution_threshold: int = 3
     """Minimum number of agents to sustain a market (below this, dissolution countdown starts)."""

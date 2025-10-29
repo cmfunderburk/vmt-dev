@@ -1,0 +1,68 @@
+# Demo: Emergent Market - Nomadic Markets
+#
+# Pedagogical Goal: Demonstrate market lifecycle (formation, persistence, dissolution)
+#
+# This scenario shows how markets form, persist, and dissolve as agents migrate.
+# With slow resource regeneration, agents will deplete areas and move to fresh
+# resource clusters. Markets form where agents gather, persist while agents
+# remain clustered, and dissolve when agents move away.
+#
+# Key Teaching Points:
+# - Markets have a lifecycle (formation → persistence → dissolution)
+# - Hysteresis prevents flickering (markets persist briefly below threshold)
+# - Agent migration drives market dynamics
+# - Markets can reform at new locations
+#
+# Expected Behavior:
+# - Markets form at resource clusters
+# - As resources deplete, agents migrate
+# - Markets dissolve when agents leave
+# - New markets form at fresh resource clusters
+
+schema_version: 1
+name: "Emergent Market - Nomadic Markets"
+N: 50
+agents: 25
+
+initial_inventories:
+  A: 5
+  B: 5
+
+utilities:
+  mix:
+    - type: ces
+      weight: 1.0
+      params:
+        rho: 0.5
+        wA: 0.5
+        wB: 0.5
+
+params:
+  spread: 0.05
+  vision_radius: 12
+  interaction_radius: 2
+  move_budget_per_tick: 3  # Higher mobility for migration
+  dA_max: 5
+  forage_rate: 3  # Higher foraging to deplete resources faster
+  epsilon: 0.000000000001
+  beta: 0.95
+  resource_growth_rate: 0.5  # Slow regeneration to encourage migration
+  resource_max_amount: 5
+  resource_regen_cooldown: 10  # Longer cooldown before regen starts
+  trade_cooldown_ticks: 3
+  exchange_regime: barter_only
+  
+  # Market formation parameters
+  market_formation_threshold: 5
+  market_dissolution_threshold: 3
+  market_dissolution_patience: 5  # Markets persist for 5 ticks below threshold
+  market_mechanism: "walrasian"
+  walrasian_adjustment_speed: 0.1
+  walrasian_tolerance: 0.01
+  walrasian_max_iterations: 100
+
+resource_seed:
+  density: 0.2  # Moderate density, will be depleted and regenerate
+  amount: 5
+
+# Recommended: Run for 200+ ticks to observe full market lifecycle

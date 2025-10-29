@@ -91,51 +91,60 @@ class TradeSystem:
         """
         Execute trade phase using bargaining protocol.
         
-        Week 2: Markets are cleared before bilateral trades.
+        Week 2: Markets are cleared before bilateral trades (only if enabled).
         """
         
-        # ===== STEP 1: DETECT MARKETS =====
-        markets = self._detect_market_areas(sim)
+        # ===== STEP 1: DETECT MARKETS (only if market parameters are configured) =====
+        market_formation_threshold = sim.params.get('market_formation_threshold', None)
+        if market_formation_threshold is None:
+            # No market parameters configured - skip market detection entirely
+            markets = []
+        else:
+            markets = self._detect_market_areas(sim)
         
         # ===== STEP 2: ASSIGN AGENTS TO MARKETS (Week 2) =====
-        market_assignments = self._assign_agents_to_markets(markets, sim)
-        market_participants = set()
-        for agent_ids in market_assignments.values():
-            market_participants.update(agent_ids)
-        
-        # ===== STEP 3: UNPAIR MARKET PARTICIPANTS =====
-        for agent_id in market_participants:
-            agent = sim.agent_by_id[agent_id]
-            if agent.paired_with_id is not None:
-                partner_id = agent.paired_with_id
-                partner = sim.agent_by_id[partner_id]
-                
-                # Unpair both agents
-                agent.paired_with_id = None
-                partner.paired_with_id = None
-                
-                # Log unpair event
-                sim.telemetry.log_pairing_event(
-                    sim.tick, agent_id, partner_id, "unpair", "entered_market"
-                )
-        
-        # ===== STEP 4: PROCESS MARKET TRADES (Week 2) =====
-        all_market_trades = []
-        for market_id, agent_ids in sorted(market_assignments.items(), key=lambda x: x[0]):
-            market = self.active_markets[market_id]
-            market.participant_ids = agent_ids  # Update with actual assignments
+        if markets:
+            market_assignments = self._assign_agents_to_markets(markets, sim)
+            market_participants = set()
+            for agent_ids in market_assignments.values():
+                market_participants.update(agent_ids)
             
-            # Create mechanism if needed
-            if self.market_mechanism is None:
-                self.market_mechanism = self._create_mechanism(sim)
+            # ===== STEP 3: UNPAIR MARKET PARTICIPANTS =====
+            for agent_id in market_participants:
+                agent = sim.agent_by_id[agent_id]
+                if agent.paired_with_id is not None:
+                    partner_id = agent.paired_with_id
+                    partner = sim.agent_by_id[partner_id]
+                    
+                    # Unpair both agents
+                    agent.paired_with_id = None
+                    partner.paired_with_id = None
+                    
+                    # Log unpair event
+                    sim.telemetry.log_pairing_event(
+                        sim.tick, agent_id, partner_id, "unpair", "entered_market"
+                    )
             
-            # Clear market
-            trades = self.market_mechanism.execute(market, sim)
-            all_market_trades.extend(trades)
-        
-        # Apply market trade effects
-        for trade in all_market_trades:
-            self._apply_trade_effect(trade, sim)
+            # ===== STEP 4: PROCESS MARKET TRADES (Week 2) =====
+            all_market_trades = []
+            for market_id, agent_ids in sorted(market_assignments.items(), key=lambda x: x[0]):
+                market = self.active_markets[market_id]
+                market.participant_ids = agent_ids  # Update with actual assignments
+                
+                # Create mechanism if needed
+                if self.market_mechanism is None:
+                    self.market_mechanism = self._create_mechanism(sim)
+                
+                # Clear market
+                trades = self.market_mechanism.execute(market, sim)
+                all_market_trades.extend(trades)
+            
+            # Apply market trade effects
+            for trade in all_market_trades:
+                self._apply_trade_effect(trade, sim)
+        else:
+            # No markets - no market participants
+            market_participants = set()
         
         # ===== STEP 5: PROCESS BILATERAL TRADES (skip market participants) =====
         # Track processed pairs to avoid double-processing
@@ -260,6 +269,16 @@ class TradeSystem:
         if hasattr(sim, "_trades_made"):
             sim._trades_made[effect.buyer_id] = sim._trades_made.get(effect.buyer_id, 0) + 1
             sim._trades_made[effect.seller_id] = sim._trades_made.get(effect.seller_id, 0) + 1
+            
+            # Track bilateral vs market trades separately
+            if effect.market_id is not None:
+                # Market trade
+                sim._market_trades_made[effect.buyer_id] = sim._market_trades_made.get(effect.buyer_id, 0) + 1
+                sim._market_trades_made[effect.seller_id] = sim._market_trades_made.get(effect.seller_id, 0) + 1
+            else:
+                # Bilateral trade
+                sim._bilateral_trades_made[effect.buyer_id] = sim._bilateral_trades_made.get(effect.buyer_id, 0) + 1
+                sim._bilateral_trades_made[effect.seller_id] = sim._bilateral_trades_made.get(effect.seller_id, 0) + 1
         
         # Log to telemetry
         self._log_trade(effect, sim)
@@ -304,8 +323,7 @@ class TradeSystem:
             direction = "unknown"
             dA, dB, dM = effect.dA, effect.dB, effect.dM
         
-        # Log trade event (using original API signature)
-        # Note: log_trade() will be extended to accept market_id in Week 3
+        # Log trade event (Week 3: include market_id)
         sim.telemetry.log_trade(
             tick=sim.tick,
             x=buyer.pos[0],
@@ -317,7 +335,8 @@ class TradeSystem:
             price=effect.price,
             direction=direction,
             dM=dM,
-            exchange_pair_type=effect.pair_type
+            exchange_pair_type=effect.pair_type,
+            market_id=effect.market_id  # Week 3: None for bilateral, int for market
         )
     
     # =============================================================================
@@ -376,6 +395,14 @@ class TradeSystem:
                 if market.formation_tick == sim.tick:
                     print(f"Market {market.id} formed at {center} on tick {sim.tick} "
                           f"with {len(market.participant_ids)} participants")
+                    # Log to telemetry
+                    sim.telemetry.log_market_formation(
+                        tick=sim.tick,
+                        market_id=market.id,
+                        center_x=center[0],
+                        center_y=center[1],
+                        num_participants=len(market.participant_ids)
+                    )
                 
                 markets_active_this_tick.add(market.id)
                 assigned_agents.update(market.participant_ids)
@@ -460,6 +487,14 @@ class TradeSystem:
             
             print(f"Market {market_id} dissolved at tick {sim.tick} "
                   f"(existed for {market.age} ticks)")
+            
+            # Log to telemetry
+            sim.telemetry.log_market_dissolution(
+                tick=sim.tick,
+                market_id=market_id,
+                age=market.age,
+                reason="low_density"
+            )
             
             del self.active_markets[market_id]
             self.market_dissolutions += 1

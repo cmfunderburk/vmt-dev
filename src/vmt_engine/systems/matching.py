@@ -1277,7 +1277,22 @@ def execute_trade_generic(
     assert dA_i + dA_j == 0, f"Good A not conserved: {dA_i} + {dA_j} != 0"
     assert dB_i + dB_j == 0, f"Good B not conserved: {dB_i} + {dB_j} != 0"
     assert dM_i + dM_j == 0, f"Money not conserved: {dM_i} + {dM_j} != 0"
+
+    # CRITICAL: Pre-trade validation - ensure agents can afford the trade
+    if agent_i.inventory.A + dA_i < 0:
+        raise ValueError(f"Agent {agent_i.id} cannot afford trade: A inventory would be {agent_i.inventory.A + dA_i}")
+    if agent_i.inventory.B + dB_i < 0:
+        raise ValueError(f"Agent {agent_i.id} cannot afford trade: B inventory would be {agent_i.inventory.B + dB_i}")
+    if agent_i.inventory.M + dM_i < 0:
+        raise ValueError(f"Agent {agent_i.id} cannot afford trade: M inventory would be {agent_i.inventory.M + dM_i}")
     
+    if agent_j.inventory.A + dA_j < 0:
+        raise ValueError(f"Agent {agent_j.id} cannot afford trade: A inventory would be {agent_j.inventory.A + dA_j}")
+    if agent_j.inventory.B + dB_j < 0:
+        raise ValueError(f"Agent {agent_j.id} cannot afford trade: B inventory would be {agent_j.inventory.B + dB_j}")
+    if agent_j.inventory.M + dM_j < 0:
+        raise ValueError(f"Agent {agent_j.id} cannot afford trade: M inventory would be {agent_j.inventory.M + dM_j}")
+
     # Apply changes to agent i
     agent_i.inventory.A += dA_i
     agent_i.inventory.B += dB_i

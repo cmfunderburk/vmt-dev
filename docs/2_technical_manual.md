@@ -194,6 +194,68 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
 -   **Performance**: Reduces trade phase from O(N²) distance checks to O(P) where P = paired count (typically P ≤ N/2). Decision phase remains O(N·k) where k = average neighbors.
 -   **Pedagogical Note**: Agents can commit to distant partners and spend many ticks moving toward them while ignoring other opportunities. Once paired, they execute multiple sequential trades. This demonstrates opportunity cost of commitment and iterative bilateral exchange.
 
+#### Endogenous Market Formation (Phase 3)
+-   **Motivation**: Markets in real economies don't appear magically—they emerge from agent clustering. When enough agents gather in a location (e.g., around resource patches), they naturally form trading hubs. VMT implements **endogenous market formation**: markets emerge dynamically when agent density exceeds a threshold, rather than being pre-placed.
+-   **Market Detection**: During Phase 4 (Trade), before processing bilateral trades, the engine scans for market areas:
+    *   Agents within `interaction_radius` of each other form clusters
+    *   Clusters with ≥ `market_formation_threshold` agents (default: 5) trigger market formation
+    *   Market centers are computed as geometric centers of agent positions
+    *   Markets maintain identity across ticks: if a cluster center moves < 2 cells, it reuses the existing market ID
+-   **Agent Assignment**: Each agent is assigned to at most one market (exclusive assignment):
+    *   Priority order: (1) largest market, (2) closest distance, (3) lowest market ID
+    *   Agents assigned to markets are **unpaired** from bilateral partnerships (markets take precedence)
+    *   Assignment happens deterministically in agent ID order
+-   **Market Lifecycle**:
+    *   **Formation**: Market created when cluster density ≥ threshold, logged to `market_formations` table
+    *   **Persistence**: Markets persist while agent count ≥ `market_dissolution_threshold` (default: 3)
+    *   **Hysteresis**: Markets below threshold persist for `market_dissolution_patience` ticks (default: 5) before dissolving
+    *   **Dissolution**: Market dissolved when patience exhausted, logged to `market_dissolutions` table
+    *   Market identity persists across ticks, allowing price history and convergence analysis
+-   **Market Clearing Mechanisms**: Markets clear via centralized mechanisms rather than bilateral negotiation:
+    *   **Walrasian Auctioneer** (implemented): Tatonnement price discovery
+        - Iterative price adjustment until excess demand ≈ 0
+        - Warm start: uses previous clearing price as initial guess
+        - Convergence tolerance: `walrasian_tolerance` (default: 0.01)
+        - Max iterations: `walrasian_max_iterations` (default: 100)
+        - Adjustment speed: `walrasian_adjustment_speed` (default: 0.1)
+        - Proportional matching: trades executed proportionally when excess demand remains
+        - Tracks inventory and budget constraints across multiple commodities
+    *   **Posted-Price Market** (planned): Sellers post prices, buyers choose quantities
+    *   **Continuous Double Auction** (planned): Order book matching
+-   **Market vs Bilateral Coexistence**:
+    *   Markets and bilateral trades coexist in the same simulation
+    *   Market participants trade exclusively in markets (unpaired from bilateral system)
+    *   Non-market agents continue bilateral trading normally
+    *   Both modes are logged to `trades` table with `market_id` field (NULL for bilateral, int for market)
+-   **Telemetry**: Market events are logged to four database tables:
+    *   `market_formations` — Market creation events (market_id, center, tick, participants)
+    *   `market_dissolutions` — Market dissolution events (market_id, tick, age, reason)
+    *   `market_clears` — Price discovery results (tick, market_id, commodity, price, quantity, converged)
+    *   `market_snapshots` — Periodic state dumps (tick, market_id, center, participants, age, trades)
+-   **Configuration Parameters** (in `ScenarioParams`):
+    *   `market_formation_threshold: int = 5` — Minimum agents to form market
+    *   `market_dissolution_threshold: int = 3` — Minimum agents to sustain market
+    *   `market_dissolution_patience: int = 5` — Ticks to wait below threshold before dissolving
+    *   `market_mechanism: str = "walrasian"` — Clearing mechanism type
+    *   `walrasian_adjustment_speed: float = 0.1` — Price adjustment step size
+    *   `walrasian_tolerance: float = 0.01` — Convergence threshold
+    *   `walrasian_max_iterations: int = 100` — Max tatonnement iterations
+-   **Pedagogical Applications**:
+    *   Demonstrates market emergence from spatial clustering
+    *   Shows price discovery via tatonnement
+    *   Compares market vs bilateral trading efficiency
+    *   Illustrates market lifecycle (formation, persistence, dissolution)
+    *   Enables research on market thickness and price convergence
+-   **Visualization**: Pygame renderer displays:
+    *   Market areas as semi-transparent yellow overlays (alpha varies with activity)
+    *   Market centers as yellow circles with ID labels
+    *   Agent-to-market participation lines
+    *   Current market prices displayed at market centers
+-   **Example Scenarios**: Three demo scenarios in `scenarios/demos/`:
+    *   `emergent_market_basic.yaml` — Single resource cluster, market forms at cluster
+    *   `emergent_market_multi.yaml` — Multiple resource clusters, multiple markets
+    *   `emergent_market_nomadic.yaml` — Slow regeneration, markets form/dissolve as agents migrate
+
 #### Economic Decision-Making: Trade vs Forage Comparison
 -   **Motivation**: When both trading and foraging are available (mode = "both"), agents must decide which activity offers higher utility gain. This is a fundamental economic choice: should I gather resources or exchange with others?
 -   **Comparable Scoring**: Both activities are measured in utility units with identical distance discounting:

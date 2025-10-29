@@ -82,6 +82,10 @@ class VMTRenderer:
         
         # Exchange rate tracking
         self.trade_history = []  # List of (tick, exchange_pair_type, rate) tuples
+        
+        # Market visualization toggle (Week 3)
+        self.show_markets = True  # Toggle with 'K' key
+        self.show_market_activity = True  # Toggle with 'J' key
     
     def _should_use_dark_theme(self) -> bool:
         """Determine whether to enable the renderer's dark theme."""
@@ -275,6 +279,10 @@ class VMTRenderer:
         self.draw_grid()
         self.draw_resources()
         
+        # Draw market areas (Week 3) - before agents so overlay is visible
+        if self.show_markets:
+            self.draw_market_areas()
+        
         # Draw home positions if cell size is large enough
         if self.show_home_indicators:
             self.draw_home_positions()
@@ -289,6 +297,13 @@ class VMTRenderer:
         self.draw_money_labels()
         self.draw_money_sparkles()
         self.draw_trade_indicators()
+        
+        # Draw market center markers and prices (Week 3) - after agents so visible
+        if self.show_markets:
+            self.draw_market_centers()
+            self.draw_market_participation()
+            if self.show_market_activity:
+                self.draw_market_activity()
         
         # Draw HUD if enabled
         if self.show_hud_panel:
@@ -353,6 +368,335 @@ class VMTRenderer:
                         True, self.COLOR_TEXT
                     )
                     self.screen.blit(label, (screen_x + 2, screen_y + 2))
+    
+    def draw_market_areas(self):
+        """
+        Draw market areas as semi-transparent yellow overlays (Week 3).
+        
+        Alpha = 80 + min(100, trades * 2) for visual intensity based on activity.
+        """
+        if not hasattr(self.sim, 'trade_system'):
+            return
+        
+        trade_system = self.sim.trade_system
+        if not hasattr(trade_system, 'active_markets'):
+            return
+        
+        for market in trade_system.active_markets.values():
+            if not market.participant_ids:
+                continue  # Skip inactive markets
+            
+            center_x, center_y = market.center
+            radius = market.radius
+            
+            # Calculate alpha based on trade activity
+            alpha = 80 + min(100, market.total_trades_executed * 2)
+            alpha = min(255, alpha)  # Cap at 255
+            
+            # Create semi-transparent surface
+            overlay_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+            
+            # Calculate market area in screen coordinates
+            # Market covers cells within Manhattan distance <= radius
+            for dx in range(-radius, radius + 1):
+                for dy in range(-radius, radius + 1):
+                    if abs(dx) + abs(dy) <= radius:
+                        cell_x = center_x + dx
+                        cell_y = center_y + dy
+                        
+                        # Check if cell is in grid bounds
+                        if 0 <= cell_x < self.sim.grid.N and 0 <= cell_y < self.sim.grid.N:
+                            screen_x, screen_y = self.to_screen_coords(cell_x, cell_y)
+                            
+                            # Draw semi-transparent rectangle
+                            if self.is_visible(screen_x, screen_y):
+                                pygame.draw.rect(
+                                    overlay_surface,
+                                    (*self.COLOR_YELLOW, alpha),
+                                    (screen_x, screen_y, self.cell_size, self.cell_size)
+                                )
+            
+            # Blit overlay to main screen
+            self.screen.blit(overlay_surface, (0, 0))
+    
+    def draw_market_centers(self):
+        """
+        Draw market center markers with ID labels and prices (Week 3).
+        
+        Visual design:
+        - Yellow circle, radius 8
+        - ID label: "M{id}" above center
+        - Prices: "A:1.2 B:0.8" below center
+        """
+        if not hasattr(self.sim, 'trade_system'):
+            return
+        
+        trade_system = self.sim.trade_system
+        if not hasattr(trade_system, 'active_markets'):
+            return
+        
+        for market in trade_system.active_markets.values():
+            if not market.participant_ids:
+                continue
+            
+            center_x, center_y = market.center
+            screen_x, screen_y = self.to_screen_coords(center_x, center_y)
+            
+            # Only draw if visible
+            if not self.is_visible(screen_x, screen_y):
+                continue
+            
+            # Center point (middle of cell)
+            center_px = screen_x + self.cell_size // 2
+            center_py = screen_y + self.cell_size // 2
+            
+            # Draw yellow circle marker
+            marker_radius = max(4, min(8, self.cell_size // 6))
+            pygame.draw.circle(
+                self.screen, self.COLOR_YELLOW,
+                (center_px, center_py), marker_radius
+            )
+            pygame.draw.circle(
+                self.screen, (200, 200, 0),  # Darker yellow outline
+                (center_px, center_py), marker_radius, 2
+            )
+            
+            # Draw market ID label above center
+            market_id_text = f"M{market.id}"
+            id_label = self.small_font.render(market_id_text, True, self.COLOR_YELLOW)
+            id_width = id_label.get_width()
+            id_height = id_label.get_height()
+            id_x = center_px - id_width // 2
+            id_y = center_py - marker_radius - id_height - 2
+            
+            # Draw black outline for readability
+            for dx in [-1, 0, 1]:
+                for dy in [-1, 0, 1]:
+                    if dx != 0 or dy != 0:
+                        outline = self.small_font.render(market_id_text, True, self.COLOR_TEXT_OUTLINE)
+                        self.screen.blit(outline, (id_x + dx, id_y + dy))
+            
+            self.screen.blit(id_label, (id_x, id_y))
+            
+            # Draw prices and activity info below center
+            info_lines = []
+            
+            # Add prices
+            if 'A' in market.current_prices:
+                price_A = market.current_prices['A']
+                info_lines.append(f"A:{price_A:.2f}")
+            if 'B' in market.current_prices:
+                price_B = market.current_prices['B']
+                info_lines.append(f"B:{price_B:.2f}")
+            
+            # Add trade count and volume
+            if market.total_trades_executed > 0:
+                info_lines.append(f"Trades:{market.total_trades_executed}")
+            if market.total_volume_traded > 0:
+                info_lines.append(f"Vol:{market.total_volume_traded:.1f}")
+            
+            # Add participant count
+            info_lines.append(f"Agents:{len(market.participant_ids)}")
+            
+            # Draw each line
+            line_height = self.small_font.get_height() + 1
+            start_y = center_py + marker_radius + 2
+            
+            for i, line_text in enumerate(info_lines):
+                line_label = self.small_font.render(line_text, True, self.COLOR_YELLOW)
+                line_width = line_label.get_width()
+                line_x = center_px - line_width // 2
+                line_y = start_y + i * line_height
+                
+                # Draw black outline for readability
+                for dx in [-1, 0, 1]:
+                    for dy in [-1, 0, 1]:
+                        if dx != 0 or dy != 0:
+                            outline = self.small_font.render(line_text, True, self.COLOR_TEXT_OUTLINE)
+                            self.screen.blit(outline, (line_x + dx, line_y + dy))
+                
+                self.screen.blit(line_label, (line_x, line_y))
+    
+    def draw_market_participation(self):
+        """
+        Draw connection lines from agents to market centers (Week 3).
+        
+        Visual indicator of which agents are participating in which markets.
+        """
+        if not hasattr(self.sim, 'trade_system'):
+            return
+        
+        trade_system = self.sim.trade_system
+        if not hasattr(trade_system, 'active_markets'):
+            return
+        
+        # Build agent -> market mapping
+        agent_to_market = {}
+        for market in trade_system.active_markets.values():
+            for agent_id in market.participant_ids:
+                agent_to_market[agent_id] = market
+        
+        # Draw lines from agents to their market centers
+        for agent in self.sim.agents:
+            if agent.id not in agent_to_market:
+                continue
+            
+            market = agent_to_market[agent.id]
+            center_x, center_y = market.center
+            
+            # Agent position
+            agent_screen = self.to_screen_coords(agent.pos[0], agent.pos[1])
+            agent_center = (
+                agent_screen[0] + self.cell_size // 2,
+                agent_screen[1] + self.cell_size // 2
+            )
+            
+            # Market center position
+            market_screen = self.to_screen_coords(center_x, center_y)
+            market_center = (
+                market_screen[0] + self.cell_size // 2,
+                market_screen[1] + self.cell_size // 2
+            )
+            
+            # Draw semi-transparent yellow line
+            # Create a line surface with alpha
+            line_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+            pygame.draw.line(
+                line_surface, (*self.COLOR_YELLOW, 100),  # Alpha = 100
+                agent_center, market_center, 1
+            )
+            self.screen.blit(line_surface, (0, 0))
+    
+    def draw_market_activity(self):
+        """
+        Draw market clearing activity indicators (Week 3 enhancement).
+        
+        Shows:
+        - Trade flow arrows between market participants
+        - Market clearing status (converged/diverged)
+        - Recent price changes
+        """
+        if not hasattr(self.sim, 'trade_system'):
+            return
+        
+        trade_system = self.sim.trade_system
+        if not hasattr(trade_system, 'active_markets'):
+            return
+        
+        for market in trade_system.active_markets.values():
+            if not market.participant_ids or len(market.participant_ids) < 2:
+                continue
+            
+            # Draw trade flow indicators between market participants
+            self._draw_market_trade_flows(market)
+            
+            # Draw market status indicator
+            self._draw_market_status(market)
+    
+    def _draw_market_trade_flows(self, market):
+        """Draw trade flow arrows between market participants."""
+        if len(market.participant_ids) < 2:
+            return
+        
+        # Get participant positions
+        participants = []
+        for agent_id in market.participant_ids:
+            agent = self.sim.agent_by_id.get(agent_id)
+            if agent:
+                participants.append((agent_id, agent.pos))
+        
+        if len(participants) < 2:
+            return
+        
+        # Draw arrows between participants to show market activity
+        for i, (agent_id1, pos1) in enumerate(participants):
+            for j, (agent_id2, pos2) in enumerate(participants[i+1:], i+1):
+                # Skip if same position
+                if pos1 == pos2:
+                    continue
+                
+                screen_x1, screen_y1 = self.to_screen_coords(pos1[0], pos1[1])
+                screen_x2, screen_y2 = self.to_screen_coords(pos2[0], pos2[1])
+                
+                # Center on cells
+                center1_x = screen_x1 + self.cell_size // 2
+                center1_y = screen_y1 + self.cell_size // 2
+                center2_x = screen_x2 + self.cell_size // 2
+                center2_y = screen_y2 + self.cell_size // 2
+                
+                # Only draw if both are visible
+                if not (self.is_visible(screen_x1, screen_y1) or self.is_visible(screen_x2, screen_y2)):
+                    continue
+                
+                # Draw bidirectional arrow (market clearing is multilateral)
+                self._draw_arrow(center1_x, center1_y, center2_x, center2_y, 
+                               self.COLOR_YELLOW, alpha=120, width=2)
+    
+    def _draw_market_status(self, market):
+        """Draw market status indicator (converged/diverged, activity level)."""
+        center_x, center_y = market.center
+        screen_x, screen_y = self.to_screen_coords(center_x, center_y)
+        
+        if not self.is_visible(screen_x, screen_y):
+            return
+        
+        # Position status indicator to the right of market center
+        center_px = screen_x + self.cell_size // 2
+        center_py = screen_y + self.cell_size // 2
+        status_x = center_px + 20
+        status_y = center_py - 10
+        
+        # Determine status based on recent activity
+        if market.total_trades_executed > 0:
+            # Active market - show activity level
+            activity_level = min(3, market.total_trades_executed // 5)
+            status_color = self.COLOR_GREEN if activity_level >= 2 else self.COLOR_YELLOW
+            
+            # Draw activity indicator (small circles)
+            for i in range(activity_level):
+                circle_x = status_x + i * 8
+                circle_y = status_y
+                pygame.draw.circle(self.screen, status_color, (circle_x, circle_y), 3)
+        else:
+            # Inactive market - show waiting indicator
+            pygame.draw.circle(self.screen, self.COLOR_GRAY, (status_x, status_y), 3)
+    
+    def _draw_arrow(self, x1, y1, x2, y2, color, alpha=255, width=2):
+        """Draw an arrow between two points."""
+        # Calculate arrow direction and length
+        dx = x2 - x1
+        dy = y2 - y1
+        length = (dx*dx + dy*dy)**0.5
+        
+        if length < 5:  # Too short to draw
+            return
+        
+        # Normalize direction
+        dx_norm = dx / length
+        dy_norm = dy / length
+        
+        # Arrow parameters
+        arrow_length = min(15, length * 0.3)
+        arrow_angle = 0.5  # radians
+        
+        # Calculate arrow head points
+        head_x1 = x2 - arrow_length * (dx_norm * math.cos(arrow_angle) - dy_norm * math.sin(arrow_angle))
+        head_y1 = y2 - arrow_length * (dx_norm * math.sin(arrow_angle) + dy_norm * math.cos(arrow_angle))
+        
+        head_x2 = x2 - arrow_length * (dx_norm * math.cos(-arrow_angle) - dy_norm * math.sin(-arrow_angle))
+        head_y2 = y2 - arrow_length * (dx_norm * math.sin(-arrow_angle) + dy_norm * math.cos(-arrow_angle))
+        
+        # Create surface for arrow with alpha
+        arrow_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        
+        # Draw arrow line
+        pygame.draw.line(arrow_surface, (*color, alpha), (x1, y1), (x2, y2), width)
+        
+        # Draw arrow head
+        pygame.draw.polygon(arrow_surface, (*color, alpha), 
+                           [(x2, y2), (head_x1, head_y1), (head_x2, head_y2)])
+        
+        self.screen.blit(arrow_surface, (0, 0))
     
     def draw_home_positions(self):
         """Draw home position indicators for all agents."""

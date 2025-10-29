@@ -168,6 +168,8 @@ class Simulation:
         self._start_utility: dict[int, Optional[float]] = {}
         self._gathered_resources: dict[int, dict[str, int]] = {}
         self._trades_made: dict[int, int] = {}
+        self._bilateral_trades_made: dict[int, int] = {}
+        self._market_trades_made: dict[int, int] = {}
         self._summary_printed = False
 
         for agent in self.agents:
@@ -190,6 +192,8 @@ class Simulation:
 
             self._gathered_resources[agent.id] = {"A": 0, "B": 0}
             self._trades_made[agent.id] = 0
+            self._bilateral_trades_made[agent.id] = 0
+            self._market_trades_made[agent.id] = 0
         
         # Initialize spatial index for efficient proximity queries
         # Bucket size = max query radius for optimal performance
@@ -504,6 +508,8 @@ class Simulation:
 
             gathered = self._gathered_resources.get(agent.id, {"A": 0, "B": 0})
             trades = self._trades_made.get(agent.id, 0)
+            bilateral_trades = self._bilateral_trades_made.get(agent.id, 0)
+            market_trades = self._market_trades_made.get(agent.id, 0)
 
             inventory_segment = (
                 f"A {start_inv['A']}->{end_inv['A']} (d {fmt_signed_int(delta_a)}), "
@@ -518,9 +524,11 @@ class Simulation:
             else:
                 utility_label = "None"
 
+            trades_segment = f"bilateral trades: {bilateral_trades}, market trades: {market_trades}"
+            
             print(
                 f"Agent {agent.id} ({utility_label}): {inventory_segment} | {util_segment} | "
-                f"{gathered_segment} | trades: {trades}"
+                f"{gathered_segment} | {trades_segment}"
             )
 
         self._summary_printed = True

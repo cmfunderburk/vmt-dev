@@ -47,6 +47,10 @@ class TelemetryManager:
         self._trade_attempt_buffer: list = []
         self._pairing_buffer: list = []
         self._preference_buffer: list = []
+        self._market_formation_buffer: list = []
+        self._market_dissolution_buffer: list = []
+        self._market_clear_buffer: list = []
+        self._market_snapshot_buffer: list = []
         
         # For renderer compatibility
         self.recent_trades_for_renderer: list = []
@@ -217,7 +221,7 @@ class TelemetryManager:
     
     def log_trade(self, tick: int, x: int, y: int, buyer_id: int, seller_id: int,
                   dA: int, dB: int, price: float, direction: str, dM: int = 0,
-                  exchange_pair_type: str = "A<->B"):
+                  exchange_pair_type: str = "A<->B", market_id: Optional[int] = None):
         """
         Log a successful trade.
         
@@ -232,6 +236,7 @@ class TelemetryManager:
             direction: Trade direction string
             dM: Amount of money traded (Phase 2+, default 0 for barter)
             exchange_pair_type: Type of exchange (Phase 3+, default "A<->B")
+            market_id: Market ID if trade occurred in a market, None for bilateral (Week 3)
         """
         if not self.config.log_trades or self.db is None or self.run_id is None:
             return
@@ -240,7 +245,8 @@ class TelemetryManager:
             self.run_id, tick, int(x), int(y),
             int(buyer_id), int(seller_id),
             int(dA), int(dB), int(dM), float(price), direction,
-            exchange_pair_type  # Phase 3: log exchange pair type
+            exchange_pair_type,  # Phase 3: log exchange pair type
+            market_id  # Week 3: market identifier
         ))
         
         # Also store for renderer (Phase 2+: include dM and exchange_pair_type)
@@ -465,8 +471,8 @@ class TelemetryManager:
         
         self.db.executemany("""
             INSERT INTO trades
-            (run_id, tick, x, y, buyer_id, seller_id, dA, dB, dM, price, direction, exchange_pair_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (run_id, tick, x, y, buyer_id, seller_id, dA, dB, dM, price, direction, exchange_pair_type, market_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, self._trade_buffer)
         self.db.commit()
         self._trade_buffer.clear()
@@ -517,6 +523,157 @@ class TelemetryManager:
         self.db.commit()
         self._preference_buffer.clear()
     
+    # ========================================================================
+    # Market Logging Methods (Week 3)
+    # ========================================================================
+    
+    def log_market_formation(self, tick: int, market_id: int, center_x: int, center_y: int,
+                            num_participants: int):
+        """
+        Log market formation event.
+        
+        Args:
+            tick: Current simulation tick
+            market_id: Unique market identifier
+            center_x, center_y: Market center coordinates
+            num_participants: Number of agents in market
+        """
+        if self.db is None or self.run_id is None:
+            return
+        
+        self._market_formation_buffer.append((
+            self.run_id, market_id, center_x, center_y, tick, num_participants
+        ))
+        
+        # Flush buffer if needed
+        if len(self._market_formation_buffer) >= self.config.batch_size:
+            self._flush_market_formations()
+    
+    def log_market_dissolution(self, tick: int, market_id: int, age: int, reason: str):
+        """
+        Log market dissolution event.
+        
+        Args:
+            tick: Current simulation tick
+            market_id: Unique market identifier
+            age: Number of ticks market existed
+            reason: Reason for dissolution (e.g., "low_density", "end_simulation")
+        """
+        if self.db is None or self.run_id is None:
+            return
+        
+        self._market_dissolution_buffer.append((
+            self.run_id, market_id, tick, age, reason
+        ))
+        
+        # Flush buffer if needed
+        if len(self._market_dissolution_buffer) >= self.config.batch_size:
+            self._flush_market_dissolutions()
+    
+    def log_market_clear(self, tick: int, market_id: int, commodity: str,
+                        clearing_price: float, quantity_traded: float,
+                        num_participants: int, converged: bool):
+        """
+        Log market clearing event (price discovery result).
+        
+        Args:
+            tick: Current simulation tick
+            market_id: Unique market identifier
+            commodity: Commodity cleared ('A' or 'B')
+            clearing_price: Equilibrium price found
+            quantity_traded: Total quantity traded at clearing price
+            num_participants: Number of agents participating in market
+            converged: Whether tatonnement converged
+        """
+        if self.db is None or self.run_id is None:
+            return
+        
+        self._market_clear_buffer.append((
+            self.run_id, tick, market_id, commodity, clearing_price,
+            quantity_traded, num_participants, 1 if converged else 0
+        ))
+        
+        # Flush buffer if needed
+        if len(self._market_clear_buffer) >= self.config.batch_size:
+            self._flush_market_clears()
+    
+    def log_market_snapshot(self, tick: int, market_id: int, center_x: int, center_y: int,
+                           num_participants: int, age: int, total_trades: int):
+        """
+        Log periodic market state snapshot.
+        
+        Args:
+            tick: Current simulation tick
+            market_id: Unique market identifier
+            center_x, center_y: Market center coordinates
+            num_participants: Number of agents in market
+            age: Number of ticks since formation
+            total_trades: Total number of trades executed in this market
+        """
+        if self.db is None or self.run_id is None:
+            return
+        
+        self._market_snapshot_buffer.append((
+            self.run_id, tick, market_id, center_x, center_y,
+            num_participants, age, total_trades
+        ))
+        
+        # Flush buffer if needed
+        if len(self._market_snapshot_buffer) >= self.config.batch_size:
+            self._flush_market_snapshots()
+    
+    def _flush_market_formations(self):
+        """Flush market formation buffer to database."""
+        if not self._market_formation_buffer or self.db is None:
+            return
+        
+        self.db.executemany("""
+            INSERT OR REPLACE INTO market_formations
+            (run_id, market_id, center_x, center_y, formation_tick, num_participants)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, self._market_formation_buffer)
+        self.db.commit()
+        self._market_formation_buffer.clear()
+    
+    def _flush_market_dissolutions(self):
+        """Flush market dissolution buffer to database."""
+        if not self._market_dissolution_buffer or self.db is None:
+            return
+        
+        self.db.executemany("""
+            INSERT INTO market_dissolutions
+            (run_id, market_id, dissolution_tick, age, reason)
+            VALUES (?, ?, ?, ?, ?)
+        """, self._market_dissolution_buffer)
+        self.db.commit()
+        self._market_dissolution_buffer.clear()
+    
+    def _flush_market_clears(self):
+        """Flush market clear buffer to database."""
+        if not self._market_clear_buffer or self.db is None:
+            return
+        
+        self.db.executemany("""
+            INSERT OR REPLACE INTO market_clears
+            (run_id, tick, market_id, commodity, clearing_price, quantity_traded, num_participants, converged)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, self._market_clear_buffer)
+        self.db.commit()
+        self._market_clear_buffer.clear()
+    
+    def _flush_market_snapshots(self):
+        """Flush market snapshot buffer to database."""
+        if not self._market_snapshot_buffer or self.db is None:
+            return
+        
+        self.db.executemany("""
+            INSERT INTO market_snapshots
+            (run_id, tick, market_id, center_x, center_y, num_participants, age, total_trades)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, self._market_snapshot_buffer)
+        self.db.commit()
+        self._market_snapshot_buffer.clear()
+    
     def _flush_all_buffers(self):
         """Flush all buffers to database."""
         self._flush_agent_snapshots()
@@ -526,6 +683,10 @@ class TelemetryManager:
         self._flush_trade_attempts()
         self._flush_pairings()
         self._flush_preferences()
+        self._flush_market_formations()
+        self._flush_market_dissolutions()
+        self._flush_market_clears()
+        self._flush_market_snapshots()
     
     def close(self):
         """Close the telemetry manager and database."""
