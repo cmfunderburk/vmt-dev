@@ -165,7 +165,7 @@ scenario = ScenarioBuilder() \
 ---
 
 ## 📚 Documentation & Learning
-> cmf: The following ideas are all great starts, but I need to think them through more carefully.
+> cmf: The following ideas are all good starts, but I need to think them through more carefully.
 
 ### Interactive Tutorial Mode 🔵 [IDEA]
 **Problem:** New users don't know what to look for in simulations  
