@@ -695,27 +695,27 @@ Without centralized mechanisms, we can only study bilateral exchange. With them,
 
 ---
 
-## XIII. Long-Term Vision (3-5 Years)
+## XIII. Long-Term Vision
 
-### Year 1: Exchange Mechanisms (Current Focus)
+### Exchange Mechanisms (Current Focus)
 - Complete protocol library (Phases 2-5)
 - Publish comparative institutional analysis
 - Develop teaching materials and scenarios
 - Establish VMT as research/teaching platform
 
-### Year 2: Production Extension
+### Production Extension
 - Add production functions and factor markets
 - Firm decision-making
 - Industry organization
 - Labor markets
 
-### Year 3: Market Failures
+### Market Failures
 - Public goods and externalities
 - Asymmetric information
 - Market power and regulation
 - Institutional responses
 
-### Year 4-5: Advanced Topics
+### Advanced Topics
 - General equilibrium with production
 - Dynamic stochastic environments
 - Network formation and intermediation
