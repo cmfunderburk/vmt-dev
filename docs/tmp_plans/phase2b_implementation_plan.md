@@ -231,7 +231,7 @@ Version: 2025.10.28 (Phase 2b - Pedagogical Protocol)
 from typing import Any, List
 from ..registry import register_protocol
 from ..base import SearchProtocol, Effect, SetTarget
-from ..context import ProtocolContext
+from ..context import WorldView
 
 @register_protocol(
     category="search",
@@ -259,12 +259,12 @@ class MyopicSearch(SearchProtocol):
     name = "myopic"
     version = "2025.10.28"
     
-    def build_preferences(self, context: ProtocolContext) -> List[tuple]:
+    def build_preferences(self, world: WorldView) -> List[tuple]:
         """
         Build preferences using limited vision (radius=1).
         
         Args:
-            context: Protocol execution context
+            world: Agent's immutable perception snapshot
             
         Returns:
             List of (target, score, metadata) tuples
@@ -272,12 +272,12 @@ class MyopicSearch(SearchProtocol):
         # TODO: Implement myopic search with vision radius = 1
         pass
     
-    def select_target(self, context: ProtocolContext) -> List[Effect]:
+    def select_target(self, world: WorldView) -> List[Effect]:
         """
         Select target from myopic preferences.
         
         Args:
-            context: Protocol execution context
+            world: Agent's immutable perception snapshot
             
         Returns:
             List of SetTarget effects
@@ -381,7 +381,7 @@ Version: 2025.10.28 (Phase 2b - Pedagogical Protocol)
 from typing import Any, List
 from ..registry import register_protocol
 from ..base import BargainingProtocol, Effect, Trade, Unpair
-from ..context import ProtocolContext
+from ..context import WorldView
 
 @register_protocol(
     category="bargaining",
@@ -409,26 +409,32 @@ class TakeItOrLeaveIt(BargainingProtocol):
     name = "take_it_or_leave_it"
     version = "2025.10.28"
     
-    def __init__(self, proposer_power: float = 0.9):
+    def __init__(self, proposer_power: float = 0.9, proposer_selection: str = "random"):
         """
         Initialize TIOL bargaining protocol.
         
         Args:
             proposer_power: Fraction of surplus going to proposer [0, 1]
+            proposer_selection: How to select proposer. Options:
+                - "random": Random selection using RNG
+                - "first_in_pair": First agent in pair tuple (deterministic)
+                - "higher_id": Agent with higher ID (deterministic)
+                - "lower_id": Agent with lower ID (deterministic)
         """
         self.proposer_power = proposer_power
+        self.proposer_selection = proposer_selection
     
     def negotiate(
         self, 
         pair: tuple[int, int], 
-        context: ProtocolContext
+        world: WorldView
     ) -> List[Effect]:
         """
         Single-round negotiation with monopolistic offer.
         
         Args:
             pair: (agent_a_id, agent_b_id) to negotiate
-            context: Protocol execution context
+            world: Context with both agents' states
             
         Returns:
             List of Trade or Unpair effects
@@ -585,7 +591,7 @@ class TakeItOrLeaveIt(BargainingProtocol):
 - **Option B:** Implement simplified surplus calculation for efficiency
 - **Option C:** Make surplus calculation configurable
 
-**Recommendation:** Option A (use existing logic) for consistency and accuracy
+**Recommendation:** Option A (use existing logic) for consistency and accuracy. Use `find_all_feasible_trades()` and select trade maximizing total surplus (surplus_i + surplus_j), then apply distance discounting using β^distance parameter.
 
 ### 2. Myopic Search
 **Question:** How to handle cases where no targets are visible within radius 1?
@@ -602,7 +608,7 @@ class TakeItOrLeaveIt(BargainingProtocol):
 - **Option C:** Agent with higher ID (deterministic)
 - **Option D:** Make proposer selection configurable
 
-**Recommendation:** Option A (random selection) for fairness and unpredictability
+**Recommendation:** Option D (make configurable) with Option A as default. Add `proposer_selection` parameter with options: "random" (default), "first_in_pair", "higher_id", "lower_id". This enables deterministic scenarios when needed while defaulting to randomness for fairness.
 
 ### 4. Teaching Scenarios
 **Question:** What specific metrics should we track for pedagogical value?

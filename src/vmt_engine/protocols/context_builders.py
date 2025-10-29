@@ -145,14 +145,26 @@ def build_protocol_context(sim: "Simulation") -> ProtocolContext:
     # Protocol-specific state (empty for now - will be populated by InternalStateUpdate effects)
     protocol_state = {}
     
-    # Build params dict
+    # Build params dict with full agent state for matching protocols
     params = {
         "beta": sim.params.get("beta", 0.95),
         "vision_radius": sim.params.get("vision_radius", 5),
         "interaction_radius": sim.params.get("interaction_radius", 1),
         "epsilon": sim.params.get("epsilon", 1e-9),
         "exchange_regime": sim.params.get("exchange_regime", "barter_only"),
+        "dA_max": sim.params.get("dA_max", 50),
+        "money_scale": sim.params.get("money_scale", 1),
     }
+    
+    # Add full agent state for matching protocols (inventory, utility, lambda_money)
+    for agent in sim.agents:
+        params[f"agent_{agent.id}_inv_A"] = agent.inventory.A
+        params[f"agent_{agent.id}_inv_B"] = agent.inventory.B
+        params[f"agent_{agent.id}_inv_M"] = agent.inventory.M
+        params[f"agent_{agent.id}_utility"] = agent.utility
+        params[f"agent_{agent.id}_lambda"] = agent.lambda_money
+        params[f"agent_{agent.id}_money_utility_form"] = agent.money_utility_form
+        params[f"agent_{agent.id}_M_0"] = agent.M_0
     
     return ProtocolContext(
         tick=sim.tick,

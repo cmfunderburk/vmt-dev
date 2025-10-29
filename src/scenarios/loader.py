@@ -100,9 +100,30 @@ def load_scenario(path: str) -> ScenarioConfig:
             )
         
         # Parse protocol configuration (optional)
+        # Support both string names and dict with name + params
         search_protocol = data.get('search_protocol', None)
         matching_protocol = data.get('matching_protocol', None)
         bargaining_protocol = data.get('bargaining_protocol', None)
+        
+        # Normalize to dict format if string (for consistency)
+        if isinstance(search_protocol, str):
+            search_protocol = {'name': search_protocol}
+        elif isinstance(search_protocol, dict):
+            # Ensure it has 'name' key
+            if 'name' not in search_protocol:
+                raise ValueError("search_protocol dict must have 'name' key")
+        
+        if isinstance(matching_protocol, str):
+            matching_protocol = {'name': matching_protocol}
+        elif isinstance(matching_protocol, dict):
+            if 'name' not in matching_protocol:
+                raise ValueError("matching_protocol dict must have 'name' key")
+        
+        if isinstance(bargaining_protocol, str):
+            bargaining_protocol = {'name': bargaining_protocol}
+        elif isinstance(bargaining_protocol, dict):
+            if 'name' not in bargaining_protocol:
+                raise ValueError("bargaining_protocol dict must have 'name' key")
         
         # Create scenario config
         scenario = ScenarioConfig(

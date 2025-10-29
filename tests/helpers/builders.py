@@ -1,3 +1,4 @@
+from typing import Union
 from scenarios.schema import (
     ScenarioConfig,
     ScenarioParams,
@@ -71,14 +72,21 @@ def build_scenario(
 def make_sim(
     scenario: ScenarioConfig,
     seed: int = 42,
-    search: str | None = None,
-    matching: str | None = None,
-    bargaining: str | None = None,
+    search: Union[str, dict, None] = None,
+    matching: Union[str, dict, None] = None,
+    bargaining: Union[str, dict, None] = None,
 ) -> Simulation:
-    """Create a Simulation with optional protocol overrides by name.
+    """Create a Simulation with optional protocol overrides by name or config dict.
 
-    If a protocol name is provided, instantiate via the protocol factory and
+    If a protocol name/config is provided, instantiate via the protocol factory and
     pass the instance to Simulation to override defaults.
+    
+    Args:
+        scenario: Scenario configuration
+        seed: Random seed
+        search: Protocol name (str) or config dict (e.g., {"name": "myopic", "params": {}})
+        matching: Protocol name (str) or config dict
+        bargaining: Protocol name (str) or config dict (e.g., {"name": "take_it_or_leave_it", "params": {"proposer_power": 0.9}})
     """
     search_obj = get_search_protocol(search) if search else None
     matching_obj = get_matching_protocol(matching) if matching else None

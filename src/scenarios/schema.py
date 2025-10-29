@@ -3,7 +3,7 @@ Scenario schema definitions and validation.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, Union
 from enum import Enum
 
 
@@ -236,9 +236,10 @@ class ScenarioConfig:
     mode_schedule: Optional[ModeSchedule] = None
     
     # Protocol configuration (optional - defaults to legacy protocols)
-    search_protocol: Optional[str] = None  # e.g., "legacy_distance_discounted", "random_walk"
-    matching_protocol: Optional[str] = None  # e.g., "legacy_three_pass", "random_matching"
-    bargaining_protocol: Optional[str] = None  # e.g., "legacy_compensating_block", "split_difference"
+    # Can be string (protocol name) or dict with "name" and optional "params"
+    search_protocol: Optional[Union[str, dict[str, Any]]] = None  # e.g., "legacy_distance_discounted" or {"name": "myopic", "params": {}}
+    matching_protocol: Optional[Union[str, dict[str, Any]]] = None  # e.g., "legacy_three_pass" or {"name": "greedy_surplus", "params": {}}
+    bargaining_protocol: Optional[Union[str, dict[str, Any]]] = None  # e.g., "legacy_compensating_block" or {"name": "take_it_or_leave_it", "params": {"proposer_power": 0.9}}
     
     def validate(self) -> None:
         """Validate scenario parameters."""
@@ -378,18 +379,51 @@ class ScenarioConfig:
         from vmt_engine.protocols.registry import ProtocolRegistry
         registered = ProtocolRegistry.list_protocols()
 
-        if self.search_protocol is not None and self.search_protocol not in registered.get('search', []):
-            raise ValueError(
-                f"Invalid search_protocol '{self.search_protocol}'. Available: {registered.get('search', [])}"
-            )
+        # Validate search protocol
+        if self.search_protocol is not None:
+            if isinstance(self.search_protocol, str):
+                protocol_name = self.search_protocol
+            elif isinstance(self.search_protocol, dict):
+                protocol_name = self.search_protocol.get('name')
+                if not protocol_name:
+                    raise ValueError("search_protocol dict must have 'name' key")
+            else:
+                raise ValueError(f"search_protocol must be str or dict, got {type(self.search_protocol)}")
+            
+            if protocol_name not in registered.get('search', []):
+                raise ValueError(
+                    f"Invalid search_protocol '{protocol_name}'. Available: {registered.get('search', [])}"
+                )
         
-        if self.matching_protocol is not None and self.matching_protocol not in registered.get('matching', []):
-            raise ValueError(
-                f"Invalid matching_protocol '{self.matching_protocol}'. Available: {registered.get('matching', [])}"
-            )
+        # Validate matching protocol
+        if self.matching_protocol is not None:
+            if isinstance(self.matching_protocol, str):
+                protocol_name = self.matching_protocol
+            elif isinstance(self.matching_protocol, dict):
+                protocol_name = self.matching_protocol.get('name')
+                if not protocol_name:
+                    raise ValueError("matching_protocol dict must have 'name' key")
+            else:
+                raise ValueError(f"matching_protocol must be str or dict, got {type(self.matching_protocol)}")
+            
+            if protocol_name not in registered.get('matching', []):
+                raise ValueError(
+                    f"Invalid matching_protocol '{protocol_name}'. Available: {registered.get('matching', [])}"
+                )
         
-        if self.bargaining_protocol is not None and self.bargaining_protocol not in registered.get('bargaining', []):
-            raise ValueError(
-                f"Invalid bargaining_protocol '{self.bargaining_protocol}'. Available: {registered.get('bargaining', [])}"
-            )
+        # Validate bargaining protocol
+        if self.bargaining_protocol is not None:
+            if isinstance(self.bargaining_protocol, str):
+                protocol_name = self.bargaining_protocol
+            elif isinstance(self.bargaining_protocol, dict):
+                protocol_name = self.bargaining_protocol.get('name')
+                if not protocol_name:
+                    raise ValueError("bargaining_protocol dict must have 'name' key")
+            else:
+                raise ValueError(f"bargaining_protocol must be str or dict, got {type(self.bargaining_protocol)}")
+            
+            if protocol_name not in registered.get('bargaining', []):
+                raise ValueError(
+                    f"Invalid bargaining_protocol '{protocol_name}'. Available: {registered.get('bargaining', [])}"
+                )
 
