@@ -21,6 +21,9 @@ from ..protocols import (
     Unpair,
     build_trade_world_view,
 )
+from ..core.market import MarketArea
+from ..core.state import Position
+from ..protocols.market import WalrasianAuctioneer
 from .matching import execute_trade_generic
 
 if TYPE_CHECKING:
@@ -72,18 +75,85 @@ class TradeSystem:
     
     def __init__(self):
         self.bargaining_protocol: Optional[BargainingProtocol] = None
+        
+        # Market state (persists across ticks)
+        self.active_markets: dict[int, MarketArea] = {}
+        self.next_market_id: int = 0
+        
+        # Market mechanism (created on first use)
+        self.market_mechanism: Optional[WalrasianAuctioneer] = None
+        
+        # Statistics
+        self.market_formations: int = 0
+        self.market_dissolutions: int = 0
     
     def execute(self, sim: "Simulation") -> None:
-        """Execute trade phase using bargaining protocol."""
+        """
+        Execute trade phase using bargaining protocol.
         
+        Week 2: Markets are cleared before bilateral trades.
+        """
+        
+        # ===== STEP 1: DETECT MARKETS =====
+        markets = self._detect_market_areas(sim)
+        
+        # ===== STEP 2: ASSIGN AGENTS TO MARKETS (Week 2) =====
+        market_assignments = self._assign_agents_to_markets(markets, sim)
+        market_participants = set()
+        for agent_ids in market_assignments.values():
+            market_participants.update(agent_ids)
+        
+        # ===== STEP 3: UNPAIR MARKET PARTICIPANTS =====
+        for agent_id in market_participants:
+            agent = sim.agent_by_id[agent_id]
+            if agent.paired_with_id is not None:
+                partner_id = agent.paired_with_id
+                partner = sim.agent_by_id[partner_id]
+                
+                # Unpair both agents
+                agent.paired_with_id = None
+                partner.paired_with_id = None
+                
+                # Log unpair event
+                sim.telemetry.log_pairing_event(
+                    sim.tick, agent_id, partner_id, "unpair", "entered_market"
+                )
+        
+        # ===== STEP 4: PROCESS MARKET TRADES (Week 2) =====
+        all_market_trades = []
+        for market_id, agent_ids in sorted(market_assignments.items(), key=lambda x: x[0]):
+            market = self.active_markets[market_id]
+            market.participant_ids = agent_ids  # Update with actual assignments
+            
+            # Create mechanism if needed
+            if self.market_mechanism is None:
+                self.market_mechanism = self._create_mechanism(sim)
+            
+            # Clear market
+            trades = self.market_mechanism.execute(market, sim)
+            all_market_trades.extend(trades)
+        
+        # Apply market trade effects
+        for trade in all_market_trades:
+            self._apply_trade_effect(trade, sim)
+        
+        # ===== STEP 5: PROCESS BILATERAL TRADES (skip market participants) =====
         # Track processed pairs to avoid double-processing
         processed_pairs = set()
         
         for agent in sorted(sim.agents, key=lambda a: a.id):
+            # Skip if agent is in a market
+            if agent.id in market_participants:
+                continue
+            
             if agent.paired_with_id is None:
                 continue  # Skip unpaired agents
             
             partner_id = agent.paired_with_id
+            
+            # Skip if partner is in a market
+            if partner_id in market_participants:
+                continue
             
             # Skip if pair already processed
             pair_key = tuple(sorted([agent.id, partner_id]))
@@ -235,6 +305,7 @@ class TradeSystem:
             dA, dB, dM = effect.dA, effect.dB, effect.dM
         
         # Log trade event (using original API signature)
+        # Note: log_trade() will be extended to accept market_id in Week 3
         sim.telemetry.log_trade(
             tick=sim.tick,
             x=buyer.pos[0],
@@ -248,3 +319,248 @@ class TradeSystem:
             dM=dM,
             exchange_pair_type=effect.pair_type
         )
+    
+    # =============================================================================
+    # Market Detection Methods (Week 1)
+    # =============================================================================
+    
+    def _detect_market_areas(self, sim: 'Simulation') -> list[MarketArea]:
+        """
+        Detect dense agent clusters that qualify as markets.
+        
+        Algorithm:
+        1. Sort agents by ID (determinism)
+        2. For each agent not yet assigned:
+           a. Count agents within interaction_radius
+           b. If count >= formation_threshold:
+              - Check if existing market nearby (reuse ID)
+              - Otherwise create new market
+           c. Mark all participants as processed
+        3. Update existing markets' participant lists
+        4. Check dissolution criteria
+        
+        Returns:
+            List of active MarketArea objects
+        """
+        formation_threshold = sim.params.get('market_formation_threshold', 5)
+        dissolution_threshold = sim.params.get('market_dissolution_threshold', 3)
+        dissolution_patience = sim.params.get('market_dissolution_patience', 5)
+        interaction_radius = sim.params['interaction_radius']
+        
+        markets_active_this_tick: set[int] = set()
+        assigned_agents: set[int] = set()
+        
+        # Scan for clusters
+        for agent in sorted(sim.agents, key=lambda a: a.id):
+            if agent.id in assigned_agents:
+                continue
+            
+            # Find nearby agents
+            nearby = self._find_agents_within_radius(
+                agent.pos,
+                interaction_radius,
+                sim
+            )
+            
+            if len(nearby) >= formation_threshold:
+                # Compute cluster center
+                center = self._compute_cluster_center(nearby)
+                
+                # Find or create market
+                market = self._find_or_create_market(center, sim)
+                market.participant_ids = [a.id for a in nearby]
+                market.last_active_tick = sim.tick
+                market.ticks_below_threshold = 0
+                
+                # Log formation if new market
+                if market.formation_tick == sim.tick:
+                    print(f"Market {market.id} formed at {center} on tick {sim.tick} "
+                          f"with {len(market.participant_ids)} participants")
+                
+                markets_active_this_tick.add(market.id)
+                assigned_agents.update(market.participant_ids)
+        
+        # Update existing markets not seen this tick
+        self._update_inactive_markets(markets_active_this_tick, sim, 
+                                       dissolution_threshold, dissolution_patience)
+        
+        return list(self.active_markets.values())
+    
+    def _find_agents_within_radius(self, center: Position, radius: int,
+                                   sim: 'Simulation') -> list['Agent']:
+        """Return all agents within Manhattan distance <= radius"""
+        nearby = []
+        for agent in sim.agents:
+            dist = abs(agent.pos[0] - center[0]) + abs(agent.pos[1] - center[1])
+            if dist <= radius:
+                nearby.append(agent)
+        return sorted(nearby, key=lambda a: a.id)  # Deterministic ordering
+    
+    def _compute_cluster_center(self, agents: list['Agent']) -> Position:
+        """Compute geometric center of cluster"""
+        if not agents:
+            return (0, 0)
+        
+        avg_x = sum(a.pos[0] for a in agents) / len(agents)
+        avg_y = sum(a.pos[1] for a in agents) / len(agents)
+        
+        return (round(avg_x), round(avg_y))
+    
+    def _find_or_create_market(self, center: Position, 
+                               sim: 'Simulation') -> MarketArea:
+        """
+        Check if market exists near this location (reuse ID and prices).
+        Otherwise create new market.
+        """
+        # Check existing markets
+        for market in self.active_markets.values():
+            dist = abs(market.center[0] - center[0]) + abs(market.center[1] - center[1])
+            if dist <= 2:  # Within 2 cells = same market
+                market.center = center  # Update center (may drift slightly)
+                return market
+        
+        # Create new market
+        market_id = self.next_market_id
+        self.next_market_id += 1
+        
+        market = MarketArea(
+            id=market_id,
+            center=center,
+            radius=sim.params['interaction_radius'],
+            formation_tick=sim.tick
+        )
+        
+        self.active_markets[market_id] = market
+        self.market_formations += 1
+        
+        # Log formation event (telemetry will be added in Week 3)
+        # Note: participant_ids will be set by caller after market is returned
+        
+        return market
+    
+    def _update_inactive_markets(self, active_market_ids: set[int],
+                                 sim: 'Simulation',
+                                 dissolution_threshold: int,
+                                 dissolution_patience: int) -> None:
+        """Update markets not found this tick; dissolve if necessary"""
+        to_dissolve = []
+        
+        for market_id, market in self.active_markets.items():
+            if market_id not in active_market_ids:
+                # Market didn't form this tick
+                market.participant_ids = []
+                market.ticks_below_threshold += 1
+                
+                if market.ticks_below_threshold >= dissolution_patience:
+                    to_dissolve.append(market_id)
+        
+        # Dissolve markets
+        for market_id in to_dissolve:
+            market = self.active_markets[market_id]
+            
+            print(f"Market {market_id} dissolved at tick {sim.tick} "
+                  f"(existed for {market.age} ticks)")
+            
+            del self.active_markets[market_id]
+            self.market_dissolutions += 1
+    
+    # =============================================================================
+    # Market Assignment and Clearing (Week 2)
+    # =============================================================================
+    
+    def _assign_agents_to_markets(self, markets: list[MarketArea],
+                                   sim: 'Simulation') -> dict[int, list[int]]:
+        """
+        Assign agents to markets with exclusive assignment.
+        
+        Priority (for agents eligible for multiple markets):
+        1. Largest market (most participants)
+        2. Closest market (minimum Manhattan distance)
+        3. Lowest market ID (deterministic tie-breaker)
+        
+        Args:
+            markets: List of active markets
+            sim: Simulation state
+            
+        Returns:
+            dict mapping market_id to list of assigned agent_ids
+        """
+        if not markets:
+            return {}
+        
+        # Build eligibility map: agent_id -> list of (market, distance) tuples
+        eligibility: dict[int, list[tuple[MarketArea, int]]] = {}
+        
+        for agent in sorted(sim.agents, key=lambda a: a.id):
+            for market in markets:
+                # Check if agent is within market radius
+                dist = abs(agent.pos[0] - market.center[0]) + abs(agent.pos[1] - market.center[1])
+                if dist <= market.radius:
+                    if agent.id not in eligibility:
+                        eligibility[agent.id] = []
+                    eligibility[agent.id].append((market, dist))
+        
+        # Assign agents (greedy: process agents in ID order)
+        assignments: dict[int, list[int]] = {}
+        assigned_agents: set[int] = set()
+        
+        # Sort agents by ID for deterministic processing
+        eligible_agents = sorted(eligibility.keys())
+        
+        for agent_id in eligible_agents:
+            if agent_id in assigned_agents:
+                continue  # Already assigned
+            
+            options = eligibility[agent_id]
+            
+            # Sort by priority: size (desc), distance (asc), market_id (asc)
+            options.sort(key=lambda x: (
+                -len(x[0].participant_ids),  # Larger markets first
+                x[1],  # Closer markets first
+                x[0].id  # Lower ID first (tie-breaker)
+            ))
+            
+            # Assign to highest priority market
+            market = options[0][0]
+            market_id = market.id
+            
+            if market_id not in assignments:
+                assignments[market_id] = []
+            
+            assignments[market_id].append(agent_id)
+            assigned_agents.add(agent_id)
+        
+        # Sort agent lists for determinism
+        for market_id in assignments:
+            assignments[market_id].sort()
+        
+        return assignments
+    
+    def _create_mechanism(self, sim: 'Simulation') -> WalrasianAuctioneer:
+        """
+        Create market mechanism from scenario parameters.
+        
+        Args:
+            sim: Simulation state
+            
+        Returns:
+            Market mechanism instance
+        """
+        mechanism_type = sim.params.get('market_mechanism', 'walrasian')
+        
+        if mechanism_type == 'walrasian':
+            adjustment_speed = sim.params.get('walrasian_adjustment_speed', 0.1)
+            tolerance = sim.params.get('walrasian_tolerance', 0.01)
+            max_iterations = sim.params.get('walrasian_max_iterations', 100)
+            
+            return WalrasianAuctioneer(
+                adjustment_speed=adjustment_speed,
+                tolerance=tolerance,
+                max_iterations=max_iterations
+            )
+        elif mechanism_type == 'posted_price':
+            raise NotImplementedError("Posted price mechanism deferred to future phase")
+        elif mechanism_type == 'cda':
+            raise NotImplementedError("Continuous double auction deferred to future phase")
+        else:
+            raise ValueError(f"Unknown market mechanism: {mechanism_type}")

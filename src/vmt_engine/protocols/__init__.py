@@ -42,6 +42,10 @@ from .base import (
     SetCooldown,
     # Multi-tick state effects
     InternalStateUpdate,
+    # Market lifecycle effects
+    MarketFormation,
+    MarketDissolution,
+    MarketClear,
     # Protocol base classes
     ProtocolBase,
     SearchProtocol,
@@ -84,6 +88,9 @@ __all__ = [
     "RefreshQuotes",
     "SetCooldown",
     "InternalStateUpdate",
+    "MarketFormation",
+    "MarketDissolution",
+    "MarketClear",
     # Protocols
     "ProtocolBase",
     "SearchProtocol",

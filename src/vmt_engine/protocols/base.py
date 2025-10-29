@@ -156,7 +156,9 @@ class Move(Effect):
 @dataclass
 class Trade(Effect):
     """
-    Execute a bilateral trade between two agents.
+    Execute a trade between two agents.
+    
+    Supports both bilateral and market-based trades.
     
     Trade types (pair_type):
     - "A_for_B": Barter trade (good A for good B)
@@ -177,6 +179,17 @@ class Trade(Effect):
     dM: int  # Change in money
     price: float  # Price of the transaction
     metadata: dict[str, Any]  # Additional info (e.g., surplus, rounds)
+    market_id: Optional[int] = None  # None = bilateral trade, int = market trade
+    
+    @property
+    def is_market_trade(self) -> bool:
+        """Is this trade executed in a market?"""
+        return self.market_id is not None
+    
+    @property
+    def is_bilateral_trade(self) -> bool:
+        """Is this a bilateral trade (not in a market)?"""
+        return self.market_id is None
 
 
 # -----------------------------------------------------------------------------
@@ -253,6 +266,44 @@ class InternalStateUpdate(Effect):
     agent_id: int
     key: str
     value: Any
+
+
+# -----------------------------------------------------------------------------
+# Market Lifecycle Effects
+# -----------------------------------------------------------------------------
+
+
+@dataclass
+class MarketFormation(Effect):
+    """Logged when a new market forms."""
+    market_id: int
+    center: Position
+    tick: int
+    num_participants: int
+
+
+@dataclass
+class MarketDissolution(Effect):
+    """Logged when a market dissolves."""
+    market_id: int
+    tick: int
+    age: int  # How long market existed
+    reason: str  # "low_density", "timeout", etc.
+
+
+@dataclass
+class MarketClear(Effect):
+    """
+    Logged after market clearing.
+    Does not modify state, only for telemetry.
+    """
+    market_id: int
+    commodity: str
+    price: float
+    quantity: float
+    tick: int
+    num_participants: int
+    converged: bool
 
 
 # =============================================================================

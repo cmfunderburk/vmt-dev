@@ -108,6 +108,14 @@ class Simulation:
             'earn_money_enabled': scenario_config.params.earn_money_enabled,
             # Telemetry parameters
             'log_preferences': scenario_config.params.log_preferences,
+            # Endogenous market parameters (Phase 3)
+            'market_formation_threshold': scenario_config.params.market_formation_threshold,
+            'market_dissolution_threshold': scenario_config.params.market_dissolution_threshold,
+            'market_dissolution_patience': scenario_config.params.market_dissolution_patience,
+            'market_mechanism': scenario_config.params.market_mechanism,
+            'walrasian_adjustment_speed': scenario_config.params.walrasian_adjustment_speed,
+            'walrasian_tolerance': scenario_config.params.walrasian_tolerance,
+            'walrasian_max_iterations': scenario_config.params.walrasian_max_iterations,
         }
         
         # Mode tracking - initialize based on schedule if present
@@ -127,6 +135,7 @@ class Simulation:
         # Create trade system and inject bargaining protocol
         trade_system = TradeSystem()
         trade_system.bargaining_protocol = self.bargaining_protocol
+        self.trade_system = trade_system  # Expose for tests and analysis
         
         self.systems = [
             PerceptionSystem(),
