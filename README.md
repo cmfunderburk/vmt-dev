@@ -2,207 +2,198 @@
 
 [![Tests](https://img.shields.io/badge/tests-316%2B%20passing-brightgreen)]()
 [![Python](https://img.shields.io/badge/python-3.11-blue)]()
-[![GUI](https://img.shields.io/badge/GUI-PyQt6-green)]()
+[![Architecture](https://img.shields.io/badge/architecture-protocol--driven-orange)]()
 
-A spatial agent-based simulation for teaching and researching microeconomic behavior. Agents with heterogeneous preferences forage for resources on a grid and engage in bilateral trade (barter or monetary exchange) using reservation-price negotiation.
+A spatial agent-based simulation platform for studying microeconomic exchange mechanisms. Agents with heterogeneous preferences forage for resources and trade through configurable institutional rules (search, matching, and bargaining protocols).
 
-**Key Features:** 7-phase deterministic engine • 5 utility functions (CES, Linear, Quadratic, Translog, Stone-Geary) • Money-aware trading • Real-time visualization • Comprehensive telemetry
+## Overview
 
----
+VMT is a research and teaching platform that makes exchange mechanisms explicit and comparable. Instead of assuming equilibrium prices, it simulates how different institutional rules produce different market outcomes through bilateral agent interactions.
 
-## Quick Start
+**Core Features:**
+- Spatial grid with resource foraging and agent movement
+- Configurable protocols for search, matching, and bargaining
+- Multiple utility functions (CES, Linear, Quadratic, Stone-Geary, Translog)
+- Money system with quasilinear utility
+- Deterministic simulation (reproducible with seeds)
+- Comprehensive telemetry and visualization
 
-### Installation
+**Use Cases:**
+- Teaching microeconomics through visualization
+- Research on market mechanisms and institutional design
+- Comparing bilateral vs centralized exchange systems
+
+## Installation
 
 ```bash
-# Clone repository and navigate to it
+# Clone repository
+git clone [repository-url] vmt-dev
 cd vmt-dev
 
-# Create virtual environment
+# Create and activate virtual environment
 python3 -m venv venv
-source venv/bin/activate  # macOS/Linux
+source venv/bin/activate  # Linux/macOS
 # venv\Scripts\activate   # Windows
 
 # Install dependencies
 pip install -r requirements.txt
 ```
 
-### Run Your First Simulation
+## Quick Start
 
-**GUI (Recommended):**
+### GUI Interface
 ```bash
 python launcher.py
 ```
-Select `scenarios/demos/demo_01_foundational_barter.yaml` and click "Launch Simulation"
+Select a scenario from `scenarios/demos/` to see different exchange patterns.
 
-**Command Line:**
+### Command Line
 ```bash
 python main.py scenarios/demos/demo_01_foundational_barter.yaml
 ```
 
----
-
-## What VMT Does
-
-VMT is an agent-based model for studying microeconomic exchange mechanisms through visualization:
-
-- **Spatial Foraging:** Agents move on an N×N grid collecting resources A and B
-- **Bilateral Trading:** Agents pair up and negotiate trades based on reservation prices derived from marginal utilities
-- **Money System:** Supports pure barter, pure monetary, and mixed exchange regimes with quasilinear utility
-- **Deterministic:** Same seed always produces identical results for reproducibility
-- **Comprehensive Telemetry:** SQLite logging captures all trades, movements, and state changes
-
-**Built For:**
-- Economics pedagogy (visualize trading behavior in real-time)
-- Research (test mechanism design hypotheses)
-- Experimentation (compare barter vs monetary exchange, heterogeneous preferences, etc.)
-
----
-
-## Current Status
-
-**Production Ready:**
-- ✅ 7-phase simulation engine (perception → decision → movement → trade → forage → regeneration → housekeeping)
-- ✅ 5 utility functions with full parameter support
-- ✅ Money-aware pairing algorithm (P0 resolved Oct 2025)
-- ✅ PyQt6 GUI launcher and log viewer
-- ✅ SQLite telemetry system
-- ✅ 316+ tests with deterministic validation
-
-**Planned:**
-- 🔄 Protocol modularization (swappable bargaining/matching mechanisms)
-- 🔄 KKT lambda mode (endogenous money demand estimation)
-- 🔄 Advanced market mechanisms (posted prices, auctions)
-
-See [docs/3_strategic_roadmap.md](docs/3_strategic_roadmap.md) for detailed development timeline.
-
----
+### View Results
+```bash
+python view_logs.py  # Open telemetry database viewer
+```
 
 ## Project Structure
 
 ```
 vmt-dev/
-├── src/
-│   ├── vmt_engine/       # Core simulation engine
-│   ├── vmt_launcher/     # PyQt6 GUI
-│   ├── vmt_pygame/       # Visualization renderer
-│   └── telemetry/        # SQLite logging
-├── scenarios/            # YAML scenario files
-│   └── demos/            # Tutorial scenarios
-├── tests/                # 316+ test suite
-├── docs/                 # Full documentation
-├── launcher.py           # GUI entry point
-└── main.py               # CLI entry point
+├── src/vmt_engine/       # Core simulation engine
+│   ├── protocols/        # Swappable institutional rules
+│   ├── systems/          # Phase-specific execution
+│   ├── core/             # Agents, grid, state
+│   └── econ/             # Utility functions
+├── scenarios/            # YAML configuration files
+│   └── demos/            # Example scenarios
+├── docs/                 # Documentation
+│   └── BIGGEST_PICTURE/  # Vision and architecture
+├── tests/                # Test suite
+└── scripts/              # Analysis tools
 ```
 
----
+## Configuring Simulations
+
+### Scenario Files (YAML)
+
+Scenarios define agent preferences, spatial layout, and institutional rules:
+
+```yaml
+# Basic configuration
+grid_size: 10
+num_agents: 20
+max_ticks: 100
+
+# Select protocols (institutional rules)
+search_protocol: "legacy_distance_discounted"     # or "random_walk"
+matching_protocol: "legacy_three_pass"            # or "random_matching"
+bargaining_protocol: "legacy_compensating_block"  # or "split_difference"
+
+# Agent configuration
+agents:
+  - utility_function: "ces"
+    params: {alpha_A: 0.5, alpha_B: 0.5, rho: 0.5}
+    endowment: {A: 10, B: 10}
+```
+
+See `docs/structures/` for complete templates and `scenarios/demos/` for examples.
+
+### Available Protocols
+
+**Search** (how agents find partners):
+- `legacy_distance_discounted`: Utility-weighted by distance
+- `random_walk`: Random movement
+
+**Matching** (how pairs form):
+- `legacy_three_pass`: Mutual consent with fallback
+- `random_matching`: Random pairing
+
+**Bargaining** (how prices are negotiated):
+- `legacy_compensating_block`: Bilateral feasibility search
+- `split_difference`: Equal surplus division
+
+Query available protocols programmatically:
+```python
+from src.vmt_engine.protocols import list_all_protocols
+list_all_protocols()
+# Returns dict of available protocols by category
+```
+
+## Simulation Phases
+
+Each tick follows a deterministic 7-phase cycle:
+
+1. **Perception**: Agents observe local state
+2. **Movement**: Agents move toward targets
+3. **Foraging**: Resource collection from grid
+4. **Trading**: Bilateral exchange through protocols
+5. **Consumption**: Utility calculation
+6. **Regeneration**: Resources respawn
+7. **Housekeeping**: State updates and logging
 
 ## Documentation
 
 **Getting Started:**
-- [Project Overview](docs/1_project_overview.md) - Complete feature walkthrough
-- [Scenario Configuration Guide](docs/scenario_configuration_guide.md) - How to create scenarios
-- [Parameter Reference](docs/structures/parameter_quick_reference.md) - All parameters and typical values
+- [Project Overview](docs/1_project_overview.md) - Detailed feature documentation
+- [Scenario Configuration](docs/structures/) - How to create scenarios
+- [Tutorial Scenarios](scenarios/demos/) - Example configurations
 
-**For Developers:**
-- [Developer Onboarding](docs/onboarding/README.md) - Setup, architecture, and deep dives
-- [Technical Manual](docs/2_technical_manual.md) - Implementation details and algorithms
-- [Strategic Roadmap](docs/3_strategic_roadmap.md) - Development priorities
-- [Type Specifications](docs/4_typing_overview.md) - Type system and invariants
+**Architecture:**
+- [Vision and Architecture](docs/BIGGEST_PICTURE/vision_and_architecture.md) - Research goals and design philosophy
+- [Technical Manual](docs/2_technical_manual.md) - Implementation details
+- [Protocol Development](docs/protocols_10-27/) - Adding new mechanisms
 
-**Quick Reference:**
-- [Comprehensive Template](docs/structures/comprehensive_scenario_template.yaml) - Example with all features
-- [Minimal Template](docs/structures/minimal_working_example.yaml) - Simplest working scenario
-- [Money Template](docs/structures/money_example.yaml) - Monetary exchange example
-
----
-
-## Protocol Configuration & Registry (Phase 2a)
-
-### Configure Protocols in YAML (with CLI override)
-
-Add optional fields in your scenario YAML (see comprehensive template). Use canonical protocol names (no aliases):
-
-```yaml
-search_protocol: "legacy_distance_discounted"     # options: legacy_distance_discounted, random_walk
-matching_protocol: "legacy_three_pass"            # options: legacy_three_pass, random_matching
-bargaining_protocol: "legacy_compensating_block"  # options: legacy_compensating_block, split_difference
-```
-
-Resolution order (highest → lowest): CLI args (--search-protocol, etc.) → YAML → legacy defaults.
-
-### Available Protocols (Programmatic)
-
-```python
-from vmt_engine.protocols import list_all_protocols, describe_all_protocols
-print(list_all_protocols())
-# {'search': ['legacy_distance_discounted', 'random_walk'], 'matching': ['legacy_three_pass', 'random_matching'], 'bargaining': ['legacy_compensating_block', 'split_difference']}
-```
-
-Canonical naming: The same name is used across YAML, registry, and telemetry (no aliases).
-
----
+**Development:**
+- [Developer Onboarding](docs/onboarding/README.md) - Setup and architecture guide
+- [Type Specifications](docs/4_typing_overview.md) - Type system documentation
+- [Enhancement Backlog](docs/3_enhancement_backlog.md) - Planned features
 
 ## Testing
 
 ```bash
+# Activate virtual environment first
+source venv/bin/activate  # Linux/macOS
+
 # Run all tests
 pytest
 
 # Run specific test categories
-pytest tests/test_money_phase1_integration.py      # Money system
-pytest tests/test_pairing_money_aware.py           # Pairing algorithm
-pytest tests/test_mixed_regime_integration.py      # Mixed regimes
+pytest tests/test_money_phase1_integration.py
+pytest tests/test_protocol_registry.py
 ```
 
-### Testing Import Paths
+## Research Applications
 
-When writing tests, import project modules without the `src.` prefix:
+VMT enables comparative analysis of exchange mechanisms:
 
-```python
-from vmt_engine.simulation import Simulation
-from scenarios.loader import load_scenario
-from telemetry.config import LogConfig
-```
+1. **Price Formation**: When do bilateral negotiations converge to uniform prices?
+2. **Institutional Comparison**: How do different protocols affect efficiency and distribution?
+3. **Spatial Effects**: Role of geography and search costs in market outcomes
+4. **Information Frictions**: Impact of limited visibility and memory
 
-Pytest adds both `.` and `src` to `PYTHONPATH`; mixing `src.vmt_engine` and `vmt_engine` can lead to duplicate module imports and divergent state. Prefer `vmt_engine`, `scenarios`, and `telemetry` in tests.
+Future extensions include centralized market mechanisms (Walrasian auctioneer, posted prices, double auctions) to enable direct comparison with bilateral exchange.
 
----
+## Contributing
 
-## Usage Examples
+Priority areas for contribution:
 
-### Pedagogical Use
-Use the GUI to demonstrate:
-- How reservation prices emerge from marginal utilities
-- Gains from trade in barter vs monetary economies
-- Effects of heterogeneous preferences on trade patterns
+1. **Protocol Implementation**: Add new search, matching, or bargaining mechanisms
+2. **Scenario Development**: Create pedagogical examples
+3. **Analysis Tools**: Build visualization and statistical analysis scripts
+4. **Documentation**: Improve guides and examples
 
-### Research Use
-Create custom scenarios to study:
-- Mechanism design (compare matching algorithms)
-- Money vs barter efficiency
-- Effects of spatial distribution on trade emergence
-- Role of search costs in exchange
-
-### Development
-- **Add utility functions:** Implement `UtilityBase` ABC in `src/vmt_engine/econ/utility.py`
-- **Create scenarios:** Use GUI builder or edit YAML files in `scenarios/`
-- **Analyze data:** Query SQLite database with custom scripts or log viewer
-
----
+See [Enhancement Backlog](docs/3_enhancement_backlog.md) for specific tasks.
 
 ## License
 
 See [LICENSE](LICENSE) file for details.
 
----
-
 ## Next Steps
 
-1. **Run a demo:** `python launcher.py` → select demo scenario → launch
-2. **Read the overview:** [docs/1_project_overview.md](docs/1_project_overview.md)
-3. **Create a scenario:** Use GUI scenario builder or copy a template from `docs/structures/`
-4. **Analyze results:** `python -m src.vmt_log_viewer.main` to explore telemetry
-5. **Contribute:** See [docs/3_strategic_roadmap.md](docs/3_strategic_roadmap.md) for development priorities
-
-**Questions or issues?** Check the [Technical Manual](docs/2_technical_manual.md) or review test files in `tests/` for usage examples.
+1. Run a demo: `python launcher.py`
+2. Explore scenarios in `scenarios/demos/`
+3. Read [Vision and Architecture](docs/BIGGEST_PICTURE/vision_and_architecture.md) for research context
+4. Create custom scenarios using templates in `docs/structures/`
+5. Analyze results with `python view_logs.py`
