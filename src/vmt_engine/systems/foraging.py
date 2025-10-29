@@ -2,7 +2,7 @@
 Foraging system for resource harvesting.
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from ..core import Agent, Grid
@@ -30,10 +30,15 @@ class ForageSystem:
                     continue  # Another agent already harvested here
             
             # Attempt to forage
-            did_harvest = forage(agent, sim.grid, sim.params["forage_rate"], sim.tick)
-            
-            if did_harvest and sim.params.get("enforce_single_harvester", False):
-                harvested_this_tick.add(pos)
+            did_harvest, resource_type, amount = forage(
+                agent, sim.grid, sim.params["forage_rate"], sim.tick
+            )
+
+            if did_harvest:
+                if resource_type and hasattr(sim, "_gathered_resources"):
+                    sim._gathered_resources[agent.id][resource_type] += amount
+                if sim.params.get("enforce_single_harvester", False):
+                    harvested_this_tick.add(pos)
 
 
 class ResourceRegenerationSystem:
@@ -51,7 +56,12 @@ class ResourceRegenerationSystem:
         )
 
 
-def forage(agent: 'Agent', grid: 'Grid', forage_rate: int, current_tick: int = 0) -> bool:
+def forage(
+    agent: 'Agent',
+    grid: 'Grid',
+    forage_rate: int,
+    current_tick: int = 0
+) -> tuple[bool, Optional[str], int]:
     """
     Harvest resources from agent's current cell.
     
@@ -62,12 +72,15 @@ def forage(agent: 'Agent', grid: 'Grid', forage_rate: int, current_tick: int = 0
         current_tick: Current simulation tick (for depletion tracking)
         
     Returns:
-        True if any resources were harvested, False otherwise
+        Tuple (did_harvest, resource_type, amount)
+        - did_harvest: True if any resources were harvested
+        - resource_type: "A" or "B" when harvested, otherwise None
+        - amount: Quantity gathered (0 when did_harvest is False)
     """
     cell = grid.get_cell(agent.pos[0], agent.pos[1])
     
     if cell.resource.amount == 0 or cell.resource.type is None:
-        return False
+        return (False, None, 0)
     
     # Determine harvest amount
     harvest = min(cell.resource.amount, forage_rate)
@@ -100,7 +113,7 @@ def forage(agent: 'Agent', grid: 'Grid', forage_rate: int, current_tick: int = 0
         # Clear trade cooldowns (productive foraging clears frustration)
         agent.trade_cooldowns.clear()
     
-    return True
+    return (True, good_type, harvest)
 
 
 def regenerate_resources(grid: 'Grid', growth_rate: int, max_amount: int,

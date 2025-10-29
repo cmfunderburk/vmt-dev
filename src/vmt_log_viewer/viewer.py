@@ -339,13 +339,23 @@ class LogViewerWindow(QMainWindow):
         result = self.db.execute(query, params).fetchone()
         
         if result and result['money_trades'] and result['money_trades'] > 0:
+            avg_buyer_lambda = result['avg_buyer_lambda']
+            avg_seller_lambda = result['avg_seller_lambda']
+
+            avg_buyer_lambda_text = (
+                f"{avg_buyer_lambda:.4f}" if avg_buyer_lambda is not None else "N/A"
+            )
+            avg_seller_lambda_text = (
+                f"{avg_seller_lambda:.4f}" if avg_seller_lambda is not None else "N/A"
+            )
+
             money_stats = f"""
 <b>Monetary Trades:</b> {result['money_trades']}<br>
 <b>Average dM:</b> {result['avg_dM']:.2f}<br>
 <b>Min dM:</b> {result['min_dM']}<br>
 <b>Max dM:</b> {result['max_dM']}<br>
-<b>Average Buyer λ:</b> {result['avg_buyer_lambda']:.4f if result['avg_buyer_lambda'] is not None else 'N/A'}<br>
-<b>Average Seller λ:</b> {result['avg_seller_lambda']:.4f if result['avg_seller_lambda'] is not None else 'N/A'}
+<b>Average Buyer λ:</b> {avg_buyer_lambda_text}<br>
+<b>Average Seller λ:</b> {avg_seller_lambda_text}
 """
             self.money_stats_label.setText(money_stats)
         else:

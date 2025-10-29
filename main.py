@@ -77,9 +77,10 @@ def main():
                 
                 elif event.key == pygame.K_r:
                     print("Resetting simulation...")
+                    sim.close()
                     sim = Simulation(scenario, seed=seed)
                     renderer.sim = sim
-                    renderer.recent_trades = []
+                    renderer.recent_trades = sim.telemetry.recent_trades_for_renderer
                     print("Reset complete")
                 
                 elif event.key == pygame.K_s and paused:
@@ -171,6 +172,8 @@ def main():
         # Control frame rate
         clock.tick(tick_rate)
     
+    sim.close()
+
     print("\nSimulation ended.")
     print(f"Final tick: {sim.tick}")
     print("Logs saved to ./logs/")

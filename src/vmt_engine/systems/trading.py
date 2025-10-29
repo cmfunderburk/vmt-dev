@@ -187,6 +187,10 @@ class TradeSystem:
         trade_tuple = (dA_i, dB_i, dM_i, dA_j, dB_j, dM_j, surplus_i, surplus_j)
         execute_trade_generic(agent_i, agent_j, trade_tuple)
         
+        if hasattr(sim, "_trades_made"):
+            sim._trades_made[effect.buyer_id] = sim._trades_made.get(effect.buyer_id, 0) + 1
+            sim._trades_made[effect.seller_id] = sim._trades_made.get(effect.seller_id, 0) + 1
+        
         # Log to telemetry
         self._log_trade(effect, sim)
     

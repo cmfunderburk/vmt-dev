@@ -410,40 +410,22 @@ initial_inventories:
 utilities:
   mix:
   - type: translog
-    weight: 0.1
+    weight: 0.2
     params:
       alpha_0: 0.43
       alpha_A: 0.32
       alpha_B: 0.43
       beta_AA: -0.15
-      beta_BB: 0.19
+      beta_BB: -0.19
       beta_AB: -0.07
-  - type: translog
-    weight: 0.1
-    params:
-      alpha_0: 0.28
-      alpha_A: 0.58
-      alpha_B: 0.52
-      beta_AA: -0.16
-      beta_BB: 0.18
-      beta_AB: 0.04
-  - type: translog
-    weight: 0.1
-    params:
-      alpha_0: 0.16
-      alpha_A: 0.31
-      alpha_B: 0.45
-      beta_AA: 0.02
-      beta_BB: -0.03
-      beta_AB: -0.09
   - type: ces
-    weight: 0.1
+    weight: 0.15
     params:
       rho: 0.3
       wA: 0.51
       wB: 0.49
   - type: ces
-    weight: 0.1
+    weight: 0.15
     params:
       rho: 0.5
       wA: 0.68
@@ -479,12 +461,12 @@ utilities:
       gamma_A: 0
       gamma_B: 0
 params:
-  spread: 0.1
+  spread: 0
   vision_radius: 8
   interaction_radius: 1
   move_budget_per_tick: 1
   dA_max: 5000
-  trade_execution_mode: maximum
+  trade_execution_mode: minimum
   forage_rate: 1
   trade_cooldown_ticks: 1000
   beta: 0.95

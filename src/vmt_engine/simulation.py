@@ -6,7 +6,7 @@ import numpy as np
 from typing import Optional
 from .core import Grid, Agent, Inventory, SpatialIndex
 from scenarios.schema import ScenarioConfig
-from .econ.utility import create_utility
+from .econ.utility import create_utility, u_total
 from .systems.perception import PerceptionSystem
 from .systems.movement import MovementSystem
 from .systems.foraging import ForageSystem, ResourceRegenerationSystem
@@ -153,6 +153,34 @@ class Simulation:
         
         # Sort agents by id for deterministic processing
         self.agents.sort(key=lambda a: a.id)
+        
+        # Track initial state for post-run summaries
+        self._start_inventory: dict[int, dict[str, int]] = {}
+        self._start_utility: dict[int, Optional[float]] = {}
+        self._gathered_resources: dict[int, dict[str, int]] = {}
+        self._trades_made: dict[int, int] = {}
+        self._summary_printed = False
+
+        for agent in self.agents:
+            self._start_inventory[agent.id] = {
+                "A": int(agent.inventory.A),
+                "B": int(agent.inventory.B),
+                "M": int(agent.inventory.M),
+            }
+
+            if agent.utility is not None:
+                utility_params = {
+                    "utility": agent.utility,
+                    "lambda_money": agent.lambda_money,
+                    "money_utility_form": agent.money_utility_form,
+                    "M_0": agent.M_0,
+                }
+                self._start_utility[agent.id] = float(u_total(agent.inventory, utility_params))
+            else:
+                self._start_utility[agent.id] = None
+
+            self._gathered_resources[agent.id] = {"A": 0, "B": 0}
+            self._trades_made[agent.id] = 0
         
         # Initialize spatial index for efficient proximity queries
         # Bucket size = max query radius for optimal performance
@@ -413,8 +441,85 @@ class Simulation:
         else:
             return []
     
+    def print_summary(self) -> None:
+        """Print per-agent post-simulation summary to stdout."""
+        if getattr(self, "_summary_printed", False):
+            return
+
+        def fmt_signed_int(value: int) -> str:
+            if value > 0:
+                return f"+{value}"
+            return str(value)
+
+        def fmt_signed_float(value: float) -> str:
+            if abs(value) < 1e-12:
+                value = 0.0
+            if value > 0:
+                return f"+{value:.2f}"
+            return f"{value:.2f}"
+
+        print(f"\nPost-sim summary (ticks={self.tick})")
+
+        for agent in sorted(self.agents, key=lambda a: a.id):
+            start_inv = self._start_inventory.get(agent.id, {"A": 0, "B": 0, "M": 0})
+            end_inv = {
+                "A": int(agent.inventory.A),
+                "B": int(agent.inventory.B),
+                "M": int(agent.inventory.M),
+            }
+
+            delta_a = end_inv["A"] - start_inv["A"]
+            delta_b = end_inv["B"] - start_inv["B"]
+            delta_m = end_inv["M"] - start_inv["M"]
+
+            start_util = self._start_utility.get(agent.id)
+            end_util: Optional[float] = None
+            if agent.utility is not None:
+                params = {
+                    "utility": agent.utility,
+                    "lambda_money": agent.lambda_money,
+                    "money_utility_form": agent.money_utility_form,
+                    "M_0": agent.M_0,
+                }
+                end_util = float(u_total(agent.inventory, params))
+
+            if start_util is not None and end_util is not None:
+                util_segment = (
+                    f"U {start_util:.2f}->{end_util:.2f} "
+                    f"(d {fmt_signed_float(end_util - start_util)})"
+                )
+            elif end_util is not None:
+                util_segment = f"U n/a->{end_util:.2f}"
+            else:
+                util_segment = "U n/a"
+
+            gathered = self._gathered_resources.get(agent.id, {"A": 0, "B": 0})
+            trades = self._trades_made.get(agent.id, 0)
+
+            inventory_segment = (
+                f"A {start_inv['A']}->{end_inv['A']} (d {fmt_signed_int(delta_a)}), "
+                f"B {start_inv['B']}->{end_inv['B']} (d {fmt_signed_int(delta_b)}), "
+                f"M {start_inv['M']}->{end_inv['M']} (d {fmt_signed_int(delta_m)})"
+            )
+
+            gathered_segment = f"gathered A:{gathered.get('A', 0)} B:{gathered.get('B', 0)}"
+
+            if agent.utility is not None:
+                utility_label = agent.utility.__class__.__name__
+            else:
+                utility_label = "None"
+
+            print(
+                f"Agent {agent.id} ({utility_label}): {inventory_segment} | {util_segment} | "
+                f"{gathered_segment} | trades: {trades}"
+            )
+
+        self._summary_printed = True
+
     def close(self):
         """Close all loggers and release resources."""
+        self.print_summary()
+
         if self.telemetry:
             self.telemetry.close()
 
