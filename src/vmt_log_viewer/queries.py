@@ -167,6 +167,8 @@ class QueryBuilder:
                 COUNT(*) as total_trades,
                 AVG(dA) as avg_dA,
                 AVG(dB) as avg_dB,
+                SUM(dM) as total_dM,
+                AVG(dM) as avg_dM,
                 AVG(price) as avg_price,
                 MIN(tick) as first_trade_tick,
                 MAX(tick) as last_trade_tick

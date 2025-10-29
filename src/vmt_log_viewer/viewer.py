@@ -306,11 +306,25 @@ class LogViewerWindow(QMainWindow):
         result = self.db.execute(query, params).fetchone()
         
         if result and result['total_trades']:
+            avg_dA = result['avg_dA']
+            avg_dB = result['avg_dB']
+            total_dM = result['total_dM']
+            avg_dM = result['avg_dM']
+            avg_price = result['avg_price']
+
+            avg_dA_text = f"{avg_dA:.2f}" if avg_dA is not None else "N/A"
+            avg_dB_text = f"{avg_dB:.2f}" if avg_dB is not None else "N/A"
+            total_dM_text = f"{total_dM}" if total_dM is not None else "N/A"
+            avg_dM_text = f"{avg_dM:.2f}" if avg_dM is not None else "N/A"
+            avg_price_text = f"{avg_price:.4f}" if avg_price is not None else "N/A"
+
             trade_stats = f"""
 <b>Total Trades:</b> {result['total_trades']}<br>
-<b>Average dA:</b> {result['avg_dA']:.2f}<br>
-<b>Average dB:</b> {result['avg_dB']:.2f}<br>
-<b>Average Price:</b> {result['avg_price']:.4f}<br>
+<b>Average dA:</b> {avg_dA_text}<br>
+<b>Average dB:</b> {avg_dB_text}<br>
+<b>Total dM:</b> {total_dM_text}<br>
+<b>Average dM:</b> {avg_dM_text}<br>
+<b>Average Price:</b> {avg_price_text}<br>
 <b>First Trade:</b> Tick {result['first_trade_tick']}<br>
 <b>Last Trade:</b> Tick {result['last_trade_tick']}
 """

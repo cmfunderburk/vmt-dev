@@ -36,6 +36,9 @@ class TradeViewWidget(QWidget):
         self.current_trades_table.cellClicked.connect(self.on_trade_clicked)
         current_layout.addWidget(self.current_trades_table)
         
+        self.current_trades_summary_label = QLabel("No trades at this tick")
+        current_layout.addWidget(self.current_trades_summary_label)
+        
         layout.addWidget(current_group)
         
         # Trade details
@@ -62,7 +65,7 @@ class TradeViewWidget(QWidget):
         query, params = QueryBuilder.get_trades_at_tick(run_id, tick)
         results = self.db.execute(query, params).fetchall()
         
-        columns = ['buyer_id', 'seller_id', 'x', 'y', 'dA', 'dB', 'price', 'direction']
+        columns = ['buyer_id', 'seller_id', 'x', 'y', 'dA', 'dB', 'dM', 'price', 'direction', 'exchange_pair_type']
         
         self.current_trades_table.setColumnCount(len(columns))
         self.current_trades_table.setHorizontalHeaderLabels(columns)
@@ -71,6 +74,8 @@ class TradeViewWidget(QWidget):
         for i, row in enumerate(results):
             for j, col in enumerate(columns):
                 value = row[col]
+                if value is None:
+                    value = ""
                 if isinstance(value, float):
                     value = f"{value:.6f}"
                 self.current_trades_table.setItem(i, j, QTableWidgetItem(str(value)))
@@ -81,12 +86,16 @@ class TradeViewWidget(QWidget):
         if len(results) > 0:
             total_dA = sum(row['dA'] for row in results)
             total_dB = sum(row['dB'] for row in results)
+            total_dM = sum(row['dM'] for row in results)
             avg_price = sum(row['price'] for row in results) / len(results)
-            summary = f"{len(results)} trades | Total dA: {total_dA} | Total dB: {total_dB} | Avg Price: {avg_price:.4f}"
+            summary = (
+                f"{len(results)} trades | Total dA: {total_dA} | "
+                f"Total dB: {total_dB} | Total dM: {total_dM} | Avg Price: {avg_price:.4f}"
+            )
         else:
             summary = "No trades at this tick"
         
-        # Could add a summary label if desired
+        self.current_trades_summary_label.setText(summary)
     
     def on_trade_clicked(self, row: int, col: int):
         """Handle click on trade table."""
@@ -97,16 +106,20 @@ class TradeViewWidget(QWidget):
         seller_id = int(self.current_trades_table.item(row, 1).text())
         dA = int(self.current_trades_table.item(row, 4).text())
         dB = int(self.current_trades_table.item(row, 5).text())
-        price = float(self.current_trades_table.item(row, 6).text())
-        direction = self.current_trades_table.item(row, 7).text()
+        dM = int(self.current_trades_table.item(row, 6).text())
+        price = float(self.current_trades_table.item(row, 7).text())
+        direction = self.current_trades_table.item(row, 8).text()
+        exchange_pair_type = self.current_trades_table.item(row, 9).text()
         
         details = f"""
 <b>Buyer ID:</b> {buyer_id}<br>
 <b>Seller ID:</b> {seller_id}<br>
 <b>Amount A Traded:</b> {dA}<br>
 <b>Amount B Traded:</b> {dB}<br>
+<b>Amount M Traded:</b> {dM}<br>
 <b>Price:</b> {price:.6f}<br>
 <b>Direction:</b> {direction}<br>
+<b>Exchange Pair:</b> {exchange_pair_type}<br>
 <b>Tick:</b> {self.current_tick}
 """
         self.details_label.setText(details)
