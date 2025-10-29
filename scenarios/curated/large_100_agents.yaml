@@ -95,7 +95,6 @@ params:
   exchange_regime: mixed
   money_mode: quasilinear
   money_scale: 10
-  lambda_money: 1.0
   enable_resource_claiming: true
   enforce_single_harvester: true
   resource_growth_rate: 1

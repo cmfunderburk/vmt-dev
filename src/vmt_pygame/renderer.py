@@ -2,8 +2,10 @@
 Pygame visualization for VMT simulation.
 """
 
-import pygame
 import math
+import os
+import platform
+import pygame
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
@@ -44,11 +46,10 @@ class VMTRenderer:
         seed = simulation.seed
         pygame.display.set_caption(f"VMT v1 - {scenario_name} (seed: {seed})")
         
-        # Colors (defined before layout calculation)
-        self.COLOR_WHITE = (255, 255, 255)
-        self.COLOR_BLACK = (0, 0, 0)
-        self.COLOR_GRAY = (200, 200, 200)
-        self.COLOR_LIGHT_GRAY = (240, 240, 240)
+        self.use_dark_theme = self._should_use_dark_theme()
+        self._init_colors()
+
+        # Accent colors (theme-independent)
         self.COLOR_RED = (255, 100, 100)
         self.COLOR_BLUE = (100, 100, 255)
         self.COLOR_GREEN = (100, 255, 100)
@@ -82,6 +83,47 @@ class VMTRenderer:
         # Exchange rate tracking
         self.trade_history = []  # List of (tick, exchange_pair_type, rate) tuples
     
+    def _should_use_dark_theme(self) -> bool:
+        """Determine whether to enable the renderer's dark theme."""
+        # Explicit light theme override always wins.
+        if os.getenv("VMT_FORCE_LIGHT_THEME") is not None:
+            return False
+
+        # Allow explicit dark override via env var (treat 0/false/no as disabled).
+        force_dark = os.getenv("VMT_FORCE_DARK_THEME")
+        if force_dark is not None:
+            return force_dark.strip().lower() not in {"0", "false", "no", ""}
+
+        # Default to dark theme on Linux where SDL falls back to light widgets.
+        return platform.system().lower() == "linux"
+
+    def _init_colors(self) -> None:
+        """Initialize renderer colors based on the active theme."""
+        if self.use_dark_theme:
+            self.COLOR_BACKGROUND = (16, 16, 22)
+            self.COLOR_PANEL_BACKGROUND = (30, 32, 38)
+            self.COLOR_PANEL_BORDER = (90, 90, 100)
+            self.COLOR_GRID_LINE = (60, 60, 72)
+            self.COLOR_TEXT = (235, 235, 240)
+            self.COLOR_TEXT_MUTED = (180, 180, 190)
+            self.COLOR_OUTLINE = (210, 210, 215)
+            self.COLOR_TEXT_OUTLINE = (0, 0, 0)
+        else:
+            self.COLOR_BACKGROUND = (255, 255, 255)
+            self.COLOR_PANEL_BACKGROUND = (240, 240, 240)
+            self.COLOR_PANEL_BORDER = (0, 0, 0)
+            self.COLOR_GRID_LINE = (200, 200, 200)
+            self.COLOR_TEXT = (0, 0, 0)
+            self.COLOR_TEXT_MUTED = (80, 80, 80)
+            self.COLOR_OUTLINE = (0, 0, 0)
+            self.COLOR_TEXT_OUTLINE = (0, 0, 0)
+
+        # Legacy names retained for downstream code until fully migrated.
+        self.COLOR_WHITE = self.COLOR_BACKGROUND
+        self.COLOR_LIGHT_GRAY = self.COLOR_PANEL_BACKGROUND
+        self.COLOR_GRAY = self.COLOR_GRID_LINE
+        self.COLOR_BLACK = self.COLOR_TEXT
+
     def _calculate_layout(self, window_width: int, window_height: int, forced_cell_size: Optional[int] = None):
         """
         Calculate layout parameters based on window dimensions.
@@ -224,7 +266,7 @@ class VMTRenderer:
     
     def render(self):
         """Render the current simulation state."""
-        self.screen.fill(self.COLOR_WHITE)
+        self.screen.fill(self.COLOR_BACKGROUND)
         
         # Draw left info panel if enabled
         if self.show_left_panel:
@@ -267,7 +309,7 @@ class VMTRenderer:
         for x in range(start_x, end_x + 1):
             screen_x = left_offset + x * self.cell_size - self.camera_x
             pygame.draw.line(
-                self.screen, self.COLOR_GRAY,
+                self.screen, self.COLOR_GRID_LINE,
                 (screen_x, 0), (screen_x, self.height),
                 1
             )
@@ -275,7 +317,7 @@ class VMTRenderer:
         for y in range(start_y, end_y + 1):
             screen_y = y * self.cell_size - self.camera_y
             pygame.draw.line(
-                self.screen, self.COLOR_GRAY,
+                self.screen, self.COLOR_GRID_LINE,
                 (left_offset, screen_y), (left_offset + self.width, screen_y),
                 1
             )
@@ -308,7 +350,7 @@ class VMTRenderer:
                 if self.show_resource_labels:
                     label = self.small_font.render(
                         f"{cell.resource.type}:{cell.resource.amount}",
-                        True, self.COLOR_BLACK
+                        True, self.COLOR_TEXT
                     )
                     self.screen.blit(label, (screen_x + 2, screen_y + 2))
     
@@ -332,11 +374,11 @@ class VMTRenderer:
             
             # Draw home indicator as a small square
             pygame.draw.rect(
-                self.screen, self.COLOR_BLACK, 
+                self.screen, self.COLOR_OUTLINE, 
                 (home_x, home_y, home_size, home_size)
             )
             pygame.draw.rect(
-                self.screen, self.COLOR_LIGHT_GRAY, 
+                self.screen, self.COLOR_TEXT, 
                 (home_x + 1, home_y + 1, home_size - 2, home_size - 2)
             )
     
@@ -482,7 +524,7 @@ class VMTRenderer:
                 return (255, 20, 147)  # Deep pink
             else:
                 return self.COLOR_YELLOW
-        return self.COLOR_BLACK
+        return self.COLOR_TEXT
     
     def get_utility_type_label(self, agent: 'Agent') -> str:
         """
@@ -547,7 +589,7 @@ class VMTRenderer:
             else:
                 inv_text = f"A:{agent.inventory.A} B:{agent.inventory.B}"
             
-            inv_label = self.small_font.render(inv_text, True, self.COLOR_BLACK)
+            inv_label = self.small_font.render(inv_text, True, self.COLOR_TEXT)
             inv_width = inv_label.get_width()
             self.screen.blit(inv_label, (cell_center_x - inv_width // 2, cell_bottom_y + 2))
         
@@ -559,7 +601,7 @@ class VMTRenderer:
                 else:
                     inv_text = f"[{agent.id}] A:{agent.inventory.A} B:{agent.inventory.B}"
                 
-                inv_label = self.small_font.render(inv_text, True, self.COLOR_BLACK)
+                inv_label = self.small_font.render(inv_text, True, self.COLOR_TEXT)
                 inv_width = inv_label.get_width()
                 y_offset = cell_bottom_y + 2 + (idx * 12)  # 12px spacing between labels
                 
@@ -570,7 +612,7 @@ class VMTRenderer:
         else:
             # 4+ agents - show summary only
             summary_text = f"{agent_count} agents at ({agents[0].pos[0]}, {agents[0].pos[1]})"
-            summary_label = self.small_font.render(summary_text, True, self.COLOR_BLACK)
+            summary_label = self.small_font.render(summary_text, True, self.COLOR_TEXT)
             summary_width = summary_label.get_width()
             self.screen.blit(summary_label, (cell_center_x - summary_width // 2, cell_bottom_y + 2))
     
@@ -617,19 +659,19 @@ class VMTRenderer:
                 # Draw agent circle
                 pygame.draw.circle(self.screen, color, (px, py), radius)
                 pygame.draw.circle(
-                    self.screen, self.COLOR_BLACK, (px, py), radius, 
+                    self.screen, self.COLOR_OUTLINE, (px, py), radius,
                     max(1, radius // 5)
                 )
                 
                 # Draw agent ID and utility type label (if space permits and labels enabled)
                 if self.show_agent_labels and radius >= 5:
                     # Draw agent ID on first line
-                    id_label = self.small_font.render(str(agent.id), True, self.COLOR_BLACK)
+                    id_label = self.small_font.render(str(agent.id), True, self.COLOR_TEXT)
                     id_height = id_label.get_height()
                     
                     # Get utility type label
                     util_type = self.get_utility_type_label(agent)
-                    util_label = self.small_font.render(util_type, True, self.COLOR_BLACK)
+                    util_label = self.small_font.render(util_type, True, self.COLOR_TEXT)
                     util_height = util_label.get_height()
                     
                     # Calculate total height and starting y position to center both lines
@@ -869,7 +911,7 @@ class VMTRenderer:
                 for dx in [-1, 0, 1]:
                     for dy in [-1, 0, 1]:
                         if dx != 0 or dy != 0:
-                            outline_label = self.small_font.render(money_text, True, self.COLOR_BLACK)
+                            outline_label = self.small_font.render(money_text, True, self.COLOR_TEXT_OUTLINE)
                             self.screen.blit(outline_label, (label_x + dx, label_y + dy))
                 
                 # Draw gold text on top
@@ -993,24 +1035,24 @@ class VMTRenderer:
                     green = 100
                     color = (red, green, blue)
                 else:
-                    color = self.COLOR_GRAY
+                    color = self.COLOR_TEXT_MUTED
                 
                 # Draw agent circle
                 pygame.draw.circle(self.screen, color, (px, py), radius)
                 pygame.draw.circle(
-                    self.screen, self.COLOR_BLACK, (px, py), radius,
+                    self.screen, self.COLOR_OUTLINE, (px, py), radius,
                     max(1, radius // 5)
                 )
                 
                 # Draw agent ID and utility type label (if space permits and labels enabled)
                 if self.show_agent_labels and radius >= 5:
                     # Draw agent ID on first line
-                    id_label = self.small_font.render(str(agent.id), True, self.COLOR_BLACK)
+                    id_label = self.small_font.render(str(agent.id), True, self.COLOR_TEXT)
                     id_height = id_label.get_height()
                     
                     # Get utility type label
                     util_type = self.get_utility_type_label(agent)
-                    util_label = self.small_font.render(util_type, True, self.COLOR_BLACK)
+                    util_label = self.small_font.render(util_type, True, self.COLOR_TEXT)
                     util_height = util_label.get_height()
                     
                     # Calculate total height and starting y position to center both lines
@@ -1036,18 +1078,18 @@ class VMTRenderer:
         
         # Background for HUD (spans entire window width including left panel)
         pygame.draw.rect(
-            self.screen, self.COLOR_LIGHT_GRAY,
+            self.screen, self.COLOR_PANEL_BACKGROUND,
             (0, self.height, self.total_window_width, self.hud_height)
         )
         
         # Tick counter
         tick_text = f"Tick: {self.sim.tick}"
-        tick_label = self.font.render(tick_text, True, self.COLOR_BLACK)
+        tick_label = self.font.render(tick_text, True, self.COLOR_TEXT)
         self.screen.blit(tick_label, (10, hud_y))
         
         # Agent count
         agent_text = f"Agents: {len(self.sim.agents)}"
-        agent_label = self.font.render(agent_text, True, self.COLOR_BLACK)
+        agent_label = self.font.render(agent_text, True, self.COLOR_TEXT)
         self.screen.blit(agent_label, (10, hud_y + 20))
         
         # Mode and exchange regime info
@@ -1057,7 +1099,7 @@ class VMTRenderer:
         trade_execution_mode = self.sim.params.get('trade_execution_mode', 'minimum')
         
         mode_text = f"Mode: {mode} | Regime: {exchange_regime} | Money Scale: {money_scale} | Trade Execution Mode: {trade_execution_mode}"
-        mode_label = self.font.render(mode_text, True, self.COLOR_BLACK)
+        mode_label = self.font.render(mode_text, True, self.COLOR_TEXT)
         self.screen.blit(mode_label, (10, hud_y + 40))
         
         # Total inventory across all agents
@@ -1081,7 +1123,7 @@ class VMTRenderer:
         else:
             inv_text = f"Total Inventory - A: {total_A}  B: {total_B}"
         
-        inv_label = self.font.render(inv_text, True, self.COLOR_BLACK)
+        inv_label = self.font.render(inv_text, True, self.COLOR_TEXT)
         self.screen.blit(inv_label, (10, hud_y + 60))
         
         # Controls (with scrolling if needed)
@@ -1089,7 +1131,7 @@ class VMTRenderer:
             controls_text = "SPACE=Pause R=Reset S=Step ←→↑↓=Scroll/Speed T/F/A/O=Arrows [=Panel ]=HUD M/L/I=Money Q=Quit"
         else:
             controls_text = "SPACE=Pause R=Reset S=Step ↑↓=Speed T/F/A/O=Arrows [=Panel ]=HUD M/L/I=Money Q=Quit"
-        controls_label = self.small_font.render(controls_text, True, self.COLOR_BLACK)
+        controls_label = self.small_font.render(controls_text, True, self.COLOR_TEXT)
         self.screen.blit(controls_label, (10, hud_y + 80))
         
         # Arrow toggle status
@@ -1104,7 +1146,7 @@ class VMTRenderer:
         else:
             arrow_status = "Arrows: OFF"
         
-        arrow_label = self.small_font.render(arrow_status, True, self.COLOR_BLACK)
+        arrow_label = self.small_font.render(arrow_status, True, self.COLOR_TEXT)
         self.screen.blit(arrow_label, (10, hud_y + 95))
         
         # Money visualization status
@@ -1121,12 +1163,12 @@ class VMTRenderer:
         else:
             money_viz_status = "Money Viz: OFF"
         
-        money_viz_label = self.small_font.render(money_viz_status, True, self.COLOR_BLACK)
+        money_viz_label = self.small_font.render(money_viz_status, True, self.COLOR_TEXT)
         self.screen.blit(money_viz_label, (200, hud_y + 95))
 
         # Recent trades (right-justified, accounting for total window width)
         trade_hud_y = hud_y
-        trade_title = self.font.render("Recent Trades:", True, self.COLOR_BLACK)
+        trade_title = self.font.render("Recent Trades:", True, self.COLOR_TEXT)
         trade_title_width = trade_title.get_width()
         trade_x_start = self.total_window_width - trade_title_width - 10  # 10px margin from right edge
         self.screen.blit(trade_title, (trade_x_start, trade_hud_y))
@@ -1158,7 +1200,7 @@ class VMTRenderer:
                 # Barter trade
                 trade_text = f"T{tick}: {buyer} buys {dA}A from {seller} for {dB}B @ {price:.2f}"
             
-            trade_label = self.small_font.render(trade_text, True, self.COLOR_BLACK)
+            trade_label = self.small_font.render(trade_text, True, self.COLOR_TEXT)
             trade_label_width = trade_label.get_width()
             trade_x = self.total_window_width - trade_label_width - 10  # Right-justify each trade line
             self.screen.blit(trade_label, (trade_x, trade_hud_y + 20 + i * 15))
@@ -1257,13 +1299,13 @@ class VMTRenderer:
         """Draw the left info panel with exchange rate information."""
         # Draw background
         pygame.draw.rect(
-            self.screen, self.COLOR_LIGHT_GRAY,
+            self.screen, self.COLOR_PANEL_BACKGROUND,
             (0, 0, self.left_panel_width, self.height)
         )
         
         # Draw separator line
         pygame.draw.line(
-            self.screen, self.COLOR_BLACK,
+            self.screen, self.COLOR_PANEL_BORDER,
             (self.left_panel_width, 0), (self.left_panel_width, self.height),
             2
         )
@@ -1273,7 +1315,7 @@ class VMTRenderer:
         
         # Draw title
         y_offset = 10
-        title = self.font.render("Exchange Rates", True, self.COLOR_BLACK)
+        title = self.font.render("Exchange Rates", True, self.COLOR_TEXT)
         self.screen.blit(title, (10, y_offset))
         y_offset += 30
         
@@ -1286,7 +1328,7 @@ class VMTRenderer:
         
         for rate_type, label in rate_types:
             # Draw section header
-            header = self.font.render(label + ":", True, self.COLOR_BLACK)
+            header = self.font.render(label + ":", True, self.COLOR_TEXT)
             self.screen.blit(header, (10, y_offset))
             y_offset += 20
             
@@ -1307,7 +1349,7 @@ class VMTRenderer:
                 else:
                     text = f"  {window_label}: --"
                 
-                label_surface = self.small_font.render(text, True, self.COLOR_BLACK)
+                label_surface = self.small_font.render(text, True, self.COLOR_TEXT)
                 self.screen.blit(label_surface, (10, y_offset))
                 y_offset += 15
             
