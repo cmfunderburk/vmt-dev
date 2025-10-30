@@ -27,18 +27,19 @@ This is the fundamental architecture of VMT. NO EXCEPTIONS.
 ## 7-Phase Tick Cycle
 Each simulation tick follows this exact sequence:
 
-1. **Phase 0**: Resource regeneration
-2. **Phase 1**: Agent movement decisions → MoveEffects
-3. **Phase 2**: Movement execution
-4. **Phase 3**: Agent foraging/mining → ResourceEffects  
-5. **Phase 4**: Trading negotiations → TradeEffects
-6. **Phase 5**: Trade execution and inventory updates
-7. **Phase 6**: Consumption and utility calculation
+1. **Phase 1**: Perception - Agents observe environment (neighbors, resources, quotes)
+2. **Phase 2**: Decision - Agents select targets and form pairings (Search + Matching protocols)
+3. **Phase 3**: Movement - Agents move toward targets
+4. **Phase 4**: Trade - Paired agents negotiate trades (Bargaining protocols)
+5. **Phase 5**: Foraging - Agents harvest resources
+6. **Phase 6**: Resource Regeneration - Resources grow over time
+7. **Phase 7**: Housekeeping - Quote refresh, telemetry logging, cleanup
 
 ### Phase Discipline
 - Each phase has a specific purpose - respect it
-- Agent decisions happen in odd phases (1, 3)
-- World updates happen in even phases (2, 4, 6)
+- Protocol involvement: Phase 2 (Search + Matching), Phase 4 (Bargaining)
+- Decisions are made based on perception snapshots (frozen state)
+- Effects are validated and applied deterministically
 - Never mix decision and execution logic
 
 ## Module Structure
