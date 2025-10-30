@@ -443,6 +443,32 @@ class TelemetryDatabase:
             ON market_snapshots(run_id, market_id, tick)
         """)
         
+        # Price learning events - agent learning from observed prices
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS price_learning_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id INTEGER NOT NULL,
+                tick INTEGER NOT NULL,
+                agent_id INTEGER NOT NULL,
+                commodity TEXT NOT NULL,
+                old_lambda REAL NOT NULL,
+                new_lambda REAL NOT NULL,
+                observed_prices TEXT NOT NULL,  -- JSON array of prices
+                learning_rate REAL NOT NULL,
+                FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id)
+            )
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_price_learning_run_tick 
+            ON price_learning_events(run_id, tick)
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_price_learning_agent 
+            ON price_learning_events(run_id, agent_id, tick)
+        """)
+        
         # Add market_id column to trades table (migration)
         try:
             cursor.execute("""

@@ -49,6 +49,11 @@ class Agent:
     lambda_changed: bool = False  # Flag for Housekeeping
     money_utility_form: str = "linear"  # "linear" or "log"
     M_0: float = 0.0  # Shift parameter for log money utility
+    
+    # Price signal learning system
+    observed_market_prices: dict[str, list[float]] = field(default_factory=dict)  # commodity -> [prices]
+    price_learning_rate: float = 0.1  # How quickly to update lambda_money based on prices
+    max_price_history: int = 10  # Maximum number of price observations to keep
 
     def __post_init__(self):
         if self.id < 0:
@@ -57,4 +62,57 @@ class Agent:
             raise ValueError(f"vision_radius must be non-negative, got {self.vision_radius}")
         if self.move_budget_per_tick <= 0:
             raise ValueError(f"move_budget_per_tick must be positive, got {self.move_budget_per_tick}")
+    
+    def update_price_observations(self, recent_prices: dict[str, list[float]]) -> None:
+        """
+        Update agent's observed market prices from recent trade data.
+        
+        Args:
+            recent_prices: Dictionary mapping commodity names to lists of recent prices
+        """
+        for commodity, prices in recent_prices.items():
+            if commodity not in self.observed_market_prices:
+                self.observed_market_prices[commodity] = []
+            
+            # Add new prices
+            self.observed_market_prices[commodity].extend(prices)
+            
+            # Trim to max history length
+            if len(self.observed_market_prices[commodity]) > self.max_price_history:
+                self.observed_market_prices[commodity] = self.observed_market_prices[commodity][-self.max_price_history:]
+    
+    def learn_from_prices(self) -> None:
+        """
+        Update lambda_money based on observed market prices.
+        
+        This implements a simple learning rule where agents adjust their money utility
+        parameter based on observed price signals in the market.
+        """
+        if not self.observed_market_prices:
+            return
+        
+        # Simple learning rule: adjust lambda_money based on price trends
+        for commodity, prices in self.observed_market_prices.items():
+            if len(prices) < 2:
+                continue
+            
+            # Calculate price trend (simple moving average)
+            recent_avg = sum(prices[-3:]) / len(prices[-3:]) if len(prices) >= 3 else sum(prices) / len(prices)
+            older_avg = sum(prices[:-3]) / len(prices[:-3]) if len(prices) > 3 else recent_avg
+            
+            if older_avg > 0:
+                price_change = (recent_avg - older_avg) / older_avg
+                
+                # Adjust lambda_money based on price change
+                # If prices are rising, increase lambda_money (money becomes more valuable)
+                # If prices are falling, decrease lambda_money (money becomes less valuable)
+                adjustment = self.price_learning_rate * price_change
+                new_lambda = self.lambda_money * (1 + adjustment)
+                
+                # Keep lambda_money within reasonable bounds
+                new_lambda = max(0.1, min(10.0, new_lambda))
+                
+                if abs(new_lambda - self.lambda_money) > 0.01:  # Only update if significant change
+                    self.lambda_money = new_lambda
+                    self.lambda_changed = True
 

@@ -14,6 +14,7 @@ from .systems.quotes import compute_quotes
 from .systems.decision import DecisionSystem
 from .systems.trading import TradeSystem
 from .systems.housekeeping import HousekeepingSystem
+from .systems.price_learning import PriceLearningSystem
 
 # Database-backed telemetry
 from telemetry import TelemetryManager, LogConfig
@@ -112,10 +113,7 @@ class Simulation:
             'market_formation_threshold': scenario_config.params.market_formation_threshold,
             'market_dissolution_threshold': scenario_config.params.market_dissolution_threshold,
             'market_dissolution_patience': scenario_config.params.market_dissolution_patience,
-            'market_mechanism': scenario_config.params.market_mechanism,
-            'walrasian_adjustment_speed': scenario_config.params.walrasian_adjustment_speed,
-            'walrasian_tolerance': scenario_config.params.walrasian_tolerance,
-            'walrasian_max_iterations': scenario_config.params.walrasian_max_iterations,
+            # Market mechanism parameters removed - all trading now uses bilateral protocols
         }
         
         # Mode tracking - initialize based on schedule if present
@@ -144,6 +142,7 @@ class Simulation:
             trade_system,
             ForageSystem(),
             ResourceRegenerationSystem(),
+            PriceLearningSystem(),
             HousekeepingSystem(),
         ]
         

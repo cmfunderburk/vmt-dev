@@ -83,10 +83,7 @@ def load_scenario(path: str) -> ScenarioConfig:
             market_formation_threshold=params_data.get('market_formation_threshold', None),
             market_dissolution_threshold=params_data.get('market_dissolution_threshold', 3),
             market_dissolution_patience=params_data.get('market_dissolution_patience', 5),
-            market_mechanism=params_data.get('market_mechanism', "walrasian"),
-            walrasian_adjustment_speed=params_data.get('walrasian_adjustment_speed', 0.1),
-            walrasian_tolerance=params_data.get('walrasian_tolerance', 0.01),
-            walrasian_max_iterations=params_data.get('walrasian_max_iterations', 100)
+            # Market mechanism parameters removed - all trading now uses bilateral protocols
         )
         
         # Parse resource seed

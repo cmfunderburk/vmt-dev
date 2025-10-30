@@ -23,7 +23,7 @@ from ..protocols import (
 )
 from ..core.market import MarketArea
 from ..core.state import Position
-from ..protocols.market import WalrasianAuctioneer
+# WalrasianAuctioneer removed - all trading now uses bilateral protocols
 from .matching import execute_trade_generic
 
 if TYPE_CHECKING:
@@ -80,8 +80,7 @@ class TradeSystem:
         self.active_markets: dict[int, MarketArea] = {}
         self.next_market_id: int = 0
         
-        # Market mechanism (created on first use)
-        self.market_mechanism: Optional[WalrasianAuctioneer] = None
+        # Market mechanisms removed - all trading now uses bilateral protocols
         
         # Statistics
         self.market_formations: int = 0
@@ -94,75 +93,16 @@ class TradeSystem:
         Week 2: Markets are cleared before bilateral trades (only if enabled).
         """
         
-        # ===== STEP 1: DETECT MARKETS (only if market parameters are configured) =====
-        market_formation_threshold = sim.params.get('market_formation_threshold', None)
-        if market_formation_threshold is None:
-            # No market parameters configured - skip market detection entirely
-            markets = []
-        else:
-            markets = self._detect_market_areas(sim)
-        
-        # ===== STEP 2: ASSIGN AGENTS TO MARKETS (Week 2) =====
-        if markets:
-            market_assignments = self._assign_agents_to_markets(markets, sim)
-            market_participants = set()
-            for agent_ids in market_assignments.values():
-                market_participants.update(agent_ids)
-            
-            # ===== STEP 3: UNPAIR MARKET PARTICIPANTS =====
-            for agent_id in market_participants:
-                agent = sim.agent_by_id[agent_id]
-                if agent.paired_with_id is not None:
-                    partner_id = agent.paired_with_id
-                    partner = sim.agent_by_id[partner_id]
-                    
-                    # Unpair both agents
-                    agent.paired_with_id = None
-                    partner.paired_with_id = None
-                    
-                    # Log unpair event
-                    sim.telemetry.log_pairing_event(
-                        sim.tick, agent_id, partner_id, "unpair", "entered_market"
-                    )
-            
-            # ===== STEP 4: PROCESS MARKET TRADES (Week 2) =====
-            all_market_trades = []
-            for market_id, agent_ids in sorted(market_assignments.items(), key=lambda x: x[0]):
-                market = self.active_markets[market_id]
-                market.participant_ids = agent_ids  # Update with actual assignments
-                
-                # Create mechanism if needed
-                if self.market_mechanism is None:
-                    self.market_mechanism = self._create_mechanism(sim)
-                
-                # Clear market
-                trades = self.market_mechanism.execute(market, sim)
-                all_market_trades.extend(trades)
-            
-            # Apply market trade effects
-            for trade in all_market_trades:
-                self._apply_trade_effect(trade, sim)
-        else:
-            # No markets - no market participants
-            market_participants = set()
-        
-        # ===== STEP 5: PROCESS BILATERAL TRADES (skip market participants) =====
+        # ===== STEP 1: PROCESS BILATERAL TRADES =====
+        # All trading now uses bilateral protocols (Walrasian mechanism removed)
         # Track processed pairs to avoid double-processing
         processed_pairs = set()
         
         for agent in sorted(sim.agents, key=lambda a: a.id):
-            # Skip if agent is in a market
-            if agent.id in market_participants:
-                continue
-            
             if agent.paired_with_id is None:
                 continue  # Skip unpaired agents
             
             partner_id = agent.paired_with_id
-            
-            # Skip if partner is in a market
-            if partner_id in market_participants:
-                continue
             
             # Skip if pair already processed
             pair_key = tuple(sorted([agent.id, partner_id]))
@@ -571,31 +511,4 @@ class TradeSystem:
         
         return assignments
     
-    def _create_mechanism(self, sim: 'Simulation') -> WalrasianAuctioneer:
-        """
-        Create market mechanism from scenario parameters.
-        
-        Args:
-            sim: Simulation state
-            
-        Returns:
-            Market mechanism instance
-        """
-        mechanism_type = sim.params.get('market_mechanism', 'walrasian')
-        
-        if mechanism_type == 'walrasian':
-            adjustment_speed = sim.params.get('walrasian_adjustment_speed', 0.1)
-            tolerance = sim.params.get('walrasian_tolerance', 0.01)
-            max_iterations = sim.params.get('walrasian_max_iterations', 100)
-            
-            return WalrasianAuctioneer(
-                adjustment_speed=adjustment_speed,
-                tolerance=tolerance,
-                max_iterations=max_iterations
-            )
-        elif mechanism_type == 'posted_price':
-            raise NotImplementedError("Posted price mechanism deferred to future phase")
-        elif mechanism_type == 'cda':
-            raise NotImplementedError("Continuous double auction deferred to future phase")
-        else:
-            raise ValueError(f"Unknown market mechanism: {mechanism_type}")
+# Market mechanism methods removed - all trading now uses bilateral protocols

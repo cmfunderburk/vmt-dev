@@ -3,12 +3,12 @@ Market clearing mechanisms.
 
 Market mechanisms determine how trades are executed within a market area.
 Examples:
-- Walrasian: Tatonnement-based price adjustment to clear markets
 - Posted Price: Fixed prices set by market maker
 - CDA: Continuous double auction (deferred)
 """
 
-from .walrasian import WalrasianAuctioneer
+# No market mechanisms currently implemented
+# All trading is done through bilateral protocols
 
-__all__ = ['WalrasianAuctioneer']
+__all__ = []
 

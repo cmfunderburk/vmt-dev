@@ -184,17 +184,7 @@ class ScenarioParams:
     market_dissolution_patience: int = 5
     """Number of consecutive ticks below dissolution_threshold before market dissolves."""
     
-    market_mechanism: str = "walrasian"
-    """Market clearing mechanism type: "walrasian", "posted_price", or "cda"."""
-    
-    walrasian_adjustment_speed: float = 0.1
-    """Price adjustment speed in tatonnement process."""
-    
-    walrasian_tolerance: float = 0.01
-    """Convergence tolerance for excess demand in tatonnement."""
-    
-    walrasian_max_iterations: int = 100
-    """Maximum iterations for tatonnement before declaring non-convergence."""
+    # Market mechanism parameters removed - all trading now uses bilateral protocols
 
     def validate(self) -> None:
         """Validate simulation parameters."""

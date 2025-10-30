@@ -51,6 +51,7 @@ class TelemetryManager:
         self._market_dissolution_buffer: list = []
         self._market_clear_buffer: list = []
         self._market_snapshot_buffer: list = []
+        self._price_learning_buffer: list = []
         
         # For renderer compatibility
         self.recent_trades_for_renderer: list = []
@@ -422,6 +423,33 @@ class TelemetryManager:
         if len(self._preference_buffer) >= self.config.batch_size:
             self._flush_preferences()
     
+    def log_price_learning(self, tick: int, agent_id: int, commodity: str, 
+                          old_lambda: float, new_lambda: float, 
+                          observed_prices: list[float], learning_rate: float):
+        """
+        Log price signal learning events.
+        
+        Args:
+            tick: Current simulation tick
+            agent_id: Agent that learned from prices
+            commodity: Commodity whose prices were observed ('A' or 'B')
+            old_lambda: Previous lambda_money value
+            new_lambda: New lambda_money value after learning
+            observed_prices: List of prices that triggered learning
+            learning_rate: Learning rate used for adjustment
+        """
+        if not self.config.log_decisions or self.db is None or self.run_id is None:
+            return
+        
+        self._price_learning_buffer.append((
+            self.run_id, tick, agent_id, commodity, old_lambda, new_lambda,
+            json.dumps(observed_prices), learning_rate
+        ))
+        
+        # Flush buffer if needed
+        if len(self._price_learning_buffer) >= self.config.batch_size:
+            self._flush_price_learning()
+    
     def _flush_agent_snapshots(self):
         """Flush agent snapshot buffer to database."""
         if not self._agent_snapshot_buffer or self.db is None:
@@ -674,6 +702,19 @@ class TelemetryManager:
         self.db.commit()
         self._market_snapshot_buffer.clear()
     
+    def _flush_price_learning(self):
+        """Flush price learning buffer to database."""
+        if not self._price_learning_buffer or self.db is None:
+            return
+        
+        self.db.executemany("""
+            INSERT INTO price_learning_events
+            (run_id, tick, agent_id, commodity, old_lambda, new_lambda, observed_prices, learning_rate)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, self._price_learning_buffer)
+        self.db.commit()
+        self._price_learning_buffer.clear()
+    
     def _flush_all_buffers(self):
         """Flush all buffers to database."""
         self._flush_agent_snapshots()
@@ -687,6 +728,7 @@ class TelemetryManager:
         self._flush_market_dissolutions()
         self._flush_market_clears()
         self._flush_market_snapshots()
+        self._flush_price_learning()
     
     def close(self):
         """Close the telemetry manager and database."""
