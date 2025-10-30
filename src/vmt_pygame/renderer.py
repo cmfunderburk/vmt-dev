@@ -275,6 +275,9 @@ class VMTRenderer:
         self.draw_grid()
         self.draw_resources()
         
+        # Highlight high-activity cells (5+ agents)
+        self.draw_high_activity_cells()
+        
         # Draw home positions if cell size is large enough
         if self.show_home_indicators:
             self.draw_home_positions()
@@ -353,6 +356,29 @@ class VMTRenderer:
                         True, self.COLOR_TEXT
                     )
                     self.screen.blit(label, (screen_x + 2, screen_y + 2))
+    
+    def draw_high_activity_cells(self):
+        """Draw yellow outline for cells with 5 or more agents to highlight high-activity zones."""
+        # Group agents by position
+        position_groups = self.group_agents_by_position()
+        
+        # Draw yellow outline for cells with 5+ agents
+        for pos, agents in position_groups.items():
+            if len(agents) >= 5:
+                x, y = pos
+                screen_x, screen_y = self.to_screen_coords(x, y)
+                
+                # Skip if not visible
+                if not self.is_visible(screen_x, screen_y):
+                    continue
+                
+                # Draw thick yellow outline
+                pygame.draw.rect(
+                    self.screen, 
+                    self.COLOR_YELLOW,
+                    (screen_x, screen_y, self.cell_size, self.cell_size),
+                    3  # Line width of 3 pixels for visibility
+                )
     
     def draw_home_positions(self):
         """Draw home position indicators for all agents."""

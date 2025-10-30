@@ -1,0 +1,382 @@
+---
+alwaysApply: true
+---
+
+# VMT (Visualizing Microeconomic Theory) - AI Agent Instructions
+
+## Project Mission & Current Phase
+
+VMT is a **spatial agent-based simulation** for studying how market phenomena emerge from micro-level interactions. Unlike traditional economics that assumes equilibrium prices, VMT demonstrates when/how markets form through **explicit institutional mechanisms**: search protocols, matching algorithms, and bargaining rules. Think: "markets as emergent systems" not "markets as given primitives."
+
+### 🎯 CURRENT PRIORITY: 7-Phase Architecture Review
+
+**Critical Context**: We are in a **code review and architectural planning phase** for the 7-phase tick cycle before implementing centralized market mechanisms (Phase 3 of research agenda). The challenge is to design market implementations that:
+
+1. **Preserve agent-based emergence** rather than imposing equilibrium from above
+2. **Work within the 7-phase cycle** without fundamental architecture changes
+3. **Enable comparison** between bilateral (current) and centralized (future) mechanisms
+4. **Maintain the Protocol → Effect → State pattern** for centralized markets
+
+**Key Tension**: Standard economic theory assumes centralized price-setting (Walrasian auctioneer), but VMT's architecture is fundamentally agent-based. We must think carefully about how centralized markets *emerge* from agent participation, not how to bolt them on top.
+
+**Before Implementing Markets**: Read `docs/CURRENT/critical/comprehensive_7_phase_tick_review.md` and `docs/BIGGEST_PICTURE/vision_and_architecture.md` (Phase 3 section). Understand current bilateral protocols first.
+
+## Critical Architecture: Protocol → Effect → State
+
+**This is THE fundamental pattern. NO EXCEPTIONS.**
+
+### The Flow (7-Phase Tick Cycle)
+```
+1. Perception    → Agents observe frozen WorldView snapshot
+2. Decision      → Protocols generate Effects (search + matching)
+3. Movement      → Agents move toward targets  
+4. Trade         → Paired agents negotiate (bargaining protocol)
+5. Foraging      → Agents harvest resources
+6. Regeneration  → Resources regrow
+7. Housekeeping  → Quote refresh, telemetry, cleanup
+```
+
+### Protocol Pattern
+```python
+# CORRECT: Protocol returns declarative Effects
+def execute(self, context: ProtocolContext) -> list[Effect]:
+    return [SetTarget(agent_id=1, target=(5,5)), 
+            Pair(agent_1=1, agent_2=2)]
+
+# WRONG: Never mutate state directly
+# agent.position = (5,5)  # ❌ FORBIDDEN
+# agent.target = other    # ❌ FORBIDDEN
+```
+
+**Key files**: `src/vmt_engine/protocols/base.py` (Effect types), `src/vmt_engine/systems/` (phase execution)
+
+## Determinism is Non-Negotiable
+
+Same seed → **bit-identical results**. Required for scientific validity.
+
+### Mandatory Rules
+1. **RNG**: Use ONLY `self.rng` (agents) or `world.rng` (engine). Never `random.random()`, `numpy.random`, time-based sources
+2. **Iteration**: ALWAYS sort before iterating: `for agent in sorted(agents, key=lambda a: a.id)`
+3. **No Unordered Collections**: Never iterate dicts/sets without sorting keys first
+4. **Effects Execute in Order**: All state changes via Effect objects applied deterministically
+
+### Test Pattern - ALWAYS Use Virtual Environment
+```bash
+# CORRECT - All tests/Python commands
+bash -c "source venv/bin/activate && python -m pytest tests/test_*.py -v"
+
+# WRONG - Never run outside venv
+# python -m pytest  # ❌ Shell may not be bash
+```
+
+**Why**: Shell environment may not be bash; `bash -c` ensures proper venv activation.
+
+## Research Agenda & Protocol System
+
+### Phase 1: Baseline Protocols ✅ COMPLETE
+- ✅ **Legacy protocols**: Distance-based search, three-pass matching, compensating block bargaining
+- ✅ **Effect-based architecture**: Declarative system working
+- ✅ **Money system**: Quasilinear utility, A↔M, B↔M trades
+
+### Phase 2: Alternative Bilateral Protocols 🚧 IN PROGRESS
+- � **Simple baselines**: Random walk search, random matching, split-the-difference bargaining
+- 🚧 **Pedagogical variants**: Greedy surplus matching, myopic search, take-it-or-leave-it
+- **Goal**: Comparison of bilateral mechanisms, establish efficiency/fairness baselines
+
+### Phase 3: Centralized Markets ⏸️ BLOCKED - ARCHITECTURAL REVIEW NEEDED
+- ⏸️ **Walrasian Auctioneer**: Competitive equilibrium benchmark (HOW to implement in agent-based setting?)
+- ⏸️ **Posted-Price Market**: Price rigidity and search (HOW does this fit 7-phase cycle?)
+- ⏸️ **Continuous Double Auction**: Market microstructure (WHERE in the tick does clearing happen?)
+- **Critical Question**: How do centralized markets work in an agent-based spatial simulation without breaking emergence?
+
+### Protocol Registry
+Protocols are discovered via `src/vmt_engine/protocols/registry.py`:
+- Auto-scans `protocols/{search,matching,bargaining}/` subdirectories
+- YAML scenarios specify by name: `search_protocol: "myopic"` or config dict
+- Test helper: `make_sim(scenario, search="random_walk", matching="greedy_surplus")`
+
+### Implementing New Protocols
+1. Extend base class: `SearchProtocol`, `MatchingProtocol`, or `BargainingProtocol`
+2. Implement `execute()` method returning `list[Effect]`
+3. Place in appropriate subdirectory (auto-registered)
+4. Add docstring explaining **economic mechanism** (not just code)
+
+**Example locations**:
+- `src/vmt_engine/protocols/search/myopic.py`
+- `src/vmt_engine/protocols/matching/greedy.py`
+- `src/vmt_engine/protocols/bargaining/split_difference.py`
+
+## Money System Architecture (Phase 2 Complete)
+
+### Three Exchange Regimes
+- `barter_only`: Only A↔B trades (legacy baseline)
+- `money_only`: Only A↔M and B↔M trades (Phase 2+)
+- `mixed`: All three trade types allowed (Phase 2+)
+
+### Money-Aware Utility API
+```python
+# Goods-only utility (canonical)
+u_goods(A, B) → float  
+mu_A(A, B), mu_B(A, B) → float  # Marginal utilities
+
+# Total utility (quasilinear)
+U_total = u_goods(A, B) + lambda_money * M  # M in minor units (cents)
+```
+
+### Money-First Tie-Breaking
+When multiple exchange pairs have equal surplus, prefer monetary trades:
+- Priority 0: A↔M
+- Priority 1: B↔M  
+- Priority 2: A↔B (barter fallback)
+
+**Implementation**: `estimate_money_aware_surplus()` in `src/vmt_engine/core/agent.py`
+
+## Scenario Files (YAML Configuration)
+
+Located in `scenarios/` (root) and `scenarios/demos/` (curated examples).
+
+### Minimal Example
+```yaml
+schema_version: 1
+name: "My Test Scenario"
+N: 10                    # Grid size (10×10)
+agents: 20               # Number of agents
+
+initial_inventories:
+  A: [10, 5, 8, ...]     # Per-agent inventories
+  B: [5, 10, 6, ...]
+  M: [100, 100, ...]     # Money (optional)
+
+utilities:
+  mix:
+    - type: ces          # CES, linear, quadratic, translog, stone_geary
+      weight: 0.6
+      params: {rho: -0.5, wA: 1.0, wB: 1.0}
+    - type: linear
+      weight: 0.4
+      params: {vA: 1.0, vB: 1.2}
+
+params:
+  exchange_regime: money_only  # barter_only | money_only | mixed
+  vision_radius: 10
+  interaction_radius: 1
+  dA_max: 5              # Max trade size to search
+  
+# Optional protocol overrides
+search_protocol: "myopic"
+matching_protocol: "greedy_surplus"
+bargaining_protocol: "split_difference"
+```
+
+**Schema**: `src/scenarios/schema.py` for all available parameters.
+
+## Running Simulations
+
+### GUI (Recommended for Exploration)
+```bash
+python launcher.py
+```
+Select scenarios, set seeds, create custom configs through forms.
+
+### CLI (Reproducible Runs)
+```bash
+python main.py scenarios/three_agent_barter.yaml 42  # seed=42
+```
+
+### Headless (Analysis/Testing)
+```python
+from scenarios.loader import load_scenario
+from vmt_engine.simulation import Simulation
+
+scenario = load_scenario("scenarios/three_agent_barter.yaml")
+sim = Simulation(scenario, seed=42)
+sim.tick()  # Run one tick
+sim.run(max_ticks=100)  # Run full simulation
+```
+
+## Test Suite (316+ Tests Passing)
+
+### Test Structure
+- `tests/test_*.py` - Individual test files
+- `tests/helpers/` - Shared utilities
+  - `builders.py` - `build_scenario()`, `make_sim()` helpers
+  - `run.py` - `run_ticks()`, execution helpers
+  - `assertions.py` - Domain-specific assertions
+
+### Test Pattern
+```python
+from tests.helpers import builders, run
+
+def test_feature():
+    scenario = builders.build_scenario(N=10, agents=20, regime="money_only")
+    sim = builders.make_sim(scenario, seed=42, matching="greedy_surplus")
+    run.run_ticks(sim, 10)
+    
+    # Assertions using sim.agents, sim.world, sim.telemetry
+    assert sim.agents[0].inventory.A > 0
+```
+
+### Running Tests
+```bash
+# Single test
+bash -c "source venv/bin/activate && python -m pytest tests/test_greedy_surplus_matching.py -v"
+
+# All tests
+bash -c "source venv/bin/activate && python -m pytest tests/ -v"
+
+# With coverage
+bash -c "source venv/bin/activate && python -m pytest tests/ --cov=src/vmt_engine"
+```
+
+## Documentation Structure
+
+- `README.md` - Quick start, overview
+- `docs/1_project_overview.md` - Philosophy, installation, controls
+- `docs/2_technical_manual.md` - 7-phase cycle, economic logic, protocols
+- `docs/BIGGEST_PICTURE/vision_and_architecture.md` - Strategic vision, research agenda (READ Phase 3 section!)
+- `docs/CURRENT/critical/comprehensive_7_phase_tick_review.md` - **ESSENTIAL** for understanding architecture
+- `docs/CURRENT/` - Active development notes, feature reviews
+- `.cursor/rules/*.mdc` - Cursor-specific AI instructions (source for this file)
+
+### Required Reading for Market Implementation Work
+1. **FIRST**: `comprehensive_7_phase_tick_review.md` - Understand how the tick cycle works NOW
+2. **SECOND**: `vision_and_architecture.md` (lines 290-320) - Phase 3 centralized market challenges
+3. **THIRD**: `docs/2_technical_manual.md` - Economic logic and current protocols
+
+## Common Workflows
+
+### Adding a New Bilateral Protocol (Phase 2)
+1. Create file in `src/vmt_engine/protocols/{search|matching|bargaining}/my_protocol.py`
+2. Extend appropriate base class, implement `execute()`
+3. Add tests in `tests/test_my_protocol.py` using helpers
+4. Document economic mechanism in docstring
+5. Run: `bash -c "source venv/bin/activate && python -m pytest tests/test_my_protocol.py -v"`
+
+**Safe for implementation**: Protocols that extend existing SearchProtocol/MatchingProtocol/BargainingProtocol interfaces are well-understood.
+
+### Planning a Centralized Market Protocol (Phase 3) ⚠️
+1. **STOP**: Do not implement yet. Start with design discussion.
+2. Read `comprehensive_7_phase_tick_review.md` to understand current architecture
+3. Answer architectural questions (see "Planning Before Implementation" section)
+4. Sketch how market protocol fits into 7-phase cycle
+5. Discuss with user: Does this preserve emergence or impose equilibrium?
+6. Document decision rationale BEFORE writing code
+7. Only after approval: Create minimal prototype
+
+**High risk**: Market protocols require architectural changes, not just new implementations.
+
+### Debugging Determinism Issues
+1. Check all RNG calls use `self.rng` / `world.rng`
+2. Verify iteration order: `sorted(agents, key=lambda a: a.id)`
+3. Confirm Effects used for all state changes (no direct mutations)
+4. Run twice with same seed, compare telemetry databases
+
+### Creating Teaching Scenarios
+1. Copy `scenarios/demos/demo_01_simple_money.yaml` as template
+2. Add pedagogical comment header explaining learning objective
+3. Configure complementary inventories to create trading opportunities
+4. Set appropriate `exchange_regime` for the lesson
+5. Test with `python main.py scenarios/demos/my_demo.yaml 42`
+
+## Code Style Conventions
+
+- **Type hints**: Required for public APIs, protocols, Effects
+- **Docstrings**: All protocols must explain economic mechanism
+- **Immutability**: WorldView/ProtocolContext are read-only snapshots
+- **Naming**: `dA_max` (trade size), `N` (grid size), `beta` (discount factor)
+- **Tests**: Use `builders` helpers, not raw Simulation construction
+
+## Planning Before Implementation - ESPECIALLY FOR MARKET MECHANISMS
+
+**CRITICAL RULE for Complex Features**: When working on architectural changes or market mechanisms:
+1. ✅ **DO**: Discuss design, clarify requirements, document approach
+2. ❌ **DON'T**: Make code changes until user explicitly says "start implementing"
+
+### Special Warning: Centralized Market Implementation
+
+**DO NOT attempt to implement centralized markets (Walrasian auctioneer, posted-price, double auction) without extensive architectural discussion first.**
+
+The risk: It's tempting to implement centralized markets using standard economic theory (compute equilibrium, set prices globally). But this **violates VMT's core philosophy** of market emergence from agent interactions.
+
+**Questions to answer BEFORE coding:**
+- Where in the 7-phase cycle does market clearing occur?
+- How do agents "participate" in a centralized market? Through what protocol interface?
+- Does the market exist as a global state object or emerge from agent behavior?
+- How does spatial distribution affect centralized market access?
+- Can we maintain Protocol → Effect → State pattern for market operations?
+- What's the pedagogical story: "markets emerge when..." or "markets exist because..."?
+
+**Pattern learned**: The previous market implementation attempt jumped to global market state before understanding how it fits agent-based architecture. Don't repeat this mistake.
+
+See `.cursor/rules/04_planning_only_mode.mdc` for rationale.
+
+## Open Architectural Questions (Phase 3 Blockers)
+
+**Context**: Before implementing centralized markets, we must resolve these fundamental design questions. Do NOT attempt to "solve" them by coding—these require careful thought about how markets emerge in agent-based systems.
+
+### 1. Market Participation Mechanism
+**Question**: How do agents "enter" a centralized market in a spatial simulation?
+- Option A: Agents at specific locations (market building on grid)?
+- Option B: All agents can participate but face distance costs?
+- Option C: Market access is a protocol decision (agents "choose" to use market vs bilateral)?
+
+**Tension**: Markets are spatial phenomena (think medieval fairs, stock exchanges), but Walrasian theory abstracts away space. Which is pedagogically valuable?
+
+### 2. Timing Within 7-Phase Cycle
+**Question**: WHEN does market clearing occur in the tick sequence?
+- Phase 2 (Decision)? But matching protocols are for bilateral pairings.
+- Phase 4 (Trade)? But bargaining protocols assume bilateral negotiation.
+- New Phase 4.5 (Market Clearing)? Breaks the 7-phase architecture.
+
+**Current architecture**: Decision (select partners) → Movement → Trade (negotiate). Where does "submit orders to market" fit?
+
+### 3. Protocol Interface Design
+**Question**: What does a "MarketProtocol" interface look like?
+```python
+# Bilateral protocols return pairwise Effects
+Pair(agent_1=1, agent_2=2)  # Two agents paired
+
+# Market protocol would return... what?
+MarketOrder(agent_id=1, good="A", quantity=5, limit_price=1.2)?
+MarketClear(price_A=1.15, price_B=0.85)?  # Global state mutation?
+```
+
+**Challenge**: Bilateral protocols produce agent-level Effects. Market protocols need to coordinate many agents simultaneously. How?
+
+### 4. State Representation
+**Question**: How is "the market" represented in simulation state?
+- Option A: Market is a System (like TradeSystem) that coordinates agents
+- Option B: Market is a special Agent (market-maker) that others trade with
+- Option C: Market is global state (price vector, order book) separate from agents
+
+**Philosophical issue**: Option C violates "markets emerge from behavior" principle. But Options A/B require rethinking what "market" means.
+
+### 5. Bilateral vs Centralized Coexistence
+**Question**: In a scenario with BOTH bilateral and centralized markets, how do agents choose?
+- Sequential decision (try bilateral first, then market)?
+- Preference-based (some agents prefer bilateral, others prefer market)?
+- Protocol-level (MatchingProtocol can return both Pair effects and MarketOrder effects)?
+
+**Research value**: Studying when agents choose markets vs bilateral trade is the core question! But implementation not obvious.
+
+### 6. Information and Market Access
+**Question**: What do agents need to observe to participate in markets?
+- Current: Agents see neighbors within `vision_radius`, build `WorldView`
+- Markets: Agents need to see prices, order books, or market location
+- How does `PerceptionSystem` provide market information without breaking spatial logic?
+
+**Example tension**: Walrasian auctioneer implies perfect information (all agents see same prices). But VMT's spatial design implies information frictions. Which to preserve?
+
+---
+
+**For AI Agents**: When user asks about market implementation, LEAD with these questions. Discuss tradeoffs. Explore alternatives. Do NOT jump to "here's the implementation" without architectural clarity.
+
+---
+
+**Quick Reference Files**:
+- Architecture: `src/vmt_engine/protocols/base.py`, `src/vmt_engine/systems/`
+- Core Types: `src/vmt_engine/core/agent.py`, `src/vmt_engine/core/grid.py`
+- Scenarios: `src/scenarios/schema.py`, `scenarios/demos/*.yaml`
+- Testing: `tests/helpers/builders.py`, `pytest.ini`
+- Docs: `docs/2_technical_manual.md` (7-phase cycle details)
+- **Critical Review**: `docs/CURRENT/critical/comprehensive_7_phase_tick_review.md` (READ THIS for Phase 3 work)
