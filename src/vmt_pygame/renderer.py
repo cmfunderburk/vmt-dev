@@ -1355,4 +1355,31 @@ class VMTRenderer:
             
             # Add spacing between sections
             y_offset += 10
+        
+        # Display agent inventories if fewer than 5 agents
+        if len(self.sim.agents) < 5:
+            # Add some spacing before inventory section
+            y_offset += 20
+            
+            # Draw inventory section header
+            inventory_header = self.font.render("Agent Inventories", True, self.COLOR_TEXT)
+            self.screen.blit(inventory_header, (10, y_offset))
+            y_offset += 25
+            
+            # Display each agent's inventory
+            for agent in sorted(self.sim.agents, key=lambda a: a.id):
+                # Agent ID and position
+                agent_info = f"Agent {agent.id} (pos: {agent.pos[0]},{agent.pos[1]}):"
+                agent_label = self.small_font.render(agent_info, True, self.COLOR_TEXT)
+                self.screen.blit(agent_label, (10, y_offset))
+                y_offset += 18
+                
+                # Inventory values
+                inventory_text = f"  A: {agent.inventory.A}, B: {agent.inventory.B}, M: {agent.inventory.M}"
+                inventory_label = self.small_font.render(inventory_text, True, self.COLOR_TEXT)
+                self.screen.blit(inventory_label, (15, y_offset))
+                y_offset += 18
+                
+                # Add small spacing between agents
+                y_offset += 5
 
