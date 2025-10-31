@@ -1,5 +1,22 @@
 # VMT (Visualizing Microeconomic Theory) - AI Agent Instructions
 
+## Quick Start for AI Agents
+
+**New to this codebase?** Read in this order:
+1. This file (high-level patterns and workflows)
+2. `docs/BIGGEST_PICTURE/vision_and_architecture.md` (research agenda, Phase 2.5-4 sections)
+3. `docs/2_technical_manual.md` (7-phase tick cycle, economic logic)
+4. `.cursor/rules/*.mdc` (critical architecture rules)
+
+**Key Commands**:
+- Run tests: `bash -c "source venv/bin/activate && python -m pytest tests/test_*.py -v"`
+- Run simulation: `python main.py scenarios/demos/minimal_2agent.yaml 42`
+- View results: `python view_logs.py`
+
+**Current Focus**: Phase 2.5 - Scenario curation and behavioral validation (see below)
+
+---
+
 ## Project Mission & Philosophy
 
 VMT is a **spatial agent-based simulation** for studying how market phenomena **emerge** from micro-level interactions. Unlike traditional economics that assumes equilibrium prices or centralized coordination, VMT demonstrates when/how markets form through **explicit agent behaviors and institutional mechanisms**: search protocols, matching algorithms, and bargaining rules.
@@ -160,7 +177,12 @@ Protocols auto-discovered via `src/vmt_engine/protocols/registry.py`:
 
 ## Scenario Files (YAML Configuration)
 
-Located in `scenarios/` (root) and `scenarios/demos/` (curated examples).
+### Directory Structure
+- `scenarios/` - Root-level scenarios (foundational examples)
+- `scenarios/demos/` - Curated pedagogical scenarios (start here)
+- `scenarios/curated/` - Research scenarios
+- `scenarios/test/` - Test-specific scenarios
+- `docs/structures/` - Templates and schema reference
 
 ### Minimal Barter Scenario
 ```yaml
@@ -195,6 +217,7 @@ bargaining_protocol: "split_difference"
 ```
 
 **Schema**: `src/scenarios/schema.py` for all available parameters.
+**Loader**: `src/scenarios/loader.py` - `load_scenario(path)` function for programmatic use.
 
 ## Running Simulations
 
@@ -218,13 +241,29 @@ sim = Simulation(scenario, seed=42)
 sim.run(max_ticks=100)
 ```
 
+### Viewing Results
+```bash
+python view_logs.py  # GUI viewer for telemetry databases
+```
+
+**Telemetry System**: All runs automatically log to SQLite databases in `logs/` directory:
+- Agent snapshots (position, inventory, utility)
+- Trade events (price, quantity, surplus)
+- Pairing events and preference rankings
+- Resource states and regeneration
+
+**Analysis Scripts**: `scripts/` directory contains tools for analyzing simulation results:
+- `analyze_trade_distribution.py` - Price and volume analysis
+- `compare_telemetry_snapshots.py` - Compare multiple runs
+- `benchmark_performance.py` - Performance profiling
+
 ## Test Suite (300+ Tests)
 
 ### Test Structure
 - `tests/test_*.py` - Individual test files
 - `tests/helpers/` - Shared utilities
-  - `builders.py` - `build_scenario()`, `make_sim()` helpers
-  - `run.py` - `run_ticks()` execution helpers
+  - `builders.py` - `build_scenario()`, `make_sim()` helpers (essential for all tests)
+  - `run_helpers.py` - `run_ticks()` execution helpers
   - `assertions.py` - Domain-specific assertions
 
 ### Test Pattern
@@ -232,8 +271,13 @@ sim.run(max_ticks=100)
 from tests.helpers import builders, run_helpers
 
 def test_protocol_behavior():
+    # Always use builders.build_scenario() - sets correct defaults
     scenario = builders.build_scenario(N=10, agents=4)
+    
+    # make_sim() handles protocol overrides by name
     sim = builders.make_sim(scenario, seed=42, matching="greedy_surplus")
+    
+    # run_ticks() executes simulation
     run_helpers.run_ticks(sim, 10)
     
     # Verify behavior
@@ -251,7 +295,16 @@ bash -c "source venv/bin/activate && python -m pytest tests/ -v"
 
 # With coverage
 bash -c "source venv/bin/activate && python -m pytest tests/ --cov=src/vmt_engine --cov-report=html"
+
+# Specific test method
+bash -c "source venv/bin/activate && python -m pytest tests/test_greedy_surplus_matching.py::TestGreedySurplusMatchingInterface::test_has_required_properties -v"
 ```
+
+### Test Conventions
+- **Never construct Simulation directly** - always use `builders.make_sim()`
+- **Use complementary inventories** - `build_scenario()` creates alternating A-rich/B-rich agents
+- **Check determinism** - run twice with same seed, verify identical outcomes
+- **Test protocols in isolation** - override specific protocols while keeping others default
 
 ## Documentation Structure
 
