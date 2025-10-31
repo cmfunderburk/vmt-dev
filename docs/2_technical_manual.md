@@ -88,9 +88,8 @@ Determinism is the cornerstone of the VMT engine. Given the same scenario file a
 -   **Money-Aware API** (Phase 2+): The utility interface provides separate methods for goods and total utility:
     *   `u_goods(A, B)` — Utility from goods only (canonical method)
     *   `mu_A(A, B)`, `mu_B(A, B)` — Marginal utilities of goods A and B (∂U/∂A, ∂U/∂B)
-    *   `u_total(inventory, params)` — Total utility including money (Phase 3+, planned)
-    *   Legacy methods `u(A, B)` and `mu(A, B)` route to the money-aware API for backward compatibility
--   **Quasilinear Utility** (Phases 1-2): U_total = U_goods(A, B) + λ·M, where λ is the marginal utility of money and M is money holdings in minor units
+    *   Legacy methods `u(A, B)` and `mu(A, B)` remain for backward compatibility
+-   **Pure Barter Economy**: VMT is a pure barter economy - all trades are direct A↔B exchanges (money system removed)
 -   **Reservation Bounds**: Agents' willingness to trade is determined by their reservation price, which is derived from their marginal rate of substitution (MRS). To avoid hard-coding MRS formulas, the engine uses a generic `reservation_bounds_A_in_B(A, B, eps)` function. This returns the minimum price an agent would accept (`p_min`) and the maximum price they would pay (`p_max`).
 -   **Zero-Inventory Guard**: A critical innovation is the handling of zero-inventory cases for CES utilities. When an agent has zero of a good, its MRS can be undefined or infinite. The engine handles this by adding a tiny `epsilon` value to the inventory levels *only for the ratio calculation* used to determine reservation bounds. The core utility calculation `u_goods(A, B)` always uses the true integer inventories.
 
@@ -216,62 +215,17 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
     *   **mode = "both"**: Full comparison as described above (economically optimal)
 -   **Historical Note**: Prior to this implementation, agents used lexicographic preferences ("trade if any opportunity exists, otherwise forage"), which was not economically correct. The current system properly balances opportunity costs.
 
-#### Money System (v1.0 — Core Implementation Complete)
--   **Money as Good**: Money holdings (`M`) are stored as integers in minor units (e.g., cents). The `money_scale` parameter converts between whole units and minor units (default: 1 = no conversion).
--   **Exchange Regimes**: The `exchange_regime` parameter controls allowed exchange types:
-    *   `"barter_only"` — Only A↔B trades (default, backward compatible with legacy scenarios)
-    *   `"money_only"` — Only A↔M and B↔M trades (goods for money)
-    *   `"mixed"` — All exchange pairs allowed; uses money-first tie-breaking when multiple pairs have equal surplus
-    *   `"mixed_liquidity_gated"` — (PLANNED) Mixed with minimum quote depth requirement
--   **Money Utility Forms** (Implemented): Two functional forms for money utility:
-    *   **Linear** (default): U_total = U_goods(A, B) + λ·M
-        - Constant marginal utility of money: ∂U/∂M = λ
-        - Simplest form, good for basic pedagogy
-        - No wealth effects: agents with same goods holdings offer identical money prices
-        - Parameter: `money_utility_form: "linear"`
-    *   **Logarithmic**: U_total = U_goods(A, B) + λ·log(M + M_0)
-        - Diminishing marginal utility: ∂U/∂M = λ/(M + M_0)
-        - Captures realistic income effects: wealthy agents value goods more in money terms
-        - M_0 is shift parameter (default: 0.0): prevents log(0) and calibrates curvature
-        - Analogous to Stone-Geary for money (subsistence money level)
-        - Parameter: `money_utility_form: "log"`, `M_0: 10.0`
-    *   **Heterogeneous λ** (RECOMMENDED): Use agent-specific λ values via `initial_inventories.lambda_money` list for realistic trading dynamics
-    *   **Money Modes** (Current implementation uses quasilinear mode; adaptive λ (KKT mode) is planned):
-        - `quasilinear`: Fixed λ values (either constant or agent-specific)
-        - `kkt_lambda` (PLANNED): Endogenous λ estimation from observed market prices
--   **Money-First Tie-Breaking** (Implemented): When multiple trade types offer equal surplus in mixed regimes, the engine uses deterministic three-level sorting:
-    1.  **Total surplus** (descending) — Maximizes welfare
-    2.  **Pair type priority** (ascending) — Money-first policy:
-        *   Priority 0: A↔M (highest — monetary exchange for good A)
-        *   Priority 1: B↔M (middle — monetary exchange for good B)
-        *   Priority 2: A↔B (lowest — barter)
-    3.  **Agent pair ID** `(min_id, max_id)` (ascending) — Deterministic tie-breaker
-    *   Rationale: Money trades preferred when surplus equal due to liquidity advantages
-    *   Implementation: `TradeSystem._rank_trade_candidates()` in `src/vmt_engine/systems/trading.py`
--   **Mode × Regime Interaction** (Implemented): Two-layer control architecture:
-    *   **Temporal control** (`mode_schedule`): WHEN activities occur (forage/trade/both modes)
-    *   **Type control** (`exchange_regime`): WHAT bilateral exchanges are permitted
-    *   In forage mode, no trading occurs regardless of regime
-    *   In trade/both modes, allowed pairs determined by regime
-    *   Method: `Simulation._get_active_exchange_pairs()` combines both controls
--   **Generic Matching** (Implemented): 
-    *   `find_best_trade()`: Evaluates allowed pairs, returns first feasible trade
-    *   `find_all_feasible_trades()`: Returns ALL feasible trades for ranking in mixed regimes
-    *   Each pair uses the same compensating block search as barter
--   **Money Transfers**: Successful money trades update inventories: `buyer.M -= dM`, `seller.M += dM`. Money transfers are recorded in the `trades.dM` telemetry field.
--   **Telemetry Extensions** (Implemented): The `exchange_pair_type` field logs which pair type was executed ("A<->B", "A<->M", or "B<->M"), enabling analysis of trade type distributions in mixed regimes.
--   **Backward Compatibility**: All money fields default to preserve legacy behavior:
-    *   `exchange_regime` defaults to `"barter_only"`
-    *   `Inventory.M` defaults to 0
-    *   `lambda_money` defaults to 1.0
-    *   Legacy scenarios run identically with zero behavioral changes
--   **Current Implementation Status**: Money system v1.0 (core complete) includes:
-    *   Three exchange regimes: barter_only, money_only, mixed (fully implemented)
-    *   Quasilinear utility with heterogeneous λ values
-    *   Money-aware pairing and matching algorithms
-    *   Comprehensive telemetry and analysis
-    *   Demo scenarios in `scenarios/demos/`
-    *   **Planned Features**: kkt_lambda mode, mixed_liquidity_gated regime
+#### Trade System
+-   **Barter Economy**: All trades are direct A↔B exchanges (money system removed)
+-   **Mode Scheduling** (Implemented): Temporal control of agent activities:
+    *   **`mode_schedule`**: WHEN activities occur (forage/trade/both modes)
+    *   In forage mode, no trading occurs
+    *   In trade/both modes, agents can engage in A↔B barter
+-   **Matching**: 
+    *   `find_best_trade()`: Finds first feasible A↔B barter trade
+    *   `find_all_feasible_trades()`: Returns ALL feasible barter trades for ranking
+    *   Uses compensating block search to find mutually beneficial exchanges
+-   **Telemetry**: Trade telemetry logs A and B quantities exchanged, along with the price and surplus for each agent
 
 ---
 

@@ -210,8 +210,7 @@ The middle steps—search, matching, bargaining—are **explicit institutional m
 
 **2. Economic Foundations**
 - 5 utility function types (CES, linear, quadratic, Stone-Geary, translog)
-- Money system with quasilinear utility
-- Three exchange regimes (barter, money-only, mixed)
+- Pure barter economy (A↔B trades only - money system removed)
 - Foraging as resource generation
 
 **3. Protocol Architecture**

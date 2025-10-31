@@ -39,11 +39,4 @@ resource_seed:
 # - enforce_single_harvester: true
 # - epsilon: 1e-12
 # - beta: 0.95
-# - exchange_regime: "barter_only"
-# - money_mode: "quasilinear"
-# - money_scale: 1
-# - lambda_money: 1.0
-# - lambda_update_rate: 0.2
-# - lambda_bounds: {lambda_min: 1e-6, lambda_max: 1e6}
-# - liquidity_gate: {min_quotes: 3}
-# - earn_money_enabled: false
+# NOTE: Money system removed - VMT is now a pure barter economy (A<->B trades only)

@@ -310,82 +310,26 @@ See [Technical Manual](./2_technical_manual.md#resource-claiming-system) for imp
 
 ---
 
-## 💰 Money System
+## 💱 Trade System
 
-VMT implements a flexible money system with configurable **utility forms** and **exchange regimes**:
+**VMT is a pure barter economy.** All trades are direct A↔B exchanges.
 
-### Exchange Regimes
+### Configuration Example
 
-The `exchange_regime` parameter controls allowed exchange types:
-- **`"barter_only"`** (default) — Only A↔B trades; backward compatible with legacy scenarios
-- **`"money_only"`** — Only A↔M and B↔M trades (goods for money)
-- **`"mixed"`** — All exchange pairs allowed; generic matching selects highest-surplus pair
-- **`"mixed_liquidity_gated"`** — (PLANNED) Barter fallback when money market is thin
-
-### Money Utility Forms
-
-VMT supports two functional forms for money utility:
-
-#### 1. Linear Form (Quasilinear)
-```
-U_total = U_goods(A, B) + λ·M
-∂U/∂M = λ (constant marginal utility)
-```
-
-#### 2. Logarithmic Form (Diminishing MU)
-```
-U_total = U_goods(A, B) + λ·log(M + M_0)
-∂U/∂M = λ/(M + M_0) (diminishing marginal utility)
-```
-
-Where:
-- **U_goods** — Utility from goods (CES, Linear, Quadratic, Translog, or Stone-Geary)
-- **λ** (`lambda_money`) — Base marginal utility parameter (default: 1.0)
-- **M** — Money holdings in minor units (e.g., cents)
-- **M_0** — Shift parameter for log form (subsistence money level, default: 0.0)
-
-### Configuration Examples
-
-#### Linear Form (Constant MU)
+#### Barter Economy (A↔B trades)
 ```yaml
 initial_inventories:
   A: { uniform_int: [5, 15] }
   B: { uniform_int: [5, 15] }
-  M: 100  # Give each agent 100 units of money
 
-params:
-  exchange_regime: "mixed"         # Allow all exchange types
-  money_utility_form: "linear"     # Constant marginal utility (default)
-  lambda_money: 1.0                # Marginal utility of money
-  money_scale: 1                   # Minor units scale
+utilities:
+  mix:
+    - weight: 1.0
+      type: "ces"
+      sigma: 0.5  # Complementary goods
 ```
 
-#### Logarithmic Form (Diminishing MU)
-```yaml
-initial_inventories:
-  A: { uniform_int: [5, 15] }
-  B: { uniform_int: [5, 15] }
-  M: 100  # Give each agent 100 units of money
-
-params:
-  exchange_regime: "mixed"         # Allow all exchange types
-  money_utility_form: "log"        # Diminishing marginal utility
-  lambda_money: 10.0               # Base MU parameter
-  M_0: 10.0                       # Subsistence money level
-  money_scale: 1                   # Minor units scale
-```
-
-**Note:** `lambda_money` can be a list for heterogeneous agents (e.g., `[1.0, 2.0, 0.5]`)
-
-### Telemetry
-
-Money trades are logged with full context:
-- **`trades.dM`** — Money transfer amount
-- **`trades.exchange_pair_type`** — "A<->B", "A<->M", "B<->M"
-- **`trades.buyer_lambda`**, **`trades.seller_lambda`** — Lambda values at trade time
-- **`tick_states.active_pairs`** — JSON array of active exchange pairs per tick
-
-See [Technical Manual](./2_technical_manual.md#money-system) and [Type Specification](./4_typing_overview.md#7-money--market-contracts) for complete details.
+See [Technical Manual](./2_technical_manual.md) and [Type Specification](./4_typing_overview.md) for complete details.
 
 ---
 

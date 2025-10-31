@@ -163,40 +163,13 @@ params:
   # MONEY SYSTEM PARAMETERS
   # -------------------------------------------------------------------------
   
-  exchange_regime: "mixed"          # Trade type control, default: "barter_only", range: see below
-                                   # Options: "barter_only", "money_only", "mixed", "mixed_liquidity_gated"
-                                   # Note: money_only, mixed, mixed_liquidity_gated require M in initial_inventories
-                                   # NOTE: "mixed_liquidity_gated" is PLANNED but not yet implemented
-  
-  money_mode: "quasilinear"        # Money utility mode, default: "quasilinear", range: see below
-                                   # Options: "quasilinear" (fixed λ), "kkt_lambda" (endogenous λ - PLANNED)
-  
-  money_scale: 1                   # Money scale factor (minor units), default: 1, range: ≥ 1
-                                   # Typical: 1 (no scaling), 10 (dimes), 100 (cents), 1000 (mills)
-                                   # IMPORTANT: Multiplies BOTH initial M inventory AND prices proportionally
-                                   # Example: M: 200 with money_scale: 1000 → agents start with 200,000 units
-                                   # Purpose: Increases liquidity and price precision, not just display units
-  
-  lambda_money: 1.0                # Fixed marginal utility of money, default: 1.0, range: > 0
-                                   # Typical: 0.1-5.0, higher = values money more, ignored if money_mode = "kkt_lambda"
-                                   # NOTE: Can be overridden by initial_inventories.lambda_money for heterogeneous agents
-  
-  lambda_update_rate: 0.2          # λ update smoothing factor, default: 0.2, range: [0, 1]
-                                   # Typical: 0.1-0.3, ignored if money_mode = "quasilinear"
-                                   # NOTE: Only used if money_mode = "kkt_lambda" (PLANNED)
-  
-  lambda_bounds:                   # λ value bounds for kkt_lambda mode, default: {lambda_min: 1e-6, lambda_max: 1e6}
-    lambda_min: 1e-6               # Minimum λ value, range: > 0, must be < lambda_max
-    lambda_max: 1e6                # Maximum λ value, range: > lambda_min
-                                   # NOTE: Only used if money_mode = "kkt_lambda" (PLANNED)
-  
-  liquidity_gate:                  # Configuration for mixed_liquidity_gated regime
-    min_quotes: 3                  # Min monetary quotes to disable barter, default: 3, range: ≥ 0
-                                   # Typical: 3-5, 0 (never allow barter), >> agents (always allow barter)
-                                   # NOTE: mixed_liquidity_gated regime is PLANNED but not yet implemented
-  
-  earn_money_enabled: false        # Placeholder for future features, default: false, range: true/false
-                                   # Currently unused, leave as false
+  # MONEY SYSTEM REMOVED: VMT is now a pure barter economy (A<->B trades only)
+  # The following parameters are NO LONGER SUPPORTED:
+  # - exchange_regime (was: "barter_only", "money_only", "mixed")
+  # - money_mode (was: "quasilinear", "kkt_lambda")
+  # - money_scale, lambda_money, lambda_update_rate, lambda_bounds
+  # - M inventory (money holdings)
+  # All trades are now direct barter: agents exchange Good A for Good B
   
   # -------------------------------------------------------------------------
   # TELEMETRY PARAMETERS (Optional)
@@ -306,36 +279,9 @@ bargaining_protocol: "legacy_compensating_block"  # Options: "legacy_compensatin
 # - Realistic: spread = 0.05-0.15
 # - High friction: spread = 0.3+
 
-# Exchange Regime Guidelines:
-# - barter_only: Traditional barter economy (backward compatible)
-# - money_only: Pure monetary economy (requires M in inventories)
-# - mixed: All trade types allowed (requires M in inventories)
-# - mixed_liquidity_gated: Barter fallback when money market thin (PLANNED, not yet implemented)
-
-# Money Mode Guidelines:
-# - quasilinear: Fixed λ, simple and pedagogical (IMPLEMENTED)
-# - kkt_lambda: Endogenous λ, more realistic but complex (PLANNED)
-
-# Money Scale Guidelines:
-# - money_scale multiplies BOTH initial M inventory AND all monetary prices
-# - Example: M: 200, money_scale: 1000 → agents get 200,000 units, prices scale 1000x
-# - Purchasing power (M / price) remains constant across different money_scale values
-# - When to increase money_scale:
-#   1. Reduce integer rounding errors in trade calculations (main benefit)
-#   2. Allow finer price granularity (1/1000th precision vs 1/1 precision)
-#   3. Increase liquidity when prices would otherwise be < 1 unit
-# - Typical values:
-#   - money_scale: 1 → Whole units (simple, but prone to rounding errors)
-#   - money_scale: 100 → Cents (good balance, matches USD/EUR)
-#   - money_scale: 1000 → Mills (best precision, recommended for large simulations)
-# - Rule of thumb: Use money_scale ≥ 100 for scenarios with heterogeneous λ values
-
-# Heterogeneous Lambda Guidelines:
-# - Use initial_inventories.lambda_money: [λ1, λ2, λ3, ...] for agent-specific values
-# - High λ agents: value money more → lower ask prices in M → willing to sell goods for less money
-# - Low λ agents: value money less → higher bid prices in M → demand more money for goods
-# - Creates profitable monetary trading opportunities between agents with different λ values
-# - Typical range: 0.1-5.0, with 2-3x variation between agents for good trading dynamics
+# MONEY SYSTEM REMOVED: VMT is now a pure barter economy
+# All trades are direct Good A <-> Good B exchanges
+# Money parameters (exchange_regime, money_mode, money_scale, lambda_money, M inventory) are no longer supported
 
 # Utility Mix Guidelines:
 # - Single type: weight = 1.0 for one utility
@@ -352,26 +298,20 @@ bargaining_protocol: "legacy_compensating_block"  # Options: "legacy_compensatin
 
 # FULLY IMPLEMENTED FEATURES:
 # - All top-level parameters (schema_version, name, N, agents)
-# - All initial inventory types (A, B, M, lambda_money)
+# - Initial inventory types (A, B) - barter economy only
 # - All utility functions (CES, Linear, Quadratic, Translog, Stone-Geary)
 # - All spatial parameters (vision_radius, interaction_radius, move_budget_per_tick, spread)
 # - All trading parameters (dA_max, trade_cooldown_ticks, trade_execution_mode)
 # - All foraging parameters (forage_rate, resource_growth_rate, resource_max_amount, resource_regen_cooldown)
 # - All resource claiming parameters (enable_resource_claiming, enforce_single_harvester)
 # - All economic parameters (epsilon, beta)
-# - Money system: barter_only, money_only, mixed regimes
-# - Money system: quasilinear mode (kkt_lambda planned)
-# - Money system: money_scale, lambda_money, lambda_update_rate, lambda_bounds
+# - Barter-only economy: A<->B trades
 # - Telemetry parameters: log_preferences (optional)
 # - Resource seeding (density, amount)
 # - Mode scheduling (global_cycle type)
 
 # PLANNED BUT NOT YET IMPLEMENTED:
-# - kkt_lambda money mode (endogenous λ estimation)
-# - lambda_update_rate and lambda_bounds (for kkt_lambda mode)
-# - mixed_liquidity_gated exchange regime
-# - liquidity_gate parameters
-# - earn_money_enabled functionality
+# - Additional utility functions or trading mechanisms (TBD)
 # - Distribution syntax for inventories and resources
 # - Agent-specific and spatial_zones mode scheduling types
 
@@ -379,37 +319,20 @@ bargaining_protocol: "legacy_compensating_block"  # Options: "legacy_compensatin
 # COMMON VALIDATION ERRORS TO AVOID
 # =============================================================================
 
-# 1. Missing Money in Monetary Regimes:
-#    - exchange_regime: money_only/mixed requires M in initial_inventories
-#    - mixed_liquidity_gated is planned but not yet implemented
-
-# 2. Utility Weights Don't Sum to 1.0:
+# 1. Utility Weights Don't Sum to 1.0:
 #    - All weights in utilities.mix must sum exactly to 1.0 (within 1e-6 tolerance)
 
-# 3. Stone-Geary Below Subsistence:
+# 2. Stone-Geary Below Subsistence:
 #    - Initial inventories must satisfy A > gamma_A AND B > gamma_B for all agents
 
-# 4. List Length Mismatch:
+# 3. List Length Mismatch:
 #    - If using lists for inventories, length must equal 'agents' count
 
-# 5. CES with rho = 1.0:
+# 4. CES with rho = 1.0:
 #    - rho cannot equal 1.0 (mathematical singularity), use 0.999 or 1.001
 
-# 6. Invalid Exchange Regime:
-#    - Only "barter_only", "money_only", "mixed" are currently implemented
-#    - "mixed_liquidity_gated" is planned but not yet implemented
-
-# 7. Invalid Money Mode:
-#    - Only "quasilinear" is currently implemented
-#    - "kkt_lambda" is planned but not yet implemented
-
-# 8. Invalid Mode Schedule Type:
+# 5. Invalid Mode Schedule Type:
 #    - Only "global_cycle" is currently implemented
-
-# 9. Missing Heterogeneous Lambda for Monetary Trading:
-#    - For monetary scenarios, use initial_inventories.lambda_money: [λ1, λ2, ...] 
-#    - Homogeneous λ values (all agents same) → few monetary trades
-#    - Heterogeneous λ values → more trading opportunities and realistic dynamics
 
 # =============================================================================
 # REPRODUCIBILITY NOTES

@@ -101,13 +101,12 @@ This directory contains comprehensive reference materials for creating VMT simul
 - **Trading:** `dA_max`, `trade_cooldown_ticks`
 - **Foraging:** `forage_rate`, `resource_growth_rate`, `resource_max_amount`, `resource_regen_cooldown`
 - **Economic:** `epsilon`, `beta`
-- **Money:** `exchange_regime`, `money_mode`, `money_scale`, `lambda_money`, etc.
 - **Mode Schedule:** `mode_schedule` (entire section optional)
 
 ### Implementation Status
-- **Fully Implemented:** All basic parameters, money system (barter_only, money_only, mixed), quasilinear mode, mode scheduling
-- **Planned:** `kkt_lambda` mode, `mixed_liquidity_gated` regime, `liquidity_gate` parameters, distribution syntax
-- **Recommended:** Use heterogeneous `lambda_money` values for monetary trading scenarios
+- **Fully Implemented:** All basic parameters, barter-only economy (A<->B trades), mode scheduling
+- **Planned:** Distribution syntax for inventories and resources
+- **Economy Type:** Pure barter - money system has been removed
 
 ## Common Scenarios
 

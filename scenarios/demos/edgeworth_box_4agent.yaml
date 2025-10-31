@@ -1,0 +1,71 @@
+schema_version: 1
+name: edgeworth_box_4agent
+N: 8
+agents: 4
+
+# Classic Edgeworth Box: 2 agent types with complementary endowments
+# Type 1 (agents 0,1): A-rich → want B
+# Type 2 (agents 2,3): B-rich → want A
+initial_inventories:
+  A: [10, 10, 3, 3]   # Type 1: lots of A, Type 2: little A
+  B: [3, 3, 10, 10]   # Type 1: little B, Type 2: lots of B
+
+# All agents have same CES utility (ρ = 0.5, complementary goods)
+# This creates strong gains from trade
+utilities:
+  mix:
+    - weight: 1.0
+      type: "ces"
+      params:
+        rho: 0.5
+        wA: 0.5
+        wB: 0.5
+
+params:
+  # Spatial
+  vision_radius: 8          # Can see entire grid
+  interaction_radius: 1     # Must be adjacent to trade
+  move_budget_per_tick: 1   # Can move 1 cell per tick
+  spread: 0.0               # No bid-ask spread
+  
+  # Trading
+  dA_max: 5                 # Allow larger trades
+  trade_cooldown_ticks: 0   # No cooldown
+  trade_execution_mode: "minimum"
+  
+  # Foraging (minimal)
+  forage_rate: 1
+  enable_resource_claiming: true
+  enforce_single_harvester: true
+  resource_growth_rate: 1
+  resource_max_amount: 2
+  resource_regen_cooldown: 10
+  
+  # Economic
+  epsilon: 0.000000000001
+  beta: 0.95
+
+resource_seed:
+  density: 0.15
+  amount: 2
+
+# Expected Outcome:
+# 1. Initial State:
+#    - Type 1 agents: U ≈ 4.8 (√(10*3) with CES)
+#    - Type 2 agents: U ≈ 4.8 (√(3*10) with CES)
+#
+# 2. Trading Pattern:
+#    - Type 1 trades A for B with Type 2
+#    - Type 2 trades B for A with Type 1
+#    - Multiple trades (3-6 total)
+#
+# 3. Convergence (~10-15 ticks):
+#    - Inventories approach balanced (6-7 each of A and B)
+#    - Utility increases to ~6.5 per agent
+#    - Pareto improvement: total welfare +35%
+#
+# 4. Classic Edgeworth Box Result:
+#    - Movement along contract curve
+#    - Core allocation (no further mutually beneficial trades)
+#    - Demonstrates gains from trade
+

@@ -65,37 +65,11 @@
 | `epsilon` | float | 1e-12 | > 0 | 1e-9 to 1e-15 | Numerical stability |
 | `beta` | float | 0.95 | (0, 1] | 0.8-0.95 | Distance discount |
 
-## Money System Parameters
+## Economy Type
 
-| Parameter | Type | Default | Range | Typical Values | Notes |
-|-----------|------|---------|-------|----------------|-------|
-| `exchange_regime` | string | "barter_only" | See below | "mixed" | Trade type control (mixed_liquidity_gated planned) |
-| `money_mode` | string | "quasilinear" | See below | "quasilinear" | Money utility mode (kkt_lambda planned) |
-| `money_utility_form` | string | "linear" | "linear", "log" | "log" | Money utility functional form |
-| `M_0` | float | 0.0 | ≥ 0 | 5-20 | Log money shift parameter (subsistence money) |
-| `money_scale` | int | 1 | ≥ 1 | 1, 10, 100 | Money scale factor |
-| `lambda_money` | float | 1.0 | > 0 | 0.1-5.0 | Fixed λ value |
-| `lambda_update_rate` | float | 0.2 | [0, 1] | 0.1-0.3 | λ update smoothing (kkt_lambda mode only) |
-| `lambda_bounds.lambda_min` | float | 1e-6 | > 0 | 0.01-1.0 | Minimum λ (kkt_lambda mode only) |
-| `lambda_bounds.lambda_max` | float | 1e6 | > lambda_min | 10-1000 | Maximum λ (kkt_lambda mode only) |
-| `liquidity_gate.min_quotes` | int | 3 | ≥ 0 | 3-5 | Min quotes for thick market (PLANNED) |
-| `earn_money_enabled` | bool | false | true/false | false | Placeholder (unused) |
+**VMT is now a pure barter economy.** All trades are direct Good A ↔ Good B exchanges.
 
-### Exchange Regime Values
-
-| Value | Barter (A↔B) | Monetary (A↔M, B↔M) | Condition | Requires M |
-|-------|-------------|---------------------|-----------|-------------|
-| `barter_only` | ✓ | ✗ | Default | No |
-| `money_only` | ✗ | ✓ | Pure monetary | Yes |
-| `mixed` | ✓ | ✓ | All trade types | Yes |
-| `mixed_liquidity_gated` | Conditional | ✓ | Barter if thin market (PLANNED) | Yes |
-
-### Money Mode Values
-
-| Value | Description | λ Behavior | Use Case | Status |
-|-------|-------------|------------|----------|--------|
-| `quasilinear` | Fixed λ | Constant | Pedagogical, simple | Implemented |
-| `kkt_lambda` | Endogenous λ | Updates from prices | Research, realistic | Planned |
+The money system (including parameters like `exchange_regime`, `money_mode`, `money_scale`, `lambda_money`, and `M` inventory) has been removed.
 
 ## Resource Seeding (Required)
 
@@ -217,15 +191,11 @@ initial_inventories:
 - [ ] `N > 0` and `agents > 0`
 - [ ] Initial inventories ≥ 0
 - [ ] List lengths equal `agents` count
-- [ ] Money required for monetary regimes
 - [ ] Utility weights sum to 1.0
 - [ ] Stone-Geary inventories above subsistence
 - [ ] CES rho ≠ 1.0
-- [ ] Valid exchange regime (barter_only, money_only, mixed - mixed_liquidity_gated planned)
-- [ ] Valid money mode (quasilinear implemented, kkt_lambda planned)
 - [ ] Resource density [0, 1]
 - [ ] Mode schedule ticks > 0
-- [ ] **For monetary trading: Use heterogeneous lambda_money values**
 
 ## Performance Guidelines
 
