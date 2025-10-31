@@ -968,7 +968,6 @@ class VMTRenderer:
             seller = trade['seller_id']
             dA = trade['dA']
             dB = trade['dB']
-            dM = trade.get('dM', 0)
             price = trade['price']
             
             # Format barter trade (A<->B only)
@@ -991,7 +990,6 @@ class VMTRenderer:
             exchange_pair = trade['exchange_pair_type']
             dA = trade['dA']
             dB = trade['dB']
-            dM = trade['dM']
             
             # Calculate exchange rate (barter only: B/A)
             rate = None
@@ -1021,7 +1019,7 @@ class VMTRenderer:
         Calculate exchange rate averages for different time windows.
         
         Args:
-            rate_type: Type of exchange rate ("M/A", "M/B", or "B/A")
+            rate_type: Type of exchange rate ("B/A" for barter economy)
             
         Returns:
             Dictionary with keys: 'last_tick', 'last_10', 'last_50', 'lifetime'
