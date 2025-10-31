@@ -86,7 +86,6 @@ params:
   trade_cooldown_ticks: 300
   beta: 0.95
   epsilon: 1.0e-12
-  money_scale: 10
   enable_resource_claiming: true
   enforce_single_harvester: true
   resource_growth_rate: 1
