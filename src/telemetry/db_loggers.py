@@ -216,7 +216,7 @@ class TelemetryManager:
             self._flush_decisions()
     
     def log_trade(self, tick: int, x: int, y: int, buyer_id: int, seller_id: int,
-                  dA: int, dB: int, price: float, direction: str, dM: int = 0,
+                  dA: int, dB: int, price: float, direction: str,
                   exchange_pair_type: str = "A<->B"):
         """
         Log a successful trade.
@@ -230,8 +230,7 @@ class TelemetryManager:
             dB: Amount of good B traded
             price: Trade price
             direction: Trade direction string
-            dM: Amount of money traded (deprecated, always 0 for barter-only economy)
-            exchange_pair_type: Type of exchange (Phase 3+, default "A<->B")
+            exchange_pair_type: Type of exchange (always "A<->B" for barter-only economy)
         """
         if not self.config.log_trades or self.db is None or self.run_id is None:
             return
@@ -239,15 +238,15 @@ class TelemetryManager:
         self._trade_buffer.append((
             self.run_id, tick, int(x), int(y),
             int(buyer_id), int(seller_id),
-            int(dA), int(dB), int(dM), float(price), direction,
-            exchange_pair_type  # Phase 3: log exchange pair type
+            int(dA), int(dB), float(price), direction,
+            exchange_pair_type
         ))
         
-        # Also store for renderer (Phase 2+: include dM and exchange_pair_type)
+        # Also store for renderer
         self.recent_trades_for_renderer.append({
             "tick": tick, "x": x, "y": y,
             "buyer_id": buyer_id, "seller_id": seller_id,
-            "dA": dA, "dB": dB, "dM": dM, "price": price, "direction": direction,
+            "dA": dA, "dB": dB, "price": price, "direction": direction,
             "exchange_pair_type": exchange_pair_type
         })
         if len(self.recent_trades_for_renderer) > 20:
@@ -338,15 +337,13 @@ class TelemetryManager:
         self.db.commit()
     
     def log_tick_state(self, tick: int, current_mode: str, 
-                       exchange_regime: str = "barter_only", 
                        active_pairs: list[str] = None):
         """
-        Log tick-level mode and exchange regime state.
+        Log tick-level mode state.
         
         Args:
             tick: Current simulation tick
             current_mode: Current mode from mode_schedule ("forage" | "trade" | "both")
-            exchange_regime: Always "barter_only" (parameter kept for backward compatibility)
             active_pairs: List of active exchange pair types (always ["A<->B"] for barter)
         """
         if active_pairs is None:
@@ -358,9 +355,9 @@ class TelemetryManager:
         active_pairs_json = json.dumps(active_pairs)
         
         self.db.execute("""
-            INSERT INTO tick_states (run_id, tick, current_mode, exchange_regime, active_pairs)
-            VALUES (?, ?, ?, ?, ?)
-        """, (self.run_id, tick, current_mode, exchange_regime, active_pairs_json))
+            INSERT INTO tick_states (run_id, tick, current_mode, active_pairs)
+            VALUES (?, ?, ?, ?)
+        """, (self.run_id, tick, current_mode, active_pairs_json))
         self.db.commit()
     
     def log_pairing_event(self, tick: int, agent_i: int, agent_j: int, 
@@ -468,8 +465,8 @@ class TelemetryManager:
         
         self.db.executemany("""
             INSERT INTO trades
-            (run_id, tick, x, y, buyer_id, seller_id, dA, dB, dM, price, direction, exchange_pair_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (run_id, tick, x, y, buyer_id, seller_id, dA, dB, price, direction, exchange_pair_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, self._trade_buffer)
         self.db.commit()
         self._trade_buffer.clear()

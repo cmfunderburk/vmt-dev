@@ -214,6 +214,5 @@ class TradeSystem:
             dB=dB,
             price=effect.price,
             direction=direction,
-            dM=0,
             exchange_pair_type="A<->B"
         )
