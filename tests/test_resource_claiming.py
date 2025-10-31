@@ -67,7 +67,6 @@ def create_test_scenario(
         vision_radius=grid_size,  # See entire grid
         interaction_radius=1,  # Standard for tests
         move_budget_per_tick=1,  # Standard for tests
-        dA_max=3,
         forage_rate=1,
         epsilon=0.001,
         beta=0.95,

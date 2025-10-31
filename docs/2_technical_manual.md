@@ -35,7 +35,7 @@ The simulation proceeds in discrete time steps called "ticks." Each tick, the en
     *   **Pass 1: Target Selection & Preference Ranking** — Each agent (processed in ID order) evaluates all visible neighbors and builds a ranked preference list. Preferences are ranked by **distance-discounted surplus** = `surplus × β^distance`, where β is the discount factor and distance is Manhattan distance. 
         - **Barter Surplus Calculation**: Agents use `compute_surplus()` which evaluates A↔B barter exchanges only.
         - **Inventory Feasibility**: The surplus estimator checks inventory constraints to prevent pairing when trades are impossible (e.g., if neither agent has goods to exchange).
-        - **⚠️ Important Limitation**: The surplus estimator uses **quote overlaps** (bid - ask price differences) as a heuristic proxy for actual utility gains. Quote overlaps may not perfectly predict true utility changes, especially with non-linear utility functions (CES, Quadratic) where the relationship between MRS and utility depends on function curvature. However, once paired, agents execute the ACTUAL best trade using full utility calculations, so they still achieve good outcomes. This design trades perfect accuracy for performance: O(1) per neighbor vs O(dA_max × prices) for exact calculation.
+        - **⚠️ Important Limitation**: The surplus estimator uses **quote overlaps** (bid - ask price differences) as a heuristic proxy for actual utility gains. Quote overlaps may not perfectly predict true utility changes, especially with non-linear utility functions (CES, Quadratic) where the relationship between MRS and utility depends on function curvature. However, once paired, agents execute the ACTUAL best trade using full utility calculations, so they still achieve good outcomes. This design trades perfect accuracy for performance: O(1) per neighbor vs O(inventory_A × prices) for exact calculation.
     *   Agents skip neighbors in cooldown. Already-paired agents validate their pairing and maintain target lock.
     *   **Pass 2: Mutual Consent Pairing** — Agents who mutually list each other as their top choice are paired via "mutual consent." Lower-ID agent executes the pairing to avoid duplication. Cooldowns are cleared for both agents.
     *   **Pass 3: Best-Available Fallback** — Unpaired agents with remaining preferences use **surplus-based greedy matching**: all potential pairings are sorted by descending discounted surplus, and pairs are greedily assigned in order. When an agent claims a partner, that partner's target is updated to point back at the claimer (reciprocal commitment).
@@ -46,7 +46,7 @@ The simulation proceeds in discrete time steps called "ticks." Each tick, the en
 
 4.  **Trade**: Only **paired agents** within `interaction_radius` attempt trades. The engine uses a sophisticated price search algorithm to find mutually beneficial terms:
     *   **Barter Matching**: Direct A↔B goods exchange only
-    *   **Compensating Block Search**: Scans trade sizes ΔA from 1 to dA_max, testing candidate prices in [seller.ask, buyer.bid]
+    *   **Compensating Block Search**: Scans trade sizes ΔA from 1 to seller's inventory, testing candidate prices in [seller.ask, buyer.bid]
     *   **First-Acceptable-Trade Principle**: Accepts the first (ΔA, ΔB, price) tuple that yields strict utility gain (ΔU > 0) for both parties
     *   **Trade Outcome**: Successful trades maintain pairing (agents attempt another trade next tick); failed trades unpair agents and set mutual cooldown
 
@@ -140,7 +140,7 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
     *   Only A↔B barter trades are supported
 -   **Price Search Algorithm**: Because goods are discrete integers, a price that looks good on paper (based on MRS) might not result in a mutually beneficial trade after rounding. The `find_compensating_block_generic` function solves this:
     *   Probes multiple prices within the valid `[ask_seller, bid_buyer]` range
-    *   For each price, scans trade quantities from `ΔA=1` up to `ΔA_max`
+    *   For each price, scans trade quantities from `ΔA=1` up to seller's inventory
     *   Applies **round-half-up** rounding: `ΔB = floor(price * ΔA + 0.5)`
     *   Accepts the **first** trade block `(ΔA, ΔB)` that provides **strict utility improvement (ΔU > 0)** for both agents
     *   This is the **first-acceptable-trade principle**, not highest-surplus search

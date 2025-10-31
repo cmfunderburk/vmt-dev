@@ -64,7 +64,6 @@ def build_world_view_for_agent(agent: "Agent", sim: "Simulation") -> WorldView:
         "vision_radius": sim.params.get("vision_radius", 5),
         "interaction_radius": sim.params.get("interaction_radius", 1),
         "move_budget_per_tick": sim.params.get("move_budget_per_tick", 1),
-        "dA_max": sim.params.get("dA_max", 50),
         "epsilon": sim.params.get("epsilon", 1e-9),
         
         # Resource claiming
@@ -147,7 +146,6 @@ def build_protocol_context(sim: "Simulation") -> ProtocolContext:
         "vision_radius": sim.params.get("vision_radius", 5),
         "interaction_radius": sim.params.get("interaction_radius", 1),
         "epsilon": sim.params.get("epsilon", 1e-9),
-        "dA_max": sim.params.get("dA_max", 50),
     }
     
     # Add full agent state for matching protocols (inventory, utility)

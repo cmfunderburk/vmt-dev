@@ -39,7 +39,6 @@ params:
   vision_radius: 8
   interaction_radius: 1
   move_budget_per_tick: 1
-  dA_max: 5
   forage_rate: 1
   trade_cooldown_ticks: 3
   beta: 0.95

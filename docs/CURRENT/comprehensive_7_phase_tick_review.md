@@ -382,7 +382,7 @@ def _execute_search_phase(self, sim: Simulation) -> dict:
    ```
    
    **Build Params Dict:**
-   - Includes: grid_size, beta, forage_rate, vision_radius, interaction_radius, move_budget, dA_max, epsilon, money_scale, trade_cooldown_ticks, home_pos
+   - Includes: grid_size, beta, forage_rate, vision_radius, interaction_radius, move_budget, epsilon, money_scale, trade_cooldown_ticks, home_pos
    - Also: resource_claims dict (for claim filtering)
    
    **Return WorldView:**
@@ -942,7 +942,7 @@ def negotiate(self, pair: tuple[int, int], world: WorldView) -> list[Effect]:
    **`find_all_feasible_trades()` (matching.py:400+):**
    - Determines which pair types to evaluate (based on regime)
    - For each pair type:
-     - **A<->B**: Enumerate quantities (1 to dA_max), calculate price, check feasibility
+     - **A<->B**: Enumerate quantities (1 to seller's inventory), calculate price, check feasibility
      - **A<->M**: Enumerate quantities, use ask/bid prices from quotes
      - **B<->M**: Similar to A<->M
    - For each candidate trade:

@@ -47,14 +47,11 @@ def load_scenario(path: str) -> ScenarioConfig:
         
         # Parse params (with defaults)
         params_data = data.get('params', {})
-        # Support both dA_max (new) and ΔA_max (legacy) for backward compatibility
-        dA_max_value = params_data.get('dA_max') or params_data.get('ΔA_max', 5)
         params = ScenarioParams(
             spread=params_data.get('spread', 0.0),
             vision_radius=params_data.get('vision_radius', 5),
             interaction_radius=params_data.get('interaction_radius', 1),
             move_budget_per_tick=params_data.get('move_budget_per_tick', 1),
-            dA_max=dA_max_value,
             forage_rate=params_data.get('forage_rate', 1),
             epsilon=params_data.get('epsilon', 1e-12),
             beta=params_data.get('beta', 0.95),

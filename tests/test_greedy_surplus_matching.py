@@ -48,7 +48,7 @@ class TestGreedySurplusMatchingInterface:
             all_resource_views=[],
             current_pairings={},
             protocol_state={},
-            params={"beta": 0.95, "epsilon": 1e-9, "dA_max": 50},
+            params={"beta": 0.95, "epsilon": 1e-9},
             rng=rng
         )
         

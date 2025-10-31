@@ -201,7 +201,7 @@ surplus(i, j) := max(i.bid - j.ask, j.bid - i.ask)
 
 **Compensating Block Search** (First-Acceptable-Trade Principle):
 ```text
-// 1. Iterate through trade sizes ΔA from 1 to dA_max
+// 1. Iterate through trade sizes ΔA from 1 to seller's inventory
 // 2. For each ΔA, test multiple candidate prices within [seller.ask, buyer.bid]
 // 3. For each candidate price, compute rounded ΔB:
 ΔB = floor(price * ΔA + 0.5)
@@ -313,7 +313,6 @@ params:
   vision_radius: int              # How many cells an agent can see. Default: 5
   interaction_radius: int         # How close agents must be to trade. Default: 1
   move_budget_per_tick: int       # Max Manhattan distance to move per tick. Default: 1
-  dA_max: int                     # Max trade size to search for good A. Default: 5
   forage_rate: int                # Max resources to forage per tick. Default: 1
   epsilon: float                  # Small number for safe division. Default: 1e-12
   beta: float                     # Discount factor for foraging scores. Default: 0.95

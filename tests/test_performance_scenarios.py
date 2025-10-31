@@ -50,7 +50,7 @@ def test_performance_scenario_runs(scenario_name):
     for agent in sim.agents:
         assert agent.inventory.A >= 0
         assert agent.inventory.B >= 0
-        assert agent.inventory.M >= 0
+        # Money removed from system - no M inventory
 
 
 def test_performance_scenarios_are_deterministic():

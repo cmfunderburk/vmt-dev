@@ -29,7 +29,6 @@ resource_seed:
 # - interaction_radius: 1
 # - move_budget_per_tick: 1
 # - spread: 0.0
-# - dA_max: 5
 # - trade_cooldown_ticks: 5
 # - forage_rate: 1
 # - resource_growth_rate: 0

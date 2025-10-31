@@ -112,8 +112,6 @@ params:
   # TRADING PARAMETERS
   # -------------------------------------------------------------------------
   
-  dA_max: 5                        # Maximum trade size to search, default: 5, range: > 0
-                                   # Typical: 1-3 (small), 5-10 (moderate), 20+ (large)
   
   trade_cooldown_ticks: 5          # Cooldown after failed trade, default: 5, range: ≥ 0
                                    # Typical: 5-10, 0 (no cooldown), > 20 (long cooldown)
@@ -252,11 +250,6 @@ bargaining_protocol: "legacy_compensating_block"  # Options: "legacy_compensatin
 # - Fast (large grids): move_budget_per_tick = N/10
 # - Rule of thumb: move_budget ≈ vision_radius / 5
 
-# Trade Size Guidelines:
-# - Small trades: dA_max = 1-3
-# - Typical: dA_max = 5-10
-# - Large trades: dA_max = 20+
-# - Constraint: should be ≤ typical inventory levels / 2
 
 # Trade Execution Mode Guidelines:
 # - minimum: Execute smallest mutually beneficial trade (pedagogical, backward compatible)
@@ -266,7 +259,6 @@ bargaining_protocol: "legacy_compensating_block"  # Options: "legacy_compensatin
 # - maximum: Execute largest mutually beneficial trade at chosen price (efficient)
 #   - Fewer but larger trades, faster convergence
 #   - Better for large-scale simulations and reaching equilibrium quickly
-#   - Requires larger dA_max to be effective
 # - Both modes reach same equilibrium, differ only in convergence speed
 
 # Resource Density Guidelines:
@@ -301,7 +293,7 @@ bargaining_protocol: "legacy_compensating_block"  # Options: "legacy_compensatin
 # - Initial inventory types (A, B) - barter economy only
 # - All utility functions (CES, Linear, Quadratic, Translog, Stone-Geary)
 # - All spatial parameters (vision_radius, interaction_radius, move_budget_per_tick, spread)
-# - All trading parameters (dA_max, trade_cooldown_ticks, trade_execution_mode)
+# - All trading parameters (trade_cooldown_ticks, trade_execution_mode)
 # - All foraging parameters (forage_rate, resource_growth_rate, resource_max_amount, resource_regen_cooldown)
 # - All resource claiming parameters (enable_resource_claiming, enforce_single_harvester)
 # - All economic parameters (epsilon, beta)
@@ -357,7 +349,7 @@ bargaining_protocol: "legacy_compensating_block"  # Options: "legacy_compensatin
 
 # Grid processing: O(N²) per tick for resource regeneration and rendering
 # Vision computation: O(agents × vision_radius²) per tick
-# Trade search: O(dA_max × prices) per trade attempt
+# Trade search: O(inventory_A × prices) per trade attempt
 # Recommended agent density: 1-10% of cells (agents/N²)
 
 # Large scenarios (N=40+, agents=50+):

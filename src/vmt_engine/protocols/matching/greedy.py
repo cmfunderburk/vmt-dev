@@ -182,12 +182,8 @@ class GreedySurplusMatching(MatchingProtocol):
         agent_b = self._build_agent_from_context(world, agent_b_id)
         
         # Find all feasible trades
-        params = {
-            "dA_max": world.params.get("dA_max", 50),
-        }
-        
         feasible_trades = find_all_feasible_trades(
-            agent_a, agent_b, params, epsilon
+            agent_a, agent_b, {}, epsilon
         )
         
         if not feasible_trades:

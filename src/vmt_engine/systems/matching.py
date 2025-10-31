@@ -98,11 +98,11 @@ def estimate_money_aware_surplus(agent_i: 'Agent', agent_j: 'Agent') -> tuple[fl
     This is acceptable because:
     1. Once paired, agents execute the ACTUAL best trade (using full utility calc)
     2. The estimator is still directionally correct most of the time
-    3. Performance matters: O(1) per neighbor vs O(dA_max × prices) for exact calc
+    3. Performance matters: O(1) per neighbor vs O(inventory_A × prices) for exact calc
     4. Agents still find good trades, just maybe not with the globally optimal partner
     
     For perfectly accurate pairing, use find_all_feasible_trades() instead, but
-    expect O(N × dA_max × prices) cost in Decision phase.
+    expect O(N × inventory_A × prices) cost in Decision phase.
     
     Args:
         agent_i: First agent
@@ -265,11 +265,11 @@ def generate_price_candidates(ask: float, bid: float, dA: int) -> list[float]:
 
 
 def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
-                           dA_max: int, epsilon: float, tick: int = 0,
+                           epsilon: float, tick: int = 0,
                            direction: str = "", surplus: float = 0.0,
                            telemetry: Optional['TelemetryManager'] = None) -> Optional[tuple[int, int, float]]:
     """
-    Find minimal ΔA ∈ [1..dA_max] and a price where both agents improve utility.
+    Find minimal ΔA ∈ [1..seller.inventory.A] and a price where both agents improve utility.
     
     Searches multiple candidate prices within [seller.ask, buyer.bid] range
     to find mutually beneficial terms of trade. This handles the case where
@@ -279,7 +279,6 @@ def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
         buyer: Agent buying good A
         seller: Agent selling good A
         price: Midpoint price hint (kept for backward compatibility)
-        dA_max: Maximum amount of A to trade
         epsilon: Epsilon for utility improvement check
         tick: Current simulation tick (for logging)
         direction: Trade direction string (for logging)
@@ -293,8 +292,13 @@ def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
     ask = seller.quotes.get('ask_A_in_B', 1.0)
     bid = buyer.quotes.get('bid_A_in_B', 1.0)
     
+    # Determine maximum trade size from seller's inventory
+    max_dA = seller.inventory.A
+    if max_dA <= 0:
+        return None  # Seller has nothing to sell
+    
     # Iterate over trade sizes
-    for dA in range(1, dA_max + 1):
+    for dA in range(1, max_dA + 1):
         # Generate candidate prices for this trade size
         price_candidates = generate_price_candidates(ask, bid, dA)
         
@@ -400,7 +404,7 @@ def trade_pair(agent_i: 'Agent', agent_j: 'Agent', params: dict[str, Any],
     Args:
         agent_i: First agent
         agent_j: Second agent
-        params: Simulation parameters (ΔA_max, epsilon, spread)
+        params: Simulation parameters (epsilon, spread)
         telemetry: TelemetryManager for logging
         tick: Current tick
         
@@ -437,7 +441,7 @@ def trade_pair(agent_i: 'Agent', agent_j: 'Agent', params: dict[str, Any],
     # Find compensating block (with price search)
     block = find_compensating_block(
         buyer, seller, price, 
-        params['dA_max'], params['epsilon'],
+        params['epsilon'],
         tick, direction, surplus, telemetry
     )
     
@@ -513,7 +517,6 @@ def find_compensating_block_generic(
     u_i_0 = agent_i.utility.u(agent_i.inventory.A, agent_i.inventory.B)
     u_j_0 = agent_j.utility.u(agent_j.inventory.A, agent_j.inventory.B)
     
-    dA_max = params.get('dA_max', 5)
     trade_execution_mode = params.get('trade_execution_mode', 'minimum')
     
     if pair != "A<->B":
@@ -529,7 +532,7 @@ def find_compensating_block_generic(
     if ask_i <= bid_j:
         if trade_execution_mode == 'minimum':
             # Minimum mode: return first feasible trade
-            for dA in range(1, min(dA_max + 1, agent_i.inventory.A + 1)):
+            for dA in range(1, agent_i.inventory.A + 1):
                 for price in generate_price_candidates(ask_i, bid_j, dA):
                     dB = int(floor(price * dA + 0.5))
                     
@@ -548,7 +551,7 @@ def find_compensating_block_generic(
         else:
             # Maximum mode: find first working price, then maximize quantity
             working_price = None
-            for dA in range(1, min(dA_max + 1, agent_i.inventory.A + 1)):
+            for dA in range(1, agent_i.inventory.A + 1):
                 for price in generate_price_candidates(ask_i, bid_j, dA):
                     dB = int(floor(price * dA + 0.5))
                     
@@ -570,7 +573,7 @@ def find_compensating_block_generic(
             # Now find maximum quantity at this price
             if working_price is not None:
                 best_trade = None
-                for dA in range(1, min(dA_max + 1, agent_i.inventory.A + 1)):
+                for dA in range(1, agent_i.inventory.A + 1):
                     dB = int(floor(working_price * dA + 0.5))
                     
                     if dB <= 0 or dB > agent_j.inventory.B:
@@ -597,7 +600,7 @@ def find_compensating_block_generic(
     if ask_j <= bid_i:
         if trade_execution_mode == 'minimum':
             # Minimum mode: return first feasible trade
-            for dA in range(1, min(dA_max + 1, agent_j.inventory.A + 1)):
+            for dA in range(1, agent_j.inventory.A + 1):
                 for price in generate_price_candidates(ask_j, bid_i, dA):
                     dB = int(floor(price * dA + 0.5))
                     
@@ -615,7 +618,7 @@ def find_compensating_block_generic(
         else:
             # Maximum mode: find first working price, then maximize quantity
             working_price = None
-            for dA in range(1, min(dA_max + 1, agent_j.inventory.A + 1)):
+            for dA in range(1, agent_j.inventory.A + 1):
                 for price in generate_price_candidates(ask_j, bid_i, dA):
                     dB = int(floor(price * dA + 0.5))
                     
@@ -637,7 +640,7 @@ def find_compensating_block_generic(
             # Now find maximum quantity at this price
             if working_price is not None:
                 best_trade = None
-                for dA in range(1, min(dA_max + 1, agent_j.inventory.A + 1)):
+                for dA in range(1, agent_j.inventory.A + 1):
                     dB = int(floor(working_price * dA + 0.5))
                     
                     if dB <= 0 or dB > agent_i.inventory.B:

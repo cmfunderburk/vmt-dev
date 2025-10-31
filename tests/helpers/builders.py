@@ -36,7 +36,6 @@ def build_scenario(
         vision_radius=N,
         interaction_radius=1,
         move_budget_per_tick=3,
-        dA_max=3,
         forage_rate=1,
         epsilon=1e-9,
         beta=0.95,

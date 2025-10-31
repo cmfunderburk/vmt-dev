@@ -126,12 +126,9 @@ class TakeItOrLeaveIt(BargainingProtocol):
         
         # Get all feasible trades (i=lower ID, j=higher ID)
         epsilon = world.params.get("epsilon", 1e-9)
-        params = {
-            "dA_max": world.params.get("dA_max", 50),
-        }
         
         feasible_trades = find_all_feasible_trades(
-            agent_i_obj, agent_j_obj, params, epsilon
+            agent_i_obj, agent_j_obj, {}, epsilon
         )
         
         if not feasible_trades:

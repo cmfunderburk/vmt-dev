@@ -27,7 +27,6 @@ params:
   spread: 0.0
   
   # Trading
-  dA_max: 4
   trade_cooldown_ticks: 0
   trade_execution_mode: "minimum"
   

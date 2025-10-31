@@ -98,7 +98,7 @@ This directory contains comprehensive reference materials for creating VMT simul
 
 ### Optional Parameters (All have defaults)
 - **Spatial:** `vision_radius`, `interaction_radius`, `move_budget_per_tick`, `spread`
-- **Trading:** `dA_max`, `trade_cooldown_ticks`
+- **Trading:** `trade_cooldown_ticks`
 - **Foraging:** `forage_rate`, `resource_growth_rate`, `resource_max_amount`, `resource_regen_cooldown`
 - **Economic:** `epsilon`, `beta`
 - **Mode Schedule:** `mode_schedule` (entire section optional)
@@ -143,7 +143,6 @@ All scenarios are validated when loaded. Common errors:
 - **Agent density:** Keep agents/N² between 1-10%
 - **Vision radius:** Use N/4 to N/2 for local markets
 - **Move budget:** Set to vision_radius/5 for realistic movement
-- **Trade size:** Keep dA_max ≤ typical inventory levels/2
 - **Resource density:** 0.1-0.3 for sparse, 0.3-0.5 for moderate
 
 ---

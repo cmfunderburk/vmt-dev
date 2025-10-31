@@ -29,7 +29,6 @@ params:
   spread: 0.0               # No bid-ask spread
   
   # Trading
-  dA_max: 5                 # Allow larger trades
   trade_cooldown_ticks: 0   # No cooldown
   trade_execution_mode: "minimum"
   

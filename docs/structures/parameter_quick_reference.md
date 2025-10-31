@@ -37,7 +37,6 @@
 
 | Parameter | Type | Default | Range | Typical Values | Notes |
 |-----------|------|---------|-------|----------------|-------|
-| `dA_max` | int | 5 | > 0 | 1-20 | Maximum trade size |
 | `trade_cooldown_ticks` | int | 5 | ≥ 0 | 0-20 | Failed trade cooldown |
 
 ## Foraging Parameters
@@ -188,11 +187,6 @@
 - Moderate: `move_budget_per_tick = 2-3`
 - Fast: `move_budget_per_tick = N/10`
 
-### Trade Size
-- Small: `dA_max = 1-3`
-- Typical: `dA_max = 5-10`
-- Large: `dA_max = 20+`
-- Constraint: ≤ typical inventory levels / 2
 
 ---
 

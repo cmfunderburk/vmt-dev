@@ -29,7 +29,7 @@ Seven-phase tick (fixed order)
 4) Trade
    - Only paired agents within interaction_radius attempt trades (commitment model)
    - Barter-only matching: A↔B exchange pairs only
-   - Price search is discrete and compensating: scan ΔA ∈ [1..dA_max]; for each ΔA, try candidate prices in [ask, bid]
+   - Price search is discrete and compensating: scan ΔA ∈ [1..seller.inventory.A]; for each ΔA, try candidate prices in [ask, bid]
    - Map price to quantity with round-half-up: ΔB = floor(price*ΔA + 0.5)
    - First-acceptable-trade principle: accept first (ΔA, ΔB, price) with ΔU > 0 for both
    - Successful trades maintain pairing; failed trades unpair and set cooldown until tick + trade_cooldown_ticks

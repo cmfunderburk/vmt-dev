@@ -147,7 +147,7 @@ class TestTakeItOrLeaveItDeterminism:
             )
             run_helpers.run_ticks(sim, 10)
             
-            states = [(a.id, a.pos, a.inventory.A, a.inventory.B, a.inventory.M) 
+            states = [(a.id, a.pos, a.inventory.A, a.inventory.B) 
                      for a in sorted(sim.agents, key=lambda a: a.id)]
             states_list.append(states)
         
@@ -166,7 +166,7 @@ class TestTakeItOrLeaveItDeterminism:
             )
             run_helpers.run_ticks(sim, 10)
             
-            states = [(a.id, a.pos, a.inventory.A, a.inventory.B, a.inventory.M) 
+            states = [(a.id, a.pos, a.inventory.A, a.inventory.B) 
                      for a in sorted(sim.agents, key=lambda a: a.id)]
             states_list.append(states)
         
