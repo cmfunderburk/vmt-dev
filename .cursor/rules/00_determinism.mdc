@@ -1,7 +1,6 @@
 ---
-alwaysApply: true
+alwaysApply: false
 ---
-
 # VMT Determinism Rules
 
 ## Core Principle
