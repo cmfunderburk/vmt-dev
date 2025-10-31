@@ -3,7 +3,28 @@
 
 **Document Type:** Strategic Vision and Research Framework  
 **Purpose:** High-level overview of project goals, current state, and future directions  
-**Date:** 2025-10-27
+**Last Updated:** 2025-10-31 (Major revision: emergence-focused paradigm)
+
+---
+
+## Paradigm Shift Notice (October 2025)
+
+**Critical Update:** This document has been fundamentally revised to reflect VMT's core philosophical commitment to **emergence over imposition** and **validation before extension**.
+
+**What Changed:**
+- ❌ **Removed:** Phase 3 "Centralized Markets" (Walrasian auctioneer, imposed clearing)
+- ✅ **Added:** Phase 2.5 "Scenario Curation and Behavioral Validation" (understand baseline first)
+- ✅ **Added:** Phase 3 "Market Information and Coordination" (emergent price signals)
+- ✅ **Added:** Phase 4 "Commodity Money Emergence" (money from trading patterns)
+- 🔄 **Reordered:** Phase 2.5 is now the **priority starting point**
+
+**Why:** 
+1. **Emergence over Imposition:** VMT demonstrates how market phenomena **emerge** from micro-interactions, not from imposed equilibrium mechanisms
+2. **Validation before Extension:** Must understand current bilateral behavior deeply before building new mechanisms
+3. **Markets as Information:** Markets should aggregate information from bilateral trades, not replace them
+4. **Money as Emergent:** Money should arise from marketability differences, not be assumed in utility functions
+
+**Core Principle:** No external calculus. All coordination must arise from agent decisions and institutional protocols. Validate before you innovate.
 
 ---
 
@@ -28,7 +49,7 @@ VMT inverts this pedagogical sequence by asking:
 Rather than assuming equilibrium prices exist and agents take them as given, VMT investigates:
 - What search protocols, matching algorithms, and bargaining mechanisms lead to price convergence?
 - When do bilateral negotiations yield uniform exchange ratios?
-- Under what conditions does decentralized exchange approximate Walrasian equilibrium?
+- Under what conditions does price information aggregation produce coordination?
 - How do spatial patterns, information frictions, and bargaining power affect market formation?
 
 ---
@@ -49,19 +70,21 @@ Nothing is assumed. Everything is demonstrated.
 
 VMT enables systematic comparison of exchange mechanisms:
 
-**Decentralized Bilateral Exchange:**
+**Pure Bilateral Exchange (Current State):**
 - Agents search for partners spatially
 - Pairs form through matching protocols
 - Prices negotiated bilaterally, pair-by-pair
 - Exchange ratios may vary across pairs
+- No information sharing beyond immediate partners
 
-**Centralized Market Mechanisms:**
-- Agents submit orders to central mechanism
-- Prices set by market clearing
-- Uniform pricing enforced institutionally
-- Equilibrium computed algorithmically
+**Information-Enhanced Bilateral Exchange (Phase 3 Target):**
+- Same bilateral trading structure
+- Market areas detect spatial clustering
+- Price signals aggregated from actual trades
+- Information broadcast to nearby agents
+- Bilateral bargaining informed by price signals
 
-**Key Research Question:** When do these produce similar outcomes? When do they diverge? What explains the differences?
+**Key Research Question:** How does information aggregation affect price convergence in decentralized bilateral trading? When do informed bilateral negotiations produce uniform exchange ratios?
 
 ### Spatial and Temporal Dynamics
 
@@ -80,19 +103,18 @@ Markets don't exist in abstract Euclidean space. They exist in **physical/social
 ### The Basic Exchange Economy
 
 **Agents** possess:
-- **Utility functions** over goods (A, B, and money M)
+- **Utility functions** over goods (A and B)
 - **Initial endowments** (inventories)
-- **Preferences** (various functional forms: CES, linear, quadratic, etc.)
+- **Preferences** (various functional forms: CES, linear, quadratic, Stone-Geary, translog)
 
 **Resources** regenerate on a spatial grid:
 - Agents **forage** to acquire goods
 - Foraging serves as rudimentary "production"
 - Provides resource flow without production function complexity
 
-**Exchange** occurs through multiple mechanisms:
-- **Barter** (A ↔ B)
-- **Monetary** (A ↔ M, B ↔ M)
-- **Mixed** regimes allow all trade types
+**Exchange** occurs through bilateral mechanisms:
+- **Pure barter** (A ↔ B direct exchange only)
+- Future: Money mechanisms to be designed and implemented fresh
 
 **No prices assumed.** Only agents' marginal rates of substitution (MRS) from utility functions.
 
@@ -180,22 +202,23 @@ The middle steps—search, matching, bargaining—are **explicit institutional m
 
 ---
 
-### 4. Market Mechanisms (Centralized)
+### 4. Information and Coordination Mechanisms
 
-**Economic Question:** How do centralized markets form prices?
+**Economic Question:** How does information aggregation affect decentralized price discovery?
 
 **Mechanisms:**
-- **Walrasian Auctioneer** → Tatonnement price adjustment to equilibrium
-- **Posted-Price Market** → Sellers set prices, buyers choose quantities
-- **Continuous Double Auction** → Order book matching (experimental standard)
+- **Market-Informed Bargaining** → Bilateral negotiation anchored by aggregated price signals
+- **Price Signal Broadcasting** → Information flow from dense trading areas
+- **Information-Seeking Search** → Agents value access to price information
+- **Spatial Market Detection** → Identification of trading hotspots
 
 **Key Insights:**
-- Price-taking emerges from institutional design, not assumption
-- Uniform pricing enforced by mechanism
-- Convergence properties vary by mechanism
-- Efficiency depends on institutional details
+- Price convergence emerges from information flow, not imposed coordination
+- Market thickness affects information quality and price stability
+- Spatial clustering creates natural "market areas"
+- Information gradients produce realistic market structure
 
-**Pedagogical Value:** **Critical comparison—** When do bilateral negotiations produce same outcomes as centralized mechanisms? This is the core research question.
+**Pedagogical Value:** **Demonstrates emergence—** Shows how markets form as information-processing institutions from bilateral trading patterns, not from external design.
 
 ---
 
@@ -210,8 +233,9 @@ The middle steps—search, matching, bargaining—are **explicit institutional m
 
 **2. Economic Foundations**
 - 5 utility function types (CES, linear, quadratic, Stone-Geary, translog)
-- Pure barter economy (A↔B trades only - money system removed)
+- Pure barter economy (A↔B direct goods exchange only)
 - Foraging as resource generation
+- Clean slate for future money mechanism design
 
 **3. Protocol Architecture**
 - Modular protocol system with abstract base classes
@@ -239,9 +263,10 @@ These implement **decentralized bilateral exchange** with spot negotiation.
 **Current Limitations:**
 ⚠️ Only one set of search/matching/bargaining rules (legacy protocols)  
 ⚠️ No institutional comparison possible yet  
-⚠️ No centralized market mechanisms  
-⚠️ Cannot compare bilateral vs centralized outcomes  
-⚠️ Limited ability to explore emergence conditions  
+⚠️ No information aggregation mechanisms  
+⚠️ No price signal broadcasting or market-informed bargaining  
+⚠️ Limited ability to explore price convergence conditions  
+⚠️ Cannot yet study market information effects or money emergence  
 
 ---
 
@@ -286,55 +311,177 @@ These implement **decentralized bilateral exchange** with spot negotiation.
 
 ---
 
-### Phase 3: Centralized Markets ⭐ **KEY MILESTONE**
+### Phase 2.5: Scenario Curation and Behavioral Validation
 
-**Goal:** Enable comparison of bilateral vs centralized exchange
+**Goal:** Validate and demonstrate bilateral exchange behavior through carefully designed scenarios
 
-**Protocols:**
-1. **Walrasian Auctioneer** → Competitive equilibrium benchmark
-2. **Posted-Price Market** → Price rigidity and search
-3. **Continuous Double Auction** → Market microstructure
+**Philosophy:** Before building new mechanisms, establish clear empirical understanding of existing protocol behavior. Well-designed scenarios serve as both validation tests and pedagogical demonstrations.
+
+**Key Activities:**
+
+1. **Curated Scenario Development**
+   - Design scenarios that isolate specific behavioral patterns
+   - Create pedagogical examples demonstrating core mechanisms
+   - Build scenarios that stress-test edge cases and corner behaviors
+   - Establish baseline expectations for protocol comparison
+
+2. **Behavioral Validation**
+   - Verify that existing protocols produce expected outcomes
+   - Document actual vs theoretical behavior
+   - Identify gaps between implemented and intended behavior
+   - Build intuition about system dynamics
+
+3. **Demonstration Scenarios**
+   - Edgeworth box cases (2-agent bilateral exchange)
+   - Complementary endowments (gains from trade)
+   - Homogeneous vs heterogeneous utility populations
+   - Spatial clustering patterns
+   - Resource scarcity and abundance cases
+
+**Why This Matters:**
+- **Foundation for Phase 3:** Can't understand information effects without knowing baseline bilateral behavior
+- **Protocol Comparison:** Need clear expectations before adding alternatives
+- **Research Validity:** Scenarios become reproducible empirical demonstrations
+- **Teaching Value:** Curated scenarios are pedagogical tools
+
+**Deliverables:**
+- Suite of curated scenarios in `scenarios/curated/`
+- Documentation of expected vs observed behaviors
+- Behavioral validation reports
+- Scenario design templates and guidelines
+
+**Status:** This phase should be prioritized before Phase 3 implementation begins.
+
+---
+
+### Phase 3: Market Information and Coordination
+
+**Goal:** Enable emergence of price signals and coordination from bilateral trading
+
+**Philosophy:** Markets don't replace bilateral trading—they **enhance** it through information aggregation and broadcast. Instead of imposing external price calculators (Walrasian auctioneer), we create mechanisms for **emergent price discovery** through aggregated bilateral trading patterns.
+
+**Core Mechanisms:**
+
+1. **Spatial Market Detection**
+   - Dense agent clusters become "market areas"
+   - No institutional imposition—just observation of where trading happens
+   - Market areas emerge and dissolve based on agent movement
+
+2. **Price Signal Aggregation**
+   - Market areas record bilateral trade prices within their zones
+   - Compute volume-weighted average prices (VWAP)
+   - Price signals emerge from actual trading, not theoretical calculation
+
+3. **Information Broadcasting**
+   - Agents observe price signals from nearby market areas
+   - Market prices become part of agent WorldView
+   - Information spreads spatially (closer agents have better information)
+
+**Protocols to Implement:**
+
+1. **Market-Informed Bargaining** → Uses aggregated price signals to anchor bilateral negotiations
+   - Still bilateral (not centralized clearing)
+   - Uses market prices as reference points
+   - Natural evolution from pure bilateral trading
+   - Demonstrates how information improves price convergence
+
+2. **Information-Seeking Search** → Agents seek high-information areas
+   - Prefer moving toward market zones
+   - Balance direct partner search with information access
+   - Demonstrates value of information in price discovery
+
+3. **Thick-Market Matching** → Prefer partners in dense trading areas
+   - Recognition that thick markets improve match quality
+   - Endogenous market thickness effects
+   - Clustering becomes strategic, not just spatial
 
 **Critical Research Questions:**
-- When do bilateral negotiations converge to Walrasian prices?
-- Under what conditions does price-taking approximate spot negotiation?
-- How do spatial frictions affect convergence?
-- What role does market thickness play?
+- How does price information aggregation affect bilateral price convergence?
+- Under what conditions do dispersed bilateral prices converge to uniform ratios?
+- What role does market thickness play in information quality?
+- How does spatial clustering enhance or impede price discovery?
+- When do information-enhanced bilateral negotiations approximate theoretical equilibrium?
 
-**This answers the fundamental question:** Under what conditions do markets emerge to approximate equilibrium theory?
+**Key Insight:** This phase doesn't impose markets—it demonstrates how markets **emerge** as information-processing institutions from bilateral trading patterns. Price convergence becomes an emergent property, not an algorithmic guarantee.
 
----
-
-### Phase 4: Advanced Mechanisms
-
-**Goal:** Dynamic processes and learning
-
-**Protocols:**
-1. Memory-Based Search → Learning and adaptation
-2. Stable Matching (Gale-Shapley) → Stability and incentives
-3. Nash Bargaining → Axiomatic solutions
-
-**Research Value:**
-- Bounded rationality and learning dynamics
-- Matching market design
-- Cooperative game theory
+**Sets Up Phase 4 (Money Emergence):**
+- Price signals reveal which goods trade most frequently (marketability)
+- High-marketability goods become natural intermediaries for indirect exchange
+- Agents begin accepting certain goods not for consumption but for re-trade
+- Money-like behavior emerges from trading frictions, not utility functions
 
 ---
 
-### Phase 5: Comprehensive Coverage
+### Phase 4: Commodity Money Emergence
 
-**Goal:** Full institutional variety
+**Goal:** Demonstrate how money emerges endogenously from barter trading patterns
+
+**Philosophy:** Money should not be imposed through utility functions that value it directly. Instead, money should emerge as agents discover that certain goods function better as exchange intermediaries due to higher marketability.
+
+**Core Mechanisms:**
+
+1. **Indirect Exchange Capability**
+   - Enable multi-step trades: A→B→C paths
+   - Agents can accept goods they don't want for consumption
+   - Intermediary goods used for subsequent exchange
+
+2. **Marketability Observation**
+   - Track which goods trade most frequently
+   - Observe which goods have narrower bid-ask spreads
+   - Identify goods with more potential trading partners
+
+3. **Strategic Intermediation**
+   - Agents learn to accept high-marketability goods
+   - Use marketable goods to overcome double coincidence failures
+   - "Money-like" behavior emerges from trading strategy
+
+**Protocols to Implement:**
+
+1. **Indirect Exchange Search** → Agents seek multi-step trading paths
+   - Find A→B→C sequences when direct A→C fails
+   - Demonstrates solution to double coincidence problem
+   - Shows emergence of intermediary goods
+
+2. **Marketability-Weighted Matching** → Prefer partners offering marketable goods
+   - Agents value goods partly by re-trading potential
+   - High-marketability goods become preferred
+   - Natural selection of "money-like" goods
+
+3. **Speculative Bargaining** → Accept goods for re-trade, not consumption
+   - Agents trade for goods they plan to exchange further
+   - Intermediation becomes profitable strategy
+   - Foundation of merchant/market-maker behavior
+
+**Critical Research Questions:**
+- Under what conditions do certain goods become preferred exchange intermediaries?
+- How does market thickness affect which goods become "money-like"?
+- What properties make a good a good money (divisibility, storability, etc.)?
+- Can money emerge without being directly valued in utility functions?
+- How do spatial patterns affect money emergence?
+
+**Key Insight:** This demonstrates that money is not a primitive to be assumed—it's an **emergent institution** that arises when agents discover certain goods solve coordination problems better than others.
+
+---
+
+### Phase 5: Advanced Mechanisms and Extensions
+
+**Goal:** Dynamic processes, learning, and sophisticated institutions
 
 **Protocols:**
-1. Rubinstein Alternating Offers → Dynamic bargaining
-2. Various auction mechanisms
-3. Network formation
-4. Additional market designs
+1. **Memory-Based Search** → Learning from experience (explore vs exploit)
+2. **Stable Matching (Gale-Shapley)** → Incentive compatibility and stability
+3. **Nash Bargaining** → Axiomatic cooperative solutions
+4. **Rubinstein Alternating Offers** → Dynamic bargaining with time preferences
+5. **Network Formation** → Endogenous trading relationships
 
 **Research Applications:**
+- Bounded rationality and learning dynamics
+- Matching market design
+- Cooperative vs non-cooperative game theory
+- Long-term relationship formation
 - Publication-quality comparative studies
-- Policy analysis (market design)
-- Teaching advanced topics
+
+**Note:** By Phase 5, money has either emerged naturally (Phase 4) or remains absent, demonstrating conditions under which monetary institutions arise.
 
 ---
 
@@ -359,29 +506,33 @@ These implement **decentralized bilateral exchange** with spot negotiation.
 
 ---
 
-### Theme 2: Bilateral vs Centralized Comparison
+### Theme 2: Information and Price Convergence
 
-**Central Question:** When does decentralized exchange approximate centralized equilibrium?
+**Central Question:** How does information aggregation affect bilateral price discovery?
 
-**Comparison Framework:**
+**Evolution Framework:**
 ```
-Decentralized (Legacy):
-  Search → Matching → Bilateral Bargaining → Heterogeneous Prices
+Phase 1 - Pure Bilateral:
+  Search → Matching → Bilateral Bargaining → Dispersed Prices
+  (No information sharing beyond immediate partners)
 
-Centralized (Walrasian):
-  Order Submission → Market Clearing → Uniform Prices
+Phase 3 - Information-Enhanced Bilateral:
+  Search → Market Detection → Information-Informed Bargaining → Price Signals
+  (Bilateral trading enhanced by aggregated price information)
 
 Metrics:
-  - Price dispersion (variance of exchange ratios)
-  - Allocative efficiency (total surplus)
+  - Price dispersion over time (convergence vs persistence)
+  - Information quality (VWAP accuracy, signal noise)
+  - Spatial information gradients (distance from markets)
   - Convergence speed (ticks to stable prices)
-  - Spatial patterns (clustering, segmentation)
+  - Market thickness effects (clustering and efficiency)
 ```
 
-**Policy Implications:**
-- When is market organization beneficial?
-- What frictions justify institutional intervention?
-- Design principles for market mechanisms
+**Research Implications:**
+- How does information access affect market efficiency?
+- What market structures emerge from spatial trading?
+- When do bilateral negotiations converge without external coordination?
+- What role does information play in price formation?
 
 ---
 
@@ -431,10 +582,11 @@ Metrics:
 1. Consumer theory (utility maximization)
 2. **Foraging** (resource acquisition without production complexity)
 3. **Bilateral exchange** (search, matching, bargaining)
-4. **Observe emergent prices** (do they converge? why or why not?)
-5. **Introduce centralized mechanisms** (auctioneers, order books)
-6. **Compare outcomes** (when do they agree? when diverge?)
-7. **Equilibrium theory** (as special case, not starting point)
+4. **Observe emergent prices** (dispersed or converging?)
+5. **Introduce information mechanisms** (price aggregation, broadcasting)
+6. **Market-informed bilateral trading** (information-enhanced negotiation)
+7. **Observe money emergence** (which goods become intermediaries?)
+8. **Equilibrium analysis** (compare outcomes to theory, understand deviations)
 
 ### Key Pedagogical Gains
 
@@ -610,8 +762,9 @@ WorldView:
 **The platform succeeds if it enables answering:**
 - ✓ When do bilateral prices converge to uniform exchange ratios?
 - ✓ What institutional features promote/prevent convergence?
-- ✓ How do spatial frictions affect market efficiency?
-- ✓ When does decentralized exchange approximate Walrasian equilibrium?
+- ✓ How does information aggregation affect decentralized price discovery?
+- ✓ Under what conditions does money emerge endogenously from trading patterns?
+- ✓ How do spatial frictions and market thickness affect coordination?
 
 **Publication Potential:**
 - Comparative institutional analysis papers
@@ -661,36 +814,63 @@ WorldView:
 
 **Ready to Implement:**
 - 📋 Phase 2a protocols (baseline comparisons) - 8-10 hours
+- 📋 **Phase 2.5 scenario curation (behavioral validation)** - 15-20 hours ⭐ **PRIORITY**
 - 📋 Phase 2b protocols (pedagogical demonstrations) - 20-25 hours
-- 📋 **Phase 3 protocols (centralized markets)** - 25-30 hours ⭐
+- 📋 Phase 3 protocols (market information and coordination) - 25-30 hours
 
-### The Critical Path: Phase 3
+### The Critical Path: Phase 2.5 → Phase 3
 
-**Why Phase 3 matters most:**
+**Why Phase 2.5 comes first:**
 
-Phase 3 (Centralized Markets) is the **key milestone** because it enables the fundamental research question:
+Before building market information mechanisms (Phase 3) or alternative protocols (Phase 2a/2b), we need **empirical validation** of current bilateral exchange behavior through curated scenarios.
 
-> **Do decentralized bilateral negotiations converge to centralized equilibrium outcomes?**
+**Phase 2.5 Priority:**
+- Understand baseline behavior deeply
+- Document what existing protocols actually do (vs what we think they do)
+- Create reproducible demonstrations
+- Build scenario design expertise
 
-Without centralized mechanisms, we can only study bilateral exchange. With them, we can compare:
-- Bilateral bargaining vs Walrasian auctioneer
-- Spot negotiation vs posted prices
-- Decentralized vs centralized organization
+**Without Phase 2.5:** Risk building on unstable foundation; won't know if Phase 3 changes are improvements.
 
-**This comparison is the heart of the research program.**
+**With Phase 2.5:** Clear baseline → confident Phase 3 implementation → valid comparisons.
+
+**Why Phase 3 matters most (after 2.5):**
+
+Phase 3 (Market Information and Coordination) is the **key conceptual milestone** because it enables the fundamental emergence question:
+
+> **Under what conditions do price signals emerge and propagate from bilateral trading to produce coordination?**
+
+Without information mechanisms, we can only study isolated bilateral exchange. With them, we can investigate:
+- How information aggregation affects price dispersion
+- When bilateral trading with price signals converges to uniform prices
+- How spatial clustering and information flow interact
+- Whether markets emerge as information-processing institutions
+
+**This answers whether markets "just work" or require specific institutional features.**
+
+**Phase 3 also sets up Phase 4 (Money Emergence):**
+
+Once we have information-rich bilateral trading, we can observe:
+- Which goods trade most frequently (marketability differences)
+- Which goods agents accept for re-trade vs consumption
+- Whether "money-like" goods emerge naturally from trading frictions
+- If agents discover indirect exchange (A→M→B) as solution to double coincidence
+
+**This progression—from pure barter → information-enhanced barter → emergent money—demonstrates how monetary institutions arise endogenously, not from assumption.**
 
 ---
 
 ### Implementation Priorities
 
 **Recommended Sequence:**
-1. **Phase 2a** (1 week) → Validate architecture, establish baselines
-2. **Phase 3** (3-4 weeks) → **Enable core comparisons** ⭐
-3. **Phase 2b** (2 weeks) → Pedagogical demonstrations (can run parallel to Phase 3)
-4. **Phase 4** (3-4 weeks) → Advanced protocols as research needs dictate
-5. **Phase 5** (ongoing) → Expand library incrementally
+1. **Phase 2.5** (2-3 weeks) → **Scenario curation and behavioral validation** ⭐ **START HERE**
+2. **Phase 2a** (1 week) → Baseline protocol implementation (informed by 2.5)
+3. **Phase 3** (3-4 weeks) → Market information and coordination
+4. **Phase 2b** (2 weeks) → Pedagogical demonstrations (can run parallel to Phase 3)
+5. **Phase 4** (4-6 weeks) → Money emergence mechanisms (builds on Phase 3)
+6. **Phase 5** (ongoing) → Advanced protocols and extensions
 
-**Rationale:** Jump from baseline validation (2a) to centralized markets (3) as quickly as possible. Phase 2b can fill in pedagogical details later, but Phase 3 unlocks the core research questions.
+**Rationale:** **Phase 2.5 is the new starting point.** Before implementing alternative protocols or market information, we need deep empirical understanding of existing bilateral behavior through curated scenarios. This creates a solid foundation for all future work. Phase 2a baseline protocols can then be validated against scenarios from 2.5. Phase 3 builds on validated baseline. Phase 2b can run in parallel once baseline is solid.
 
 ---
 
