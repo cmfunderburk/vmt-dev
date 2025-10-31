@@ -1,0 +1,43 @@
+schema_version: 1
+name: foundational_barter_demo
+N: 8  # Small grid to encourage encounters
+agents: 3
+
+# Initial endowments: asymmetric to create gains from trade
+initial_inventories:
+  A: [8, 2, 6]  # Agent 0 has more A; agent 1 has less A
+  B: [2, 8, 6]  # Agent 1 has more B; agent 0 has less B
+
+# Utility mix: sample per-agent according to weights during initialization
+utilities:
+  mix:
+    - {type: ces, weight: 0.6, params: {rho: -0.5, wA: 1.0, wB: 1.0}}
+    - {type: linear, weight: 0.4, params: {vA: 1.0, vB: 1.2}}
+
+params:
+  # Quotes use true reservation bounds (no spread) for clarity
+  spread: 0.0
+  vision_radius: 8         # See most of the grid to find partners
+  interaction_radius: 1    # Must be adjacent to trade
+  move_budget_per_tick: 1  # Manhattan steps per tick
+  dA_max: 3                # Keep search small for determinism and testability
+  forage_rate: 1
+  epsilon: 0.000000000001  # Zero-safe only for ratios in CES MRS
+  beta: 0.95
+  # Resource regeneration—kept small so trade dynamics dominate
+  resource_growth_rate: 1
+  resource_max_amount: 5
+  resource_regen_cooldown: 5
+  trade_cooldown_ticks: 5
+
+# Resource seeding: sparse so that trade, not foraging, typically binds early
+resource_seed:
+  density: 0.05
+  amount: 1
+
+# Notes:
+# - Agents are placed deterministically by Simulation (shuffled positions but fixed by seed).
+# - With seed 42 and the above endowments/utilities, agents 0 and 1 should find
+#   mutually beneficial trades within the first few dozen ticks.
+# - Round-half-up mapping from price to ΔB is exercised by the discrete search.
+

@@ -23,8 +23,6 @@
 |-----------|------|---------|-------|----------------|-------|
 | `initial_inventories.A` | int \| list | - | ≥ 0 | 5-50 | Good A endowment |
 | `initial_inventories.B` | int \| list | - | ≥ 0 | 5-50 | Good B endowment |
-| `initial_inventories.M` | int \| list | - | ≥ 0 | 50-500 | Money (required for monetary regimes) |
-| `initial_inventories.lambda_money` | list[float] | `params.lambda_money` | > 0 | 0.1-5.0 | Per-agent λ values (RECOMMENDED for monetary trading) |
 
 ## Spatial Parameters
 
@@ -67,9 +65,7 @@
 
 ## Economy Type
 
-**VMT is now a pure barter economy.** All trades are direct Good A ↔ Good B exchanges.
-
-The money system (including parameters like `exchange_regime`, `money_mode`, `money_scale`, `lambda_money`, and `M` inventory) has been removed.
+**VMT is a pure barter economy.** All trades are direct Good A ↔ Good B exchanges.
 
 ## Resource Seeding (Required)
 
@@ -135,29 +131,6 @@ The money system (including parameters like `exchange_regime`, `money_mode`, `mo
 | `gamma_B` | float | ≥ 0 | 0-20 | Subsistence level B |
 
 **Critical Constraint:** For Stone-Geary, initial inventories must satisfy `A > gamma_A` AND `B > gamma_B` for all agents.
-
-## Heterogeneous Lambda Values (RECOMMENDED for Monetary Trading)
-
-**Why Use Heterogeneous λ Values:**
-- High λ agents: value money more → lower ask prices in M → willing to sell goods for less money
-- Low λ agents: value money less → higher bid prices in M → demand more money for goods
-- Creates profitable monetary trading opportunities between agents with different λ values
-
-**How to Set Up:**
-```yaml
-initial_inventories:
-  M: 100
-  lambda_money: [1.0, 2.0, 0.5, 1.5, 0.8]  # Agent-specific λ values
-```
-
-**Typical Values:**
-- Range: 0.1-5.0
-- Variation: 2-3x between highest and lowest λ
-- Example: [0.5, 1.0, 1.5, 2.0, 0.8] for 5 agents
-
-**Effect on Trading:**
-- Homogeneous λ → few monetary trades (agents have similar money valuations)
-- Heterogeneous λ → more trading opportunities and realistic dynamics
 
 ## Common Parameter Combinations
 

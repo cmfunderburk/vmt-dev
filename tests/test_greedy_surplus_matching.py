@@ -247,23 +247,4 @@ class TestGreedySurplusMatchingIntegration:
         # Should produce at least some trades
         assert trade_count > 0, "Should produce some trades with complementary agents"
     
-    def test_works_with_mixed_regime(self):
-        """Greedy matching works with mixed exchange regime."""
-        scenario = builders.build_scenario(N=20, agents=10, regime="mixed")
-        sim = builders.make_sim(scenario, seed=42, matching="greedy_surplus")
-        
-        # Should not crash
-        run_helpers.run_ticks(sim, 20)
-        
-        assert sim.tick == 20
-    
-    def test_handles_money_only_regime(self):
-        """Greedy matching works with money-only regime."""
-        scenario = builders.build_scenario(N=20, agents=10, regime="money_only")
-        sim = builders.make_sim(scenario, seed=42, matching="greedy_surplus")
-        
-        # Should not crash
-        run_helpers.run_ticks(sim, 20)
-        
-        assert sim.tick == 20
 

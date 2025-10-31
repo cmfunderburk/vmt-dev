@@ -89,7 +89,7 @@ VMT implements a **modular protocol system** where institutional rules are swapp
 
 ### Current Status (October 2025)
 ✅ **Phase 1 Complete:** Protocol architecture implemented with legacy adapters  
-✅ **Production Ready:** Spatial foraging, bilateral trade, money system  
+✅ **Production Ready:** Spatial foraging, bilateral barter trade  
 🚀 **Next:** Alternative protocol implementation (Phase 2a starting)
 
 ### Implemented Architecture
@@ -122,15 +122,7 @@ VMT implements a **modular protocol system** where institutional rules are swapp
 - **Quadratic Utility Functions** - Bliss points and satiation behavior
 - **Translog Utility Functions** - Flexible second-order approximation for empirical work
 - **Stone-Geary Utility Functions** - Subsistence constraints and hierarchical needs (LES foundation)
-- **Generic Matching Algorithm** - Supports barter (A↔B) and monetary exchange (A↔M, B↔M)
-- **Money System** - Flexible monetary economics simulation
-  - Three exchange regimes: `barter_only`, `money_only`, `mixed` (fully implemented)
-  - Two utility forms: linear (constant MU) or logarithmic (diminishing MU)
-  - Heterogeneous λ values supported for agent diversity
-  - Money-first tie-breaking in mixed economies
-  - Mode × regime interaction for temporal control
-  - Rich telemetry and analysis tools
-  - **Planned:** `mixed_liquidity_gated` regime
+- **Pure Barter Economy** - Direct good-for-good (A↔B) exchanges only
 - **Trade Pairing** - Three-pass algorithm with mutual consent and surplus-based fallback
 - **Price Search Algorithm** - Finds mutually beneficial prices despite integer rounding
 - **Reservation Pricing** - True economic reservation prices (zero bid-ask spread default)
@@ -175,9 +167,9 @@ VMT uses a **SQLite database** (`./logs/telemetry.db`) for all logging.
 ### Database Schema
 
 The telemetry database includes comprehensive tables:
-- **`simulation_runs`** — Run metadata with exchange_regime, money_mode
-- **`agent_snapshots`** — Per-tick agent state (position, inventory, utility, quotes, lambda)
-- **`trades`** — Successful trades with exchange pair type, money transfers, surplus decomposition
+- **`simulation_runs`** — Run metadata and configuration
+- **`agent_snapshots`** — Per-tick agent state (position, inventory, utility, quotes)
+- **`trades`** — Successful barter trades with exchange quantities and surplus decomposition
 - **`decisions`** — Agent decision outcomes with pairing status
 - **`pairings`** — Pairing/unpairing events with reason codes
 - **`preferences`** — Agent preference rankings (top 3 by default)
@@ -195,8 +187,8 @@ python view_logs.py
 The viewer allows you to:
 - Scrub through the simulation timeline tick-by-tick
 - Analyze individual agent states, trajectories, and trade histories
-- Visualize trade attempts and statistics with full money/pairing context
-- Filter by exchange regime, pairing status, and trade type
+- Visualize trade attempts and statistics with pairing context
+- Filter by pairing status and trade type
 - Export data to CSV for external analysis
 
 ### Python API
@@ -234,7 +226,6 @@ for agent in sim.agents:
 1. **Browse Templates:**
    - [`minimal_working_example.yaml`](docs/structures/minimal_working_example.yaml) - Simplest valid scenario
    - [`comprehensive_scenario_template.yaml`](docs/structures/comprehensive_scenario_template.yaml) - All parameters documented
-   - [`money_example.yaml`](docs/structures/money_example.yaml) - Monetary economy setup
    - [`parameter_quick_reference.md`](docs/structures/parameter_quick_reference.md) - Parameter documentation
 
 2. **Copy and Modify:**
@@ -406,14 +397,4 @@ VMT includes comprehensive documentation organized by audience and purpose:
 
 ### Demo Scenarios
 
-The `scenarios/demos/` directory contains annotated pedagogical scenarios:
-
-1. **demo_01_simple_money.yaml** - Why money? (double coincidence of wants -- note: as-is, this does *not* adequately demonstrate the issue, as agents' value money directly via utility functions, rather than instrumentally for the trading opportunities it opens up) 
-2. **demo_02_barter_vs_money.yaml** - Direct comparison of exchange systems
-3. **demo_03_mixed_regime.yaml** - Hybrid economy (barter + money coexistence)
-4. **demo_04_mode_schedule.yaml** - Temporal control (forage/trade cycles)
-5. **demo_05_liquidity_zones.yaml** - Market thickness and spatial variation
-6. **demo_06_money_aware_pairing.yaml** - Money-aware pairing mechanics
-7. **demo_06b_heterogeneous_utilities.yaml** - Mixed utility populations
-8. **demo_07_batch_trades.yaml** - Batch trading mechanics
-9. **demo_log_money.yaml** - Logarithmic money utility demonstration
+The `scenarios/demos/` directory contains annotated pedagogical scenarios demonstrating different exchange patterns and institutional mechanisms. See `scenarios/demos/README.md` for current scenario descriptions.

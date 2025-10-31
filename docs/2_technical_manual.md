@@ -33,11 +33,9 @@ The simulation proceeds in discrete time steps called "ticks." Each tick, the en
 
 2.  **Decision**: Based on the perception snapshot, agents decide on actions and establish trade pairings using a **three-pass algorithm**:
     *   **Pass 1: Target Selection & Preference Ranking** — Each agent (processed in ID order) evaluates all visible neighbors and builds a ranked preference list. Preferences are ranked by **distance-discounted surplus** = `surplus × β^distance`, where β is the discount factor and distance is Manhattan distance. 
-        - **Money-Aware Surplus Calculation** (Phase 2+): In `money_only` and `mixed` regimes, agents use `estimate_money_aware_surplus()` which evaluates all allowed exchange pairs (A↔M, B↔M for money_only; A↔M, B↔M, A↔B for mixed) and returns the highest feasible surplus with money-first tie-breaking.
-        - **Barter-Only Surplus** (Legacy): In `barter_only` regime, agents use `compute_surplus()` which evaluates only A↔B exchanges, preserving bit-identical backward compatibility.
-        - **Inventory Feasibility**: Both surplus estimators check inventory constraints to prevent pairing when trades are impossible (e.g., if neither agent has goods or money to exchange).
-        - **Money-First Priority**: When multiple exchange pairs offer equal surplus, monetary exchanges are preferred: A↔M (priority 0) > B↔M (priority 1) > A↔B (priority 2).
-        - **⚠️ Important Limitation**: The surplus estimator uses **quote overlaps** (bid - ask price differences) as a heuristic proxy for actual utility gains. Quote overlaps may not perfectly predict true utility changes, especially with non-linear utility functions (CES, Quadratic) where the relationship between MRS and utility depends on function curvature. However, once paired, agents execute the ACTUAL best trade using full utility calculations, so they still achieve good outcomes. This design trades perfect accuracy for performance: O(1) per neighbor vs O(dA_max × prices) for exact calculation. See `estimate_money_aware_surplus()` documentation for details.
+        - **Barter Surplus Calculation**: Agents use `compute_surplus()` which evaluates A↔B barter exchanges only.
+        - **Inventory Feasibility**: The surplus estimator checks inventory constraints to prevent pairing when trades are impossible (e.g., if neither agent has goods to exchange).
+        - **⚠️ Important Limitation**: The surplus estimator uses **quote overlaps** (bid - ask price differences) as a heuristic proxy for actual utility gains. Quote overlaps may not perfectly predict true utility changes, especially with non-linear utility functions (CES, Quadratic) where the relationship between MRS and utility depends on function curvature. However, once paired, agents execute the ACTUAL best trade using full utility calculations, so they still achieve good outcomes. This design trades perfect accuracy for performance: O(1) per neighbor vs O(dA_max × prices) for exact calculation.
     *   Agents skip neighbors in cooldown. Already-paired agents validate their pairing and maintain target lock.
     *   **Pass 2: Mutual Consent Pairing** — Agents who mutually list each other as their top choice are paired via "mutual consent." Lower-ID agent executes the pairing to avoid duplication. Cooldowns are cleared for both agents.
     *   **Pass 3: Best-Available Fallback** — Unpaired agents with remaining preferences use **surplus-based greedy matching**: all potential pairings are sorted by descending discounted surplus, and pairs are greedily assigned in order. When an agent claims a partner, that partner's target is updated to point back at the claimer (reciprocal commitment).
@@ -47,7 +45,7 @@ The simulation proceeds in discrete time steps called "ticks." Each tick, the en
 3.  **Movement**: Agents move towards their chosen targets (paired partner, resource, or other position) according to their `move_budget_per_tick`. Movement is deterministic, following specific tie-breaking rules (x-axis before y-axis, negative direction on ties, diagonal deadlock resolution by higher ID).
 
 4.  **Trade**: Only **paired agents** within `interaction_radius` attempt trades. The engine uses a sophisticated price search algorithm to find mutually beneficial terms:
-    *   **Generic Matching**: Selects the best exchange pair (A↔B, A↔M, B↔M) based on `exchange_regime` parameter
+    *   **Barter Matching**: Direct A↔B goods exchange only
     *   **Compensating Block Search**: Scans trade sizes ΔA from 1 to dA_max, testing candidate prices in [seller.ask, buyer.bid]
     *   **First-Acceptable-Trade Principle**: Accepts the first (ΔA, ΔB, price) tuple that yields strict utility gain (ΔU > 0) for both parties
     *   **Trade Outcome**: Successful trades maintain pairing (agents attempt another trade next tick); failed trades unpair agents and set mutual cooldown
@@ -78,20 +76,21 @@ Determinism is the cornerstone of the VMT engine. Given the same scenario file a
 
 ### Economic Logic
 
-#### Utility Functions and Money-Aware API
+#### Utility Functions
 -   **Utility Functions**: The engine supports five utility function classes, all defined in `src/vmt_engine/econ/utility.py`:
     *   `UCES` — Constant Elasticity of Substitution (including Cobb-Douglas as a special case)
     *   `ULinear` — Perfect substitutes (constant marginal utility)
     *   `UQuadratic` — Bliss points and satiation (non-monotonic preferences)
     *   `UTranslog` — Transcendental logarithmic (flexible second-order approximation)
     *   `UStoneGeary` — Subsistence constraints (foundation of Linear Expenditure System)
--   **Money-Aware API** (Phase 2+): The utility interface provides separate methods for goods and total utility:
-    *   `u_goods(A, B)` — Utility from goods only (canonical method)
+-   **Utility API**: The utility interface provides core methods:
+    *   `u(A, B)` — Utility from goods (canonical method)
+    *   `u_goods(A, B)` — Alias for `u(A, B)` (backward compatibility)
     *   `mu_A(A, B)`, `mu_B(A, B)` — Marginal utilities of goods A and B (∂U/∂A, ∂U/∂B)
-    *   Legacy methods `u(A, B)` and `mu(A, B)` remain for backward compatibility
--   **Pure Barter Economy**: VMT is a pure barter economy - all trades are direct A↔B exchanges (money system removed)
--   **Reservation Bounds**: Agents' willingness to trade is determined by their reservation price, which is derived from their marginal rate of substitution (MRS). To avoid hard-coding MRS formulas, the engine uses a generic `reservation_bounds_A_in_B(A, B, eps)` function. This returns the minimum price an agent would accept (`p_min`) and the maximum price they would pay (`p_max`).
--   **Zero-Inventory Guard**: A critical innovation is the handling of zero-inventory cases for CES utilities. When an agent has zero of a good, its MRS can be undefined or infinite. The engine handles this by adding a tiny `epsilon` value to the inventory levels *only for the ratio calculation* used to determine reservation bounds. The core utility calculation `u_goods(A, B)` always uses the true integer inventories.
+    *   `mu(A, B)` — Returns tuple (MU_A, MU_B)
+-   **Pure Barter Economy**: VMT is a pure barter economy - all trades are direct A↔B exchanges
+-   **Reservation Bounds**: Agents' willingness to trade is determined by their reservation price, which is derived from their marginal rate of substitution (MRS). The engine uses a generic `reservation_bounds_A_in_B(A, B, eps)` function. This returns the minimum price an agent would accept (`p_min`) and the maximum price they would pay (`p_max`).
+-   **Zero-Inventory Guard**: A critical feature is the handling of zero-inventory cases for CES utilities. When an agent has zero of a good, its MRS can be undefined or infinite. The engine handles this by adding a tiny `epsilon` value to the inventory levels *only for the ratio calculation* used to determine reservation bounds. The core utility calculation `u(A, B)` always uses the true integer inventories.
 
 #### Agent Initialization and Heterogeneity
 Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows for specifying a distribution of preferences across the agent population.
@@ -133,18 +132,15 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
 - Important invariant: Scenarios must validate `initial_A > gamma_A` and `initial_B > gamma_B`
     
 #### Quotes and Trading
--   **Quotes**: Agents maintain a dictionary of quotes (`Agent.quotes: dict[str, float]`) with keys for all active exchange pairs:
-    *   Barter: `"ask_A_in_B"`, `"bid_A_in_B"`, `"p_min"`, `"p_max"`
-    *   Money (Phase 2+): `"ask_A_in_M"`, `"bid_A_in_M"`, `"ask_B_in_M"`, `"bid_B_in_M"`
+-   **Quotes**: Agents maintain a dictionary of quotes (`Agent.quotes: dict[str, float]`) with keys for barter exchange:
+    *   Barter: `"ask_A_in_B"`, `"bid_A_in_B"`, `"p_min_A_in_B"`, `"p_max_A_in_B"`, `"ask_B_in_A"`, `"bid_B_in_A"`, `"p_min_B_in_A"`, `"p_max_B_in_A"`
     *   Quotes are calculated from reservation bounds: `ask = p_min * (1 + spread)` and `bid = p_max * (1 - spread)`
--   **Generic Matching Algorithm** (Phase 2+): The engine selects the best exchange pair for each agent pair based on `exchange_regime`:
-    *   `"barter_only"` — Only A↔B trades (default, backward compatible)
-    *   `"money_only"` — Only A↔M and B↔M trades
-    *   `"mixed"` — All exchange pairs allowed; selects pair with highest surplus
-    *   Function: `find_best_trade(agent_i, agent_j, exchange_regime)` in `src/vmt_engine/systems/matching.py`
+-   **Barter Matching Algorithm**: The engine finds mutually beneficial A↔B trades:
+    *   Function: `find_best_trade(agent_i, agent_j, params)` in `src/vmt_engine/systems/matching.py`
+    *   Only A↔B barter trades are supported
 -   **Price Search Algorithm**: Because goods are discrete integers, a price that looks good on paper (based on MRS) might not result in a mutually beneficial trade after rounding. The `find_compensating_block_generic` function solves this:
     *   Probes multiple prices within the valid `[ask_seller, bid_buyer]` range
-    *   For each price, scans trade quantities from `ΔA=1` (or `ΔM=1` for money trades) up to `ΔA_max`
+    *   For each price, scans trade quantities from `ΔA=1` up to `ΔA_max`
     *   Applies **round-half-up** rounding: `ΔB = floor(price * ΔA + 0.5)`
     *   Accepts the **first** trade block `(ΔA, ΔB)` that provides **strict utility improvement (ΔU > 0)** for both agents
     *   This is the **first-acceptable-trade principle**, not highest-surplus search
@@ -216,7 +212,7 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
 -   **Historical Note**: Prior to this implementation, agents used lexicographic preferences ("trade if any opportunity exists, otherwise forage"), which was not economically correct. The current system properly balances opportunity costs.
 
 #### Trade System
--   **Barter Economy**: All trades are direct A↔B exchanges (money system removed)
+-   **Pure Barter Economy**: All trades are direct A↔B good-for-good exchanges
 -   **Mode Scheduling** (Implemented): Temporal control of agent activities:
     *   **`mode_schedule`**: WHEN activities occur (forage/trade/both modes)
     *   In forage mode, no trading occurs
@@ -233,15 +229,15 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
 
 The VMT engine is rigorously tested to ensure both technical correctness and theoretical soundness. The test suite (`tests/`) contains 316+ tests covering:
 -   **Core State**: Grid logic, agent creation, state management, pairing state
--   **Utilities**: Correctness of UCES and ULinear calculations, especially at edge cases; money-aware API methods
+-   **Utilities**: Correctness of all utility function calculations, especially at edge cases
 -   **Reservation Bounds**: Correctness of the zero-inventory guard
 -   **Trade Logic**: Correctness of rounding, compensating multi-lot search, cooldowns, and pairing
--   **Generic Matching**: Money-aware matching algorithm, exchange regime parameter, quote computation
+-   **Barter Matching**: Matching algorithm, quote computation, trade feasibility
 -   **Trade Pairing**: Mutual consent pairing, fallback pairing, pairing integrity, cooldown interactions
 -   **Resource Claiming**: Claim recording, stale clearing, single-harvester enforcement
 -   **Resource Regeneration**: Correctness of cooldowns, growth rates, and caps
--   **Money Integration**: Phase 1 infrastructure, Phase 2 monetary exchange, telemetry extensions
--   **Mode Management**: Mode schedule transitions, exchange regime interactions
+-   **Protocol System**: Search, matching, and bargaining protocol implementations
+-   **Mode Management**: Mode schedule transitions and phase execution
 -   **Determinism**: End-to-end tests that verify bit-identical log outputs for the same seed
 -   **Performance**: Benchmark scenarios validating TPS thresholds with 400 agents
 
