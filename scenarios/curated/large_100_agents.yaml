@@ -80,7 +80,6 @@ params:
   vision_radius: 8
   interaction_radius: 1
   move_budget_per_tick: 1
-  trade_execution_mode: minimum
   forage_rate: 1
   trade_cooldown_ticks: 300
   beta: 0.95

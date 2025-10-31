@@ -81,14 +81,7 @@ class ScenarioParams:
     trade_cooldown_ticks: int = 5          # Ticks to wait after failed trade before re-attempting same partner
     
     # --- Trade execution parameters ---
-    trade_execution_mode: Literal["minimum", "maximum"] = "minimum"
-    """
-    Controls how trade quantities are determined when a mutually beneficial price is found.
-    - 'minimum': Execute the minimum batch (starting from dA=1) that results in positive
-      utility for both agents. Default for pedagogical clarity and backward compatibility.
-    - 'maximum': Execute the maximum batch at the chosen price that still results in
-      positive utility for both agents. More efficient but less pedagogical.
-    """
+    # Note: Trade batch size decisions moved to protocols (trade_execution_mode removed)
     
     # --- Resource claiming system parameters ---
     enable_resource_claiming: bool = True  # Enable claim-based resource allocation

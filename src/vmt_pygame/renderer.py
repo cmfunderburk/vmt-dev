@@ -906,11 +906,10 @@ class VMTRenderer:
         agent_label = self.font.render(agent_text, True, self.COLOR_TEXT)
         self.screen.blit(agent_label, (10, hud_y + 20))
         
-        # Mode and trade execution info
+        # Mode info
         mode = self.sim.current_mode  # "forage", "trade", or "both"
-        trade_execution_mode = self.sim.params.get('trade_execution_mode', 'minimum')
         
-        mode_text = f"Mode: {mode} | Economy: Barter-Only | Trade Execution: {trade_execution_mode}"
+        mode_text = f"Mode: {mode} | Economy: Barter-Only"
         mode_label = self.font.render(mode_text, True, self.COLOR_TEXT)
         self.screen.blit(mode_label, (10, hud_y + 40))
         

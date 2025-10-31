@@ -517,8 +517,6 @@ def find_compensating_block_generic(
     u_i_0 = agent_i.utility.u(agent_i.inventory.A, agent_i.inventory.B)
     u_j_0 = agent_j.utility.u(agent_j.inventory.A, agent_j.inventory.B)
     
-    trade_execution_mode = params.get('trade_execution_mode', 'minimum')
-    
     if pair != "A<->B":
         return None  # Only barter supported
     
@@ -530,135 +528,47 @@ def find_compensating_block_generic(
     bid_j = agent_j.quotes.get('bid_A_in_B', 0.0)
     
     if ask_i <= bid_j:
-        if trade_execution_mode == 'minimum':
-            # Minimum mode: return first feasible trade
-            for dA in range(1, agent_i.inventory.A + 1):
-                for price in generate_price_candidates(ask_i, bid_j, dA):
-                    dB = int(floor(price * dA + 0.5))
-                    
-                    if dB <= 0 or dB > agent_j.inventory.B:
-                        continue
-                    
-                    # Calculate utility with new inventories
-                    u_i_new = agent_i.utility.u(agent_i.inventory.A - dA, agent_i.inventory.B + dB)
-                    u_j_new = agent_j.utility.u(agent_j.inventory.A + dA, agent_j.inventory.B - dB)
-                    
-                    surplus_i = u_i_new - u_i_0
-                    surplus_j = u_j_new - u_j_0
-                    
-                    if surplus_i > epsilon and surplus_j > epsilon:
-                        return (-dA, dB, dA, -dB, surplus_i, surplus_j)
-        else:
-            # Maximum mode: find first working price, then maximize quantity
-            working_price = None
-            for dA in range(1, agent_i.inventory.A + 1):
-                for price in generate_price_candidates(ask_i, bid_j, dA):
-                    dB = int(floor(price * dA + 0.5))
-                    
-                    if dB <= 0 or dB > agent_j.inventory.B:
-                        continue
-                    
-                    u_i_new = agent_i.utility.u(agent_i.inventory.A - dA, agent_i.inventory.B + dB)
-                    u_j_new = agent_j.utility.u(agent_j.inventory.A + dA, agent_j.inventory.B - dB)
-                    
-                    surplus_i = u_i_new - u_i_0
-                    surplus_j = u_j_new - u_j_0
-                    
-                    if surplus_i > epsilon and surplus_j > epsilon:
-                        working_price = price
-                        break
-                if working_price is not None:
-                    break
-            
-            # Now find maximum quantity at this price
-            if working_price is not None:
-                best_trade = None
-                for dA in range(1, agent_i.inventory.A + 1):
-                    dB = int(floor(working_price * dA + 0.5))
-                    
-                    if dB <= 0 or dB > agent_j.inventory.B:
-                        break  # Can't go higher
-                    
-                    u_i_new = agent_i.utility.u(agent_i.inventory.A - dA, agent_i.inventory.B + dB)
-                    u_j_new = agent_j.utility.u(agent_j.inventory.A + dA, agent_j.inventory.B - dB)
-                    
-                    surplus_i = u_i_new - u_i_0
-                    surplus_j = u_j_new - u_j_0
-                    
-                    if surplus_i > epsilon and surplus_j > epsilon:
-                        best_trade = (-dA, dB, dA, -dB, surplus_i, surplus_j)
-                    else:
-                        break  # Can't go higher
+        # Return first feasible trade (minimum mode)
+        # Note: Trade batch size decisions will be handled by protocols in the future
+        for dA in range(1, agent_i.inventory.A + 1):
+            for price in generate_price_candidates(ask_i, bid_j, dA):
+                dB = int(floor(price * dA + 0.5))
                 
-                if best_trade is not None:
-                    return best_trade
+                if dB <= 0 or dB > agent_j.inventory.B:
+                    continue
+                
+                # Calculate utility with new inventories
+                u_i_new = agent_i.utility.u(agent_i.inventory.A - dA, agent_i.inventory.B + dB)
+                u_j_new = agent_j.utility.u(agent_j.inventory.A + dA, agent_j.inventory.B - dB)
+                
+                surplus_i = u_i_new - u_i_0
+                surplus_j = u_j_new - u_j_0
+                
+                if surplus_i > epsilon and surplus_j > epsilon:
+                    return (-dA, dB, dA, -dB, surplus_i, surplus_j)
     
     # Direction 2: agent i buys A, sells B
     bid_i = agent_i.quotes.get('bid_A_in_B', 0.0)
     ask_j = agent_j.quotes.get('ask_A_in_B', float('inf'))
     
     if ask_j <= bid_i:
-        if trade_execution_mode == 'minimum':
-            # Minimum mode: return first feasible trade
-            for dA in range(1, agent_j.inventory.A + 1):
-                for price in generate_price_candidates(ask_j, bid_i, dA):
-                    dB = int(floor(price * dA + 0.5))
-                    
-                    if dB <= 0 or dB > agent_i.inventory.B:
-                        continue
-                    
-                    u_i_new = agent_i.utility.u(agent_i.inventory.A + dA, agent_i.inventory.B - dB)
-                    u_j_new = agent_j.utility.u(agent_j.inventory.A - dA, agent_j.inventory.B + dB)
-                    
-                    surplus_i = u_i_new - u_i_0
-                    surplus_j = u_j_new - u_j_0
-                    
-                    if surplus_i > epsilon and surplus_j > epsilon:
-                        return (dA, -dB, -dA, dB, surplus_i, surplus_j)
-        else:
-            # Maximum mode: find first working price, then maximize quantity
-            working_price = None
-            for dA in range(1, agent_j.inventory.A + 1):
-                for price in generate_price_candidates(ask_j, bid_i, dA):
-                    dB = int(floor(price * dA + 0.5))
-                    
-                    if dB <= 0 or dB > agent_i.inventory.B:
-                        continue
-                    
-                    u_i_new = agent_i.utility.u(agent_i.inventory.A + dA, agent_i.inventory.B - dB)
-                    u_j_new = agent_j.utility.u(agent_j.inventory.A - dA, agent_j.inventory.B + dB)
-                    
-                    surplus_i = u_i_new - u_i_0
-                    surplus_j = u_j_new - u_j_0
-                    
-                    if surplus_i > epsilon and surplus_j > epsilon:
-                        working_price = price
-                        break
-                if working_price is not None:
-                    break
-            
-            # Now find maximum quantity at this price
-            if working_price is not None:
-                best_trade = None
-                for dA in range(1, agent_j.inventory.A + 1):
-                    dB = int(floor(working_price * dA + 0.5))
-                    
-                    if dB <= 0 or dB > agent_i.inventory.B:
-                        break
-                    
-                    u_i_new = agent_i.utility.u(agent_i.inventory.A + dA, agent_i.inventory.B - dB)
-                    u_j_new = agent_j.utility.u(agent_j.inventory.A - dA, agent_j.inventory.B + dB)
-                    
-                    surplus_i = u_i_new - u_i_0
-                    surplus_j = u_j_new - u_j_0
-                    
-                    if surplus_i > epsilon and surplus_j > epsilon:
-                        best_trade = (dA, -dB, -dA, dB, surplus_i, surplus_j)
-                    else:
-                        break
+        # Return first feasible trade (minimum mode)
+        # Note: Trade batch size decisions will be handled by protocols in the future
+        for dA in range(1, agent_j.inventory.A + 1):
+            for price in generate_price_candidates(ask_j, bid_i, dA):
+                dB = int(floor(price * dA + 0.5))
                 
-                if best_trade is not None:
-                    return best_trade
+                if dB <= 0 or dB > agent_i.inventory.B:
+                    continue
+                
+                u_i_new = agent_i.utility.u(agent_i.inventory.A + dA, agent_i.inventory.B - dB)
+                u_j_new = agent_j.utility.u(agent_j.inventory.A - dA, agent_j.inventory.B + dB)
+                
+                surplus_i = u_i_new - u_i_0
+                surplus_j = u_j_new - u_j_0
+                
+                if surplus_i > epsilon and surplus_j > epsilon:
+                    return (dA, -dB, -dA, dB, surplus_i, surplus_j)
     
     # No mutually beneficial trade found
     return None

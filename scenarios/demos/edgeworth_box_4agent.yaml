@@ -30,7 +30,6 @@ params:
   
   # Trading
   trade_cooldown_ticks: 0   # No cooldown
-  trade_execution_mode: "minimum"
   
   # Foraging (minimal)
   forage_rate: 1

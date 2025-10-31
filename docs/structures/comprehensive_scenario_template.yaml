@@ -115,11 +115,7 @@ params:
   
   trade_cooldown_ticks: 5          # Cooldown after failed trade, default: 5, range: ≥ 0
                                    # Typical: 5-10, 0 (no cooldown), > 20 (long cooldown)
-  
-  trade_execution_mode: "minimum"  # Trade batch size strategy, default: "minimum", range: see below
-                                   # Options: "minimum" (smallest beneficial trade, pedagogical),
-                                   #          "maximum" (largest beneficial trade at price, efficient)
-                                   # Typical: "minimum" for teaching, "maximum" for faster convergence
+                                   # Note: Trade batch size decisions moved to protocols
   
   # -------------------------------------------------------------------------
   # FORAGING PARAMETERS

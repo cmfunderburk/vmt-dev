@@ -77,7 +77,7 @@ All other parameters in `src/scenarios/schema.py` are properly documented in the
 
 ### Trading Parameters
 - ✅ `trade_cooldown_ticks`
-- ✅ `trade_execution_mode` (newly added)
+- ⚠️ `trade_execution_mode` (removed - decisions moved to protocols)
 
 ### Foraging Parameters
 - ✅ `forage_rate`
