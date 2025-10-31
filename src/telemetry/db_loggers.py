@@ -120,7 +120,7 @@ class TelemetryManager:
             target_x = agent.target_pos[0] if agent.target_pos else None
             target_y = agent.target_pos[1] if agent.target_pos else None
             
-            # Money-aware API: use dict.get() for safe access
+            # Use dict.get() for safe access
             ask_A_in_B = float(agent.quotes.get('ask_A_in_B', 0.0))
             bid_A_in_B = float(agent.quotes.get('bid_A_in_B', 0.0))
             p_min = float(agent.quotes.get('p_min_A_in_B', 0.0))
@@ -230,7 +230,7 @@ class TelemetryManager:
             dB: Amount of good B traded
             price: Trade price
             direction: Trade direction string
-            dM: Amount of money traded (Phase 2+, default 0 for barter)
+            dM: Amount of money traded (deprecated, always 0 for barter-only economy)
             exchange_pair_type: Type of exchange (Phase 3+, default "A<->B")
         """
         if not self.config.log_trades or self.db is None or self.run_id is None:
@@ -338,16 +338,19 @@ class TelemetryManager:
         self.db.commit()
     
     def log_tick_state(self, tick: int, current_mode: str, 
-                       exchange_regime: str, active_pairs: list[str]):
+                       exchange_regime: str = "barter_only", 
+                       active_pairs: list[str] = None):
         """
         Log tick-level mode and exchange regime state.
         
         Args:
             tick: Current simulation tick
             current_mode: Current mode from mode_schedule ("forage" | "trade" | "both")
-            exchange_regime: Exchange regime from params ("barter_only" | "money_only" | "mixed" | "mixed_liquidity_gated")
-            active_pairs: List of active exchange pair types (e.g., ["A<->M", "B<->M"])
+            exchange_regime: Always "barter_only" (parameter kept for backward compatibility)
+            active_pairs: List of active exchange pair types (always ["A<->B"] for barter)
         """
+        if active_pairs is None:
+            active_pairs = ["A<->B"]
         if not self.config.use_database or self.db is None or self.run_id is None:
             return
         
@@ -402,7 +405,7 @@ class TelemetryManager:
             surplus: Undiscounted surplus with this partner
             discounted_surplus: Distance-discounted surplus (beta^distance * surplus)
             distance: Manhattan distance to partner
-            pair_type: Exchange pair type ("A<->B", "A<->M", "B<->M", or None for backward compatibility)
+            pair_type: Exchange pair type (always "A<->B" for barter, or None for backward compatibility)
         """
         if not self.config.log_decisions or self.db is None or self.run_id is None:
             return

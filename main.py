@@ -54,9 +54,7 @@ def main():
     print("  O: All arrows off")
     print("  [: Toggle left panel")
     print("  ]: Toggle HUD panel")
-    print("  M: Toggle money labels")
-    print("  L: Toggle lambda heatmap")
-    print("  I: Toggle mode/regime overlay")
+    print("  I: Toggle mode overlay")
     print("  Q: Quit")
     print()
     
@@ -121,18 +119,6 @@ def main():
                     renderer.show_trade_arrows = False
                     renderer.show_forage_arrows = False
                     print("All arrows: OFF")
-                
-                elif event.key == pygame.K_m:
-                    # Toggle money labels
-                    renderer.show_money_labels = not renderer.show_money_labels
-                    status = "ON" if renderer.show_money_labels else "OFF"
-                    print(f"Money labels: {status}")
-                
-                elif event.key == pygame.K_l:
-                    # Toggle lambda heatmap
-                    renderer.show_lambda_heatmap = not renderer.show_lambda_heatmap
-                    status = "ON" if renderer.show_lambda_heatmap else "OFF"
-                    print(f"Lambda heatmap: {status}")
                 
                 elif event.key == pygame.K_i:
                     # Toggle mode/regime info overlay

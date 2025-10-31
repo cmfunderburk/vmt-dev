@@ -14,7 +14,7 @@ VMT is a research and teaching platform that makes exchange mechanisms explicit 
 - Spatial grid with resource foraging and agent movement
 - Configurable protocols for search, matching, and bargaining
 - Multiple utility functions (CES, Linear, Quadratic, Stone-Geary, Translog)
-- Money system with quasilinear utility
+- Pure barter economy (A↔B trades only)
 - Deterministic simulation (reproducible with seeds)
 - Comprehensive telemetry and visualization
 
@@ -160,7 +160,7 @@ source venv/bin/activate  # Linux/macOS
 pytest
 
 # Run specific test categories
-pytest tests/test_money_phase1_integration.py
+pytest tests/test_foundational_baseline_trades.py
 pytest tests/test_protocol_registry.py
 ```
 

@@ -141,7 +141,6 @@ class MyopicSearch(SearchProtocol):
             List of (agent_id, discounted_surplus, metadata) sorted descending
         """
         beta = world.params.get("beta", 0.95)
-        exchange_regime = world.exchange_regime
         
         candidates = []
         
@@ -157,14 +156,9 @@ class MyopicSearch(SearchProtocol):
                 if world.tick < world.trade_cooldowns[neighbor.agent_id]:
                     continue
             
-            # Calculate surplus (regime-aware)
-            if exchange_regime in ("money_only", "mixed", "mixed_liquidity_gated"):
-                surplus, pair_type = self._estimate_surplus_from_views(
-                    world, neighbor, exchange_regime
-                )
-            else:
-                surplus = self._compute_barter_surplus_from_views(world, neighbor)
-                pair_type = "A<->B"
+            # Calculate surplus (barter-only)
+            surplus = self._compute_barter_surplus_from_views(world, neighbor)
+            pair_type = "A<->B"
             
             if surplus > 0:
                 # Beta-discounted surplus
@@ -355,41 +349,4 @@ class MyopicSearch(SearchProtocol):
         
         return max(feasible_overlaps) if feasible_overlaps else 0.0
     
-    def _estimate_surplus_from_views(
-        self, world: WorldView, neighbor, regime: str
-    ) -> tuple[float, str]:
-        """Estimate money-aware surplus using quotes."""
-        my_quotes = world.quotes
-        their_quotes = neighbor.quotes
-        
-        best_surplus = 0.0
-        best_pair = "A<->B"
-        
-        # A<->M: Money trade for good A
-        if regime in ("money_only", "mixed", "mixed_liquidity_gated"):
-            my_ask_A_M = my_quotes.get("ask_A_in_M", float("inf"))
-            their_bid_A_M = their_quotes.get("bid_A_in_M", 0.0)
-            overlap_A_M = their_bid_A_M - my_ask_A_M
-            
-            if overlap_A_M > best_surplus:
-                best_surplus = overlap_A_M
-                best_pair = "A<->M"
-            
-            # B<->M: Money trade for good B
-            my_ask_B_M = my_quotes.get("ask_B_in_M", float("inf"))
-            their_bid_B_M = their_quotes.get("bid_B_in_M", 0.0)
-            overlap_B_M = their_bid_B_M - my_ask_B_M
-            
-            if overlap_B_M > best_surplus:
-                best_surplus = overlap_B_M
-                best_pair = "B<->M"
-        
-        # A<->B: Barter
-        if regime in ("barter_only", "mixed", "mixed_liquidity_gated"):
-            barter_surplus = self._compute_barter_surplus_from_views(world, neighbor)
-            if barter_surplus > best_surplus:
-                best_surplus = barter_surplus
-                best_pair = "A<->B"
-        
-        return best_surplus, best_pair
 

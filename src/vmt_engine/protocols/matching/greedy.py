@@ -113,7 +113,6 @@ class GreedySurplusMatching(MatchingProtocol):
         # Enumerate all potential pairs and calculate surplus
         potential_pairings = []
         beta = world.params.get("beta", 0.95)
-        exchange_regime = world.params.get("exchange_regime", "barter_only")
         epsilon = world.params.get("epsilon", 1e-9)
         
         # Sort agents for deterministic iteration
@@ -127,7 +126,7 @@ class GreedySurplusMatching(MatchingProtocol):
                 
                 # Calculate surplus for this pair
                 total_surplus, discounted_surplus, distance = self._calculate_pair_surplus(
-                    agent_a_id, agent_b_id, world, exchange_regime, epsilon, beta
+                    agent_a_id, agent_b_id, world, epsilon, beta
                 )
                 
                 if total_surplus > 0:
@@ -169,7 +168,6 @@ class GreedySurplusMatching(MatchingProtocol):
         agent_a_id: int,
         agent_b_id: int,
         world: ProtocolContext,
-        exchange_regime: str,
         epsilon: float,
         beta: float
     ) -> tuple[float, float, int]:
@@ -186,11 +184,10 @@ class GreedySurplusMatching(MatchingProtocol):
         # Find all feasible trades
         params = {
             "dA_max": world.params.get("dA_max", 50),
-            "money_scale": world.params.get("money_scale", 1),
         }
         
         feasible_trades = find_all_feasible_trades(
-            agent_a, agent_b, exchange_regime, params, epsilon
+            agent_a, agent_b, params, epsilon
         )
         
         if not feasible_trades:
@@ -199,9 +196,9 @@ class GreedySurplusMatching(MatchingProtocol):
         # Find trade with maximum total surplus
         best_total_surplus = 0.0
         for pair_name, trade_tuple in feasible_trades:
-            # trade_tuple = (dA_i, dB_i, dM_i, dA_j, dB_j, dM_j, surplus_i, surplus_j)
-            surplus_a = trade_tuple[6]
-            surplus_b = trade_tuple[7]
+            # trade_tuple = (dA_i, dB_i, dA_j, dB_j, surplus_i, surplus_j)
+            surplus_a = trade_tuple[4]
+            surplus_b = trade_tuple[5]
             total_surplus = surplus_a + surplus_b
             
             if total_surplus > best_total_surplus:
@@ -226,13 +223,9 @@ class GreedySurplusMatching(MatchingProtocol):
         # Extract full agent state from params (added by build_protocol_context)
         inventory = Inventory(
             A=world.params.get(f"agent_{agent_id}_inv_A", 0),
-            B=world.params.get(f"agent_{agent_id}_inv_B", 0),
-            M=world.params.get(f"agent_{agent_id}_inv_M", 0)
+            B=world.params.get(f"agent_{agent_id}_inv_B", 0)
         )
         utility = world.params.get(f"agent_{agent_id}_utility")
-        lambda_money = world.params.get(f"agent_{agent_id}_lambda", 1.0)
-        money_utility_form = world.params.get(f"agent_{agent_id}_money_utility_form", "linear")
-        M_0 = world.params.get(f"agent_{agent_id}_M_0", 0)
         
         # Create minimal agent with required state
         agent = Agent(
@@ -242,9 +235,6 @@ class GreedySurplusMatching(MatchingProtocol):
             utility=utility,
             quotes=view.quotes.copy(),
         )
-        agent.lambda_money = lambda_money
-        agent.money_utility_form = money_utility_form
-        agent.M_0 = M_0
         
         return agent
 

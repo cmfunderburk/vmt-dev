@@ -45,7 +45,6 @@ params:
   trade_cooldown_ticks: 3
   beta: 0.95
   epsilon: 1.0e-12
-  exchange_regime: barter_only
   enable_resource_claiming: true
   enforce_single_harvester: true
   resource_growth_rate: 1

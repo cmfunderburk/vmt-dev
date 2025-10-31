@@ -10,13 +10,6 @@ Contracts and zero-handling:
 - CES MRS uses a zero-safe epsilon only for the A/B ratio when either A or B
   is zero; the utility function itself is not epsilon-shifted.
 - Linear utility has constant MRS vA/vB and reservation bounds equal to MRS.
-
-Money-aware API (Phase 2):
-- u_goods(A, B): utility from goods only
-- mu_A(A, B), mu_B(A, B): analytic marginal utilities
-- u_total(inventory, params): top-level utility including money
-- mu_money(M, lambda_money, money_utility_form, M_0): marginal utility of money
-- Money utility forms: linear (λ·M) or log (λ·log(M + M_0))
 """
 
 from __future__ import annotations
@@ -31,8 +24,6 @@ class Utility(ABC):
         """
         Compute utility for inventory (A, B).
         
-        DEPRECATED: Use u_goods() for the money-aware API.
-        
         Args:
             A: Amount of good A
             B: Amount of good B
@@ -44,10 +35,7 @@ class Utility(ABC):
     
     def u_goods(self, A: int, B: int) -> float:
         """
-        Compute utility from goods only (money-aware API).
-        
-        This is the canonical method for Phase 2+. The legacy u() method
-        routes through this for backward compatibility.
+        Compute utility from goods only.
         
         Args:
             A: Amount of good A
@@ -56,7 +44,6 @@ class Utility(ABC):
         Returns:
             Utility value from goods
         """
-        # Default implementation routes to u() for backward compatibility
         return self.u(A, B)
     
     def mu_A(self, A: int, B: int) -> float:
@@ -94,8 +81,6 @@ class Utility(ABC):
     def mu(self, A: int, B: int) -> tuple[float, float] | None:
         """
         Compute marginal utilities (∂U/∂A, ∂U/∂B).
-        
-        DEPRECATED: Use mu_A() and mu_B() for the money-aware API.
         
         Args:
             A: Amount of good A

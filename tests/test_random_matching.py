@@ -47,7 +47,6 @@ class TestRandomMatchingInterface:
         context = ProtocolContext(
             tick=0,
             mode="both",
-            exchange_regime="barter_only",
             all_agent_views={},
             all_resource_views=[],
             current_pairings={},

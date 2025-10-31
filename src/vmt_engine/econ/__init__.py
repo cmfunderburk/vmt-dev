@@ -8,11 +8,11 @@ from .base import Utility
 # Import concrete implementations and factory functions from utility.py
 from .utility import (
     UCES, ULinear, UQuadratic, UTranslog, UStoneGeary, 
-    create_utility, u_total
+    create_utility
 )
 
 __all__ = [
     'Utility', 'UCES', 'ULinear', 'UQuadratic', 'UTranslog', 'UStoneGeary',
-    'create_utility', 'u_total'
+    'create_utility'
 ]
 

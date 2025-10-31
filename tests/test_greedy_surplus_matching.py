@@ -44,12 +44,11 @@ class TestGreedySurplusMatchingInterface:
         context = ProtocolContext(
             tick=0,
             mode="both",
-            exchange_regime="barter_only",
             all_agent_views={},
             all_resource_views=[],
             current_pairings={},
             protocol_state={},
-            params={"beta": 0.95, "epsilon": 1e-9, "dA_max": 50, "money_scale": 1},
+            params={"beta": 0.95, "epsilon": 1e-9, "dA_max": 50},
             rng=rng
         )
         

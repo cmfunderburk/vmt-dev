@@ -125,15 +125,13 @@ class TakeItOrLeaveIt(BargainingProtocol):
             agent_i_id, agent_j_id = agent_b_id, agent_a_id
         
         # Get all feasible trades (i=lower ID, j=higher ID)
-        exchange_regime = world.exchange_regime
         epsilon = world.params.get("epsilon", 1e-9)
         params = {
             "dA_max": world.params.get("dA_max", 50),
-            "money_scale": world.params.get("money_scale", 1),
         }
         
         feasible_trades = find_all_feasible_trades(
-            agent_i_obj, agent_j_obj, exchange_regime, params, epsilon
+            agent_i_obj, agent_j_obj, params, epsilon
         )
         
         if not feasible_trades:
@@ -160,14 +158,14 @@ class TakeItOrLeaveIt(BargainingProtocol):
             proposer_is_i = False
         
         for pair_name, trade_tuple in feasible_trades:
-            # trade_tuple = (dA_i, dB_i, dM_i, dA_j, dB_j, dM_j, surplus_i, surplus_j)
+            # trade_tuple = (dA_i, dB_i, dA_j, dB_j, surplus_i, surplus_j)
             # i=lower ID agent, j=higher ID agent
             if proposer_is_i:
-                proposer_surplus = trade_tuple[6]  # surplus_i
-                responder_surplus = trade_tuple[7]  # surplus_j
+                proposer_surplus = trade_tuple[4]  # surplus_i
+                responder_surplus = trade_tuple[5]  # surplus_j
             else:
-                proposer_surplus = trade_tuple[7]  # surplus_j
-                responder_surplus = trade_tuple[6]  # surplus_i
+                proposer_surplus = trade_tuple[5]  # surplus_j
+                responder_surplus = trade_tuple[4]  # surplus_i
             
             # Responder must get at least epsilon (individual rationality)
             if responder_surplus < epsilon:
@@ -246,20 +244,15 @@ class TakeItOrLeaveIt(BargainingProtocol):
         if agent_id == world.agent_id:
             inventory = Inventory(
                 A=world.inventory.get("A", 0),
-                B=world.inventory.get("B", 0),
-                M=world.inventory.get("M", 0)
+                B=world.inventory.get("B", 0)
             )
             quotes = world.quotes
             utility = world.utility
-            lambda_money = world.lambda_money
-            money_utility_form = world.params.get("money_utility_form", "linear")
-            M_0 = world.inventory.get("M", 0)
         else:
             # Partner - extract from params (populated by context builder)
             inventory = Inventory(
                 A=world.params.get(f"partner_{agent_id}_inv_A", 0),
-                B=world.params.get(f"partner_{agent_id}_inv_B", 0),
-                M=world.params.get(f"partner_{agent_id}_inv_M", 0)
+                B=world.params.get(f"partner_{agent_id}_inv_B", 0)
             )
             quotes = {}
             # Find partner in visible agents for quotes
@@ -268,9 +261,6 @@ class TakeItOrLeaveIt(BargainingProtocol):
                     quotes = neighbor.quotes
                     break
             utility = world.params.get(f"partner_{agent_id}_utility", None)
-            lambda_money = world.params.get(f"partner_{agent_id}_lambda", 1.0)
-            money_utility_form = world.params.get(f"partner_{agent_id}_money_utility_form", "linear")
-            M_0 = world.params.get(f"partner_{agent_id}_M_0", 0)
         
         # Create minimal agent
         agent = Agent(
@@ -280,9 +270,6 @@ class TakeItOrLeaveIt(BargainingProtocol):
             utility=utility,
             quotes=quotes,
         )
-        agent.lambda_money = lambda_money
-        agent.money_utility_form = money_utility_form
-        agent.M_0 = M_0
         
         return agent
     
@@ -314,7 +301,7 @@ class TakeItOrLeaveIt(BargainingProtocol):
             trade_tuple: Trade tuple from find_all_feasible_trades
             world: WorldView context
         """
-        dA_i, dB_i, dM_i, dA_j, dB_j, dM_j, surplus_i, surplus_j = trade_tuple
+        dA_i, dB_i, dA_j, dB_j, surplus_i, surplus_j = trade_tuple
         
         # Map surpluses to proposer/responder
         if proposer_is_i:
@@ -324,8 +311,8 @@ class TakeItOrLeaveIt(BargainingProtocol):
             proposer_surplus = surplus_j
             responder_surplus = surplus_i
         
-        # Determine buyer/seller based on pair type and direction
-        # Trade tuple format: (dA_i, dB_i, dM_i, dA_j, dB_j, dM_j, surplus_i, surplus_j)
+        # Determine buyer/seller based on pair type and direction (barter-only)
+        # Trade tuple format: (dA_i, dB_i, dA_j, dB_j, surplus_i, surplus_j)
         # Conservation: dA_i + dA_j = 0, dB_i + dB_j = 0
         # In trade tuple: i=lower ID agent, j=higher ID agent
         
@@ -352,77 +339,6 @@ class TakeItOrLeaveIt(BargainingProtocol):
                 pair_type=pair_name,
                 dA=dA,
                 dB=dB,
-                dM=0,
-                price=round(price, 2),
-                metadata={
-                    "proposer_id": proposer_id,
-                    "responder_id": responder_id,
-                    "proposer_surplus": proposer_surplus,
-                    "responder_surplus": responder_surplus,
-                    "total_surplus": proposer_surplus + responder_surplus,
-                    "proposer_power": self.proposer_power,
-                }
-            )
-        
-        elif pair_name == "A<->M":
-            # Money trade for good A
-            if dA_i < 0:  # i (lower ID) sells A for M
-                buyer_id = agent_j_id  # j buys A
-                seller_id = agent_i_id  # i sells A
-                dA = abs(dA_i)  # Amount of A traded
-                dM = abs(dM_j)  # Amount of M traded (j pays M, so dM_j < 0)
-            else:  # dA_i > 0: i buys A with M
-                buyer_id = agent_i_id  # i buys A
-                seller_id = agent_j_id  # j sells A
-                dA = abs(dA_j)  # Amount of A traded (j sells A, so dA_j < 0)
-                dM = abs(dM_i)  # Amount of M traded (i pays M, so dM_i < 0)
-            
-            price = dM / dA if dA > 0 else 0
-            
-            return Trade(
-                protocol_name=self.name,
-                tick=world.tick,
-                buyer_id=buyer_id,
-                seller_id=seller_id,
-                pair_type=pair_name,
-                dA=dA,
-                dB=0,
-                dM=dM,
-                price=round(price, 2),
-                metadata={
-                    "proposer_id": proposer_id,
-                    "responder_id": responder_id,
-                    "proposer_surplus": proposer_surplus,
-                    "responder_surplus": responder_surplus,
-                    "total_surplus": proposer_surplus + responder_surplus,
-                    "proposer_power": self.proposer_power,
-                }
-            )
-        
-        else:  # B<->M
-            # Money trade for good B
-            if dB_i < 0:  # i (lower ID) sells B for M
-                buyer_id = agent_j_id  # j buys B
-                seller_id = agent_i_id  # i sells B
-                dB = abs(dB_i)  # Amount of B traded
-                dM = abs(dM_j)  # Amount of M traded (j pays M, so dM_j < 0)
-            else:  # dB_i > 0: i buys B with M
-                buyer_id = agent_i_id  # i buys B
-                seller_id = agent_j_id  # j sells B
-                dB = abs(dB_j)  # Amount of B traded (j sells B, so dB_j < 0)
-                dM = abs(dM_i)  # Amount of M traded (i pays M, so dM_i < 0)
-            
-            price = dM / dB if dB > 0 else 0
-            
-            return Trade(
-                protocol_name=self.name,
-                tick=world.tick,
-                buyer_id=buyer_id,
-                seller_id=seller_id,
-                pair_type=pair_name,
-                dA=0,
-                dB=dB,
-                dM=dM,
                 price=round(price, 2),
                 metadata={
                     "proposer_id": proposer_id,
