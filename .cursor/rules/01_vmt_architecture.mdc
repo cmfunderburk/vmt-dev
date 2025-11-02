@@ -1,7 +1,6 @@
 ---
-alwaysApply: true
+alwaysApply: false
 ---
-
 # VMT (Visualizing Microeconomic Theory) Architecture Rules
 
 ## Protocol → Effect → State Pattern
