@@ -12,9 +12,10 @@ Version: 2025.10.26 (Phase 1 - Legacy Adapter)
 """
 
 from typing import Optional
-from ..registry import register_protocol
-from ..base import MatchingProtocol, Effect, Pair, Unpair, SetTarget
-from ..context import ProtocolContext, AgentView
+from ...protocols.registry import register_protocol
+from .base import MatchingProtocol
+from ...protocols.base import Effect, Pair, Unpair, SetTarget
+from ...protocols.context import ProtocolContext, AgentView
 from ...systems.matching import compute_surplus, estimate_money_aware_surplus
 
 

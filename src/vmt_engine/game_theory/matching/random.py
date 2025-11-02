@@ -17,10 +17,11 @@ Version: 2025.10.28 (Phase 2a - Baseline Protocol)
 """
 
 from typing import Any
-from ..registry import register_protocol
+from ...protocols.registry import register_protocol
 
-from ..base import MatchingProtocol, Effect, Pair
-from ..context import ProtocolContext
+from .base import MatchingProtocol
+from ...protocols.base import Effect, Pair
+from ...protocols.context import ProtocolContext
 
 
 @register_protocol(

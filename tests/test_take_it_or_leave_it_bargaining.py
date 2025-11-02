@@ -17,7 +17,7 @@ import numpy as np
 from tests.helpers import builders, run as run_helpers
 from scenarios.loader import load_scenario
 from vmt_engine.simulation import Simulation
-from vmt_engine.protocols.bargaining import TakeItOrLeaveIt, SplitDifference
+from vmt_engine.game_theory.bargaining import TakeItOrLeaveIt, SplitDifference
 from vmt_engine.protocols.context import WorldView
 from vmt_engine.protocols.base import Trade, Unpair
 

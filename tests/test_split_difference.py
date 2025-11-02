@@ -15,8 +15,7 @@ import pytest
 from tests.helpers import builders, run as run_helpers
 from scenarios.loader import load_scenario
 from vmt_engine.simulation import Simulation
-from vmt_engine.protocols.bargaining import SplitDifference
-from vmt_engine.protocols.bargaining import SplitDifference, LegacyBargainingProtocol
+from vmt_engine.game_theory.bargaining import SplitDifference, LegacyBargainingProtocol
 
 
 def create_test_scenario(agent_count: int = 10, grid_size: int = 15):

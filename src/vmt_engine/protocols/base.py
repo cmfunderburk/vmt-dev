@@ -4,14 +4,20 @@ Protocol Base Classes and Effect Types
 This module defines:
 1. Effect types - declarative intents returned by protocols
 2. ProtocolBase - abstract base class for all protocols
-3. Protocol interfaces - SearchProtocol, MatchingProtocol, BargainingProtocol
 
 All protocols follow the pattern:
     Protocol receives: WorldView (frozen, read-only)
     Protocol returns: list[Effect] (declarative intents)
     Core applies: validates, executes, logs effects
 
+Protocol ABCs (SearchProtocol, MatchingProtocol, BargainingProtocol) are now
+defined in their respective domain modules:
+- SearchProtocol: agent_based/search/base.py
+- MatchingProtocol: game_theory/matching/base.py
+- BargainingProtocol: game_theory/bargaining/base.py
+
 Version: 2025.10.26 (Phase 0 - Infrastructure)
+Post-restructure: 2025.11.02
 """
 
 from abc import ABC, abstractmethod
@@ -286,163 +292,6 @@ class ProtocolBase(ABC):
         pass
 
 
-class SearchProtocol(ProtocolBase):
-    """
-    Protocol for agent search and target selection.
-    
-    Search protocols determine:
-    - Which opportunities agents perceive
-    - How agents rank potential targets
-    - Which target an agent commits to
-    
-    Examples:
-    - Distance-discounted search (legacy)
-    - Random walk exploration
-    - Memory-based search
-    """
-    
-    # Class-level version to avoid instantiation during registration
-    VERSION = "unknown"
-
-    @property
-    def version(self) -> str:
-        return getattr(self.__class__, "VERSION", "unknown")
-
-    @abstractmethod
-    def build_preferences(
-        self, world: "WorldView"
-    ) -> list[tuple[Target, float, dict[str, Any]]]:
-        """
-        Build ranked list of targets with scores.
-        
-        Args:
-            world: Immutable snapshot of agent's perception
-        
-        Returns:
-            List of (target, score, metadata) tuples, sorted by descending score
-        
-        The metadata dict can include:
-        - 'distance': Distance to target
-        - 'expected_surplus': Estimated value
-        - 'memory': Past experience with target
-        """
-        pass
-    
-    @abstractmethod
-    def select_target(self, world: "WorldView") -> list[Effect]:
-        """
-        Select target and emit effects.
-        
-        Args:
-            world: Immutable snapshot of agent's perception
-        
-        Returns:
-            List of effects, typically:
-            - [SetTarget(...)] if target selected
-            - [] if no suitable target found
-        """
-        pass
-
-
-class MatchingProtocol(ProtocolBase):
-    """
-    Protocol for agent pairing.
-    
-    Matching protocols determine:
-    - Which agents form bilateral pairs
-    - How conflicts are resolved (multiple agents want same partner)
-    - Stability properties of resulting matches
-    
-    Examples:
-    - Three-pass algorithm (legacy: mutual consent + greedy fallback)
-    - Greedy surplus maximization
-    - Stable matching (Gale-Shapley)
-    """
-    
-    # Class-level version to avoid instantiation during registration
-    VERSION = "unknown"
-
-    @property
-    def version(self) -> str:
-        return getattr(self.__class__, "VERSION", "unknown")
-
-    @abstractmethod
-    def find_matches(
-        self,
-        preferences: dict[int, list[tuple[Target, float, dict[str, Any]]]],
-        world: "WorldView",
-    ) -> list[Effect]:
-        """
-        Establish pairings from agent preferences.
-        
-        Args:
-            preferences: Per-agent preference rankings from SearchProtocol
-            world: Global simulation state
-        
-        Returns:
-            List of Pair effects
-        
-        Invariants (enforced by simulation core):
-        - No agent in multiple pairs
-        - Pairs are bidirectional (if A→B then B→A)
-        - Deterministic with same input
-        """
-        pass
-
-
-class BargainingProtocol(ProtocolBase):
-    """
-    Protocol for trade negotiation.
-    
-    Bargaining protocols determine:
-    - How paired agents negotiate trade terms
-    - Price and quantity determination
-    - Single-tick vs multi-tick resolution
-    
-    Examples:
-    - Compensating blocks (legacy: search for feasible trade)
-    - Take-it-or-leave-it (monopoly offer)
-    - Rubinstein alternating offers
-    - Nash bargaining solution
-    """
-    
-    # Class-level version to avoid instantiation during registration
-    VERSION = "unknown"
-
-    @property
-    def version(self) -> str:
-        return getattr(self.__class__, "VERSION", "unknown")
-
-    @abstractmethod
-    def negotiate(
-        self, pair: tuple[int, int], world: "WorldView"
-    ) -> list[Effect]:
-        """
-        One negotiation step (may be single-tick or multi-tick).
-        
-        Args:
-            pair: (agent_a, agent_b) tuple
-            world: Immutable snapshot including both agents' states
-        
-        Returns:
-            List of effects:
-            - [Trade(...)] if agreement reached
-            - [Unpair(..., reason="trade_failed")] if negotiation fails
-            - [] if multi-tick protocol still negotiating
-            - [InternalStateUpdate(...)] for multi-tick state
-        
-        Multi-tick protocols maintain state via InternalStateUpdate effects.
-        """
-        pass
-    
-    def on_timeout(self, pair: tuple[int, int], world: "WorldView") -> list[Effect]:
-        """
-        Called when negotiation exceeds max ticks.
-        
-        Default behavior: dissolve pairing.
-        Override for custom timeout handling.
-        """
-        return [Unpair(*pair, reason="timeout", protocol_name=self.name, tick=world.tick)]
 
 
 # =============================================================================

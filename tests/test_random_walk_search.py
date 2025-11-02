@@ -16,7 +16,7 @@ import numpy as np
 from scenarios.schema import ScenarioConfig, ScenarioParams, UtilitiesMix, UtilityConfig, ResourceSeed
 from vmt_engine.simulation import Simulation
 from tests.helpers import builders, run as run_helpers
-from vmt_engine.protocols.search import RandomWalkSearch
+from vmt_engine.agent_based.search import RandomWalkSearch
 from vmt_engine.protocols.context import WorldView, AgentView, ResourceView
 from vmt_engine.econ.utility import UCES
 

@@ -27,9 +27,10 @@ Version: 2025.10.28 (Phase 2b - Pedagogical Protocol)
 """
 
 from typing import Any
-from ..registry import register_protocol
-from ..base import MatchingProtocol, Effect, Pair
-from ..context import ProtocolContext
+from ...protocols.registry import register_protocol
+from .base import MatchingProtocol
+from ...protocols.base import Effect, Pair
+from ...protocols.context import ProtocolContext
 from ...systems.matching import find_all_feasible_trades
 from ...core.agent import Agent
 

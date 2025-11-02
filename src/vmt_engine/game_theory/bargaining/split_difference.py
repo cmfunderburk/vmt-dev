@@ -17,9 +17,10 @@ Version: 2025.10.28 (Phase 2a - Baseline Protocol)
 """
 
 from typing import Optional
-from ..registry import register_protocol
-from ..base import BargainingProtocol, Effect, Trade, Unpair
-from ..context import WorldView
+from ...protocols.registry import register_protocol
+from .base import BargainingProtocol
+from ...protocols.base import Effect, Trade, Unpair
+from ...protocols.context import WorldView
 from ...systems.matching import find_all_feasible_trades
 
 
