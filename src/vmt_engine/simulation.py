@@ -6,7 +6,7 @@ import numpy as np
 from typing import Optional
 from .core import Grid, Agent, Inventory, SpatialIndex
 from scenarios.schema import ScenarioConfig
-from .econ.utility import create_utility, u_total
+from .econ.utility import create_utility
 from .systems.perception import PerceptionSystem
 from .systems.movement import MovementSystem
 from .systems.foraging import ForageSystem, ResourceRegenerationSystem
@@ -83,7 +83,6 @@ class Simulation:
             'vision_radius': scenario_config.params.vision_radius,
             'interaction_radius': scenario_config.params.interaction_radius,
             'move_budget_per_tick': scenario_config.params.move_budget_per_tick,
-            'dA_max': scenario_config.params.dA_max,
             'forage_rate': scenario_config.params.forage_rate,
             'epsilon': scenario_config.params.epsilon,
             'beta': scenario_config.params.beta,
@@ -91,21 +90,9 @@ class Simulation:
             'resource_max_amount': scenario_config.params.resource_max_amount,
             'resource_regen_cooldown': scenario_config.params.resource_regen_cooldown,
             'trade_cooldown_ticks': scenario_config.params.trade_cooldown_ticks,
-            'trade_execution_mode': scenario_config.params.trade_execution_mode,
             # Resource claiming system parameters
             'enable_resource_claiming': scenario_config.params.enable_resource_claiming,
             'enforce_single_harvester': scenario_config.params.enforce_single_harvester,
-            # Money system parameters (Phase 1)
-            'exchange_regime': scenario_config.params.exchange_regime,
-            'money_mode': scenario_config.params.money_mode,
-            'money_utility_form': scenario_config.params.money_utility_form,
-            'M_0': scenario_config.params.M_0,
-            'money_scale': scenario_config.params.money_scale,
-            'lambda_money': scenario_config.params.lambda_money,
-            'lambda_update_rate': scenario_config.params.lambda_update_rate,
-            'lambda_bounds': scenario_config.params.lambda_bounds,
-            'liquidity_gate': scenario_config.params.liquidity_gate,
-            'earn_money_enabled': scenario_config.params.earn_money_enabled,
             # Telemetry parameters
             'log_preferences': scenario_config.params.log_preferences,
         }
@@ -165,17 +152,10 @@ class Simulation:
             self._start_inventory[agent.id] = {
                 "A": int(agent.inventory.A),
                 "B": int(agent.inventory.B),
-                "M": int(agent.inventory.M),
             }
 
             if agent.utility is not None:
-                utility_params = {
-                    "utility": agent.utility,
-                    "lambda_money": agent.lambda_money,
-                    "money_utility_form": agent.money_utility_form,
-                    "M_0": agent.M_0,
-                }
-                self._start_utility[agent.id] = float(u_total(agent.inventory, utility_params))
+                self._start_utility[agent.id] = float(agent.utility.u(agent.inventory.A, agent.inventory.B))
             else:
                 self._start_utility[agent.id] = None
 
@@ -211,35 +191,15 @@ class Simulation:
         # Parse initial inventories
         inv_A = self.config.initial_inventories['A']
         inv_B = self.config.initial_inventories['B']
-        inv_M = self.config.initial_inventories.get('M', 0)  # Phase 1+: Money inventory
-        inv_lambda = self.config.initial_inventories.get('lambda_money', self.params['lambda_money'])  # Per-agent lambda
-        inv_M_0 = self.config.initial_inventories.get('M_0', self.params['M_0'])  # Per-agent M_0
         
         # Convert to lists if needed
         if isinstance(inv_A, int):
             inv_A = [inv_A] * n_agents
         if isinstance(inv_B, int):
             inv_B = [inv_B] * n_agents
-        if isinstance(inv_M, int):
-            inv_M = [inv_M] * n_agents
-        if isinstance(inv_lambda, (int, float)):
-            inv_lambda = [float(inv_lambda)] * n_agents
-        if isinstance(inv_M_0, (int, float)):
-            inv_M_0 = [float(inv_M_0)] * n_agents
-        
-        # Scale money inventory by money_scale (liquidity adjustment)
-        # This ensures that when prices are scaled up, agents have proportionally more money
-        money_scale = self.params['money_scale']
-        inv_M = [m * money_scale for m in inv_M]
         
         if len(inv_A) != n_agents or len(inv_B) != n_agents:
             raise ValueError(f"Initial inventory lists must match agent count {n_agents}")
-        if isinstance(inv_M, list) and len(inv_M) != n_agents:
-            raise ValueError(f"Initial M inventory list must match agent count {n_agents}")
-        if isinstance(inv_lambda, list) and len(inv_lambda) != n_agents:
-            raise ValueError(f"Initial lambda_money list must match agent count {n_agents}")
-        if isinstance(inv_M_0, list) and len(inv_M_0) != n_agents:
-            raise ValueError(f"Initial M_0 list must match agent count {n_agents}")
         
         # Sample utility types according to mix weights
         utility_configs = []
@@ -269,9 +229,7 @@ class Simulation:
         for i in range(n_agents):
             pos = positions[i]
             
-            # Phase 1+: Include M inventory
-            M_val = inv_M[i] if isinstance(inv_M, list) else inv_M
-            inventory = Inventory(A=inv_A[i], B=inv_B[i], M=M_val)
+            inventory = Inventory(A=inv_A[i], B=inv_B[i])
             
             # Create utility
             utility = create_utility({
@@ -286,18 +244,14 @@ class Simulation:
                 utility=utility,
                 vision_radius=self.params['vision_radius'],
                 move_budget_per_tick=self.params['move_budget_per_tick'],
-                lambda_money=float(inv_lambda[i]),  # Per-agent lambda from scenario
-                money_utility_form=self.params['money_utility_form'],
-                M_0=float(inv_M_0[i]),  # Per-agent M_0 from scenario
                 home_pos=pos  # Set home position to initial position
             )
             
-            # Initialize quotes (including money_scale for monetary regimes)
+            # Initialize quotes
             agent.quotes = compute_quotes(
                 agent, 
                 self.params['spread'], 
-                self.params['epsilon'],
-                money_scale=self.params['money_scale']
+                self.params['epsilon']
             )
             agent.inventory_changed = False
             
@@ -344,12 +298,9 @@ class Simulation:
         
         # Log tick state for observability (Phase 1)
         if self.telemetry:
-            active_pairs = self._get_active_exchange_pairs()
             self.telemetry.log_tick_state(
                 self.tick,
-                self.current_mode,
-                self.params.get('exchange_regime', 'barter_only'),
-                active_pairs
+                self.current_mode
             )
         
         self.tick += 1
@@ -412,34 +363,6 @@ class Simulation:
         
         # No cooldowns on mode-switch unpairings (can re-pair immediately)
     
-    def _get_active_exchange_pairs(self) -> list[str]:
-        """
-        Determine which exchange pairs are currently active based on mode and regime.
-        
-        This implements Option A-plus observability from the money SSOT:
-        - Temporal control (mode_schedule): WHEN activities occur
-        - Type control (exchange_regime): WHAT bilateral exchanges are permitted
-        
-        Returns:
-            List of active exchange pair types (e.g., ["A<->B"] or ["A<->M", "B<->M"])
-        """
-        # If in forage mode, no trading occurs
-        if self.current_mode == "forage":
-            return []
-        
-        # In trade or both mode, determine allowed pairs by exchange_regime
-        regime = self.params.get('exchange_regime', 'barter_only')
-        
-        if regime == "barter_only":
-            return ["A<->B"]
-        elif regime == "money_only":
-            return ["A<->M", "B<->M"]
-        elif regime in ["mixed", "mixed_liquidity_gated"]:
-            # Phase 1: report all possible pairs
-            # Phase 4/5 will refine for liquidity gating
-            return ["A<->M", "B<->M", "A<->B"]
-        else:
-            return []
     
     def print_summary(self) -> None:
         """Print per-agent post-simulation summary to stdout."""
@@ -461,27 +384,19 @@ class Simulation:
         print(f"\nPost-sim summary (ticks={self.tick})")
 
         for agent in sorted(self.agents, key=lambda a: a.id):
-            start_inv = self._start_inventory.get(agent.id, {"A": 0, "B": 0, "M": 0})
+            start_inv = self._start_inventory.get(agent.id, {"A": 0, "B": 0})
             end_inv = {
                 "A": int(agent.inventory.A),
                 "B": int(agent.inventory.B),
-                "M": int(agent.inventory.M),
             }
 
             delta_a = end_inv["A"] - start_inv["A"]
             delta_b = end_inv["B"] - start_inv["B"]
-            delta_m = end_inv["M"] - start_inv["M"]
 
             start_util = self._start_utility.get(agent.id)
             end_util: Optional[float] = None
             if agent.utility is not None:
-                params = {
-                    "utility": agent.utility,
-                    "lambda_money": agent.lambda_money,
-                    "money_utility_form": agent.money_utility_form,
-                    "M_0": agent.M_0,
-                }
-                end_util = float(u_total(agent.inventory, params))
+                end_util = float(agent.utility.u(agent.inventory.A, agent.inventory.B))
 
             if start_util is not None and end_util is not None:
                 util_segment = (
@@ -498,8 +413,7 @@ class Simulation:
 
             inventory_segment = (
                 f"A {start_inv['A']}->{end_inv['A']} (d {fmt_signed_int(delta_a)}), "
-                f"B {start_inv['B']}->{end_inv['B']} (d {fmt_signed_int(delta_b)}), "
-                f"M {start_inv['M']}->{end_inv['M']} (d {fmt_signed_int(delta_m)})"
+                f"B {start_inv['B']}->{end_inv['B']} (d {fmt_signed_int(delta_b)})"
             )
 
             gathered_segment = f"gathered A:{gathered.get('A', 0)} B:{gathered.get('B', 0)}"

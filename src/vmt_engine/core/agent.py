@@ -1,9 +1,5 @@
 """
 Agent representation and initialization.
-
-Money-aware API (Phase 2):
-- Agent.quotes is now dict[str, float] with keys for all exchange pairs
-- Legacy Quote dataclass access is deprecated
 """
 
 from dataclasses import dataclass, field
@@ -21,7 +17,7 @@ class Agent:
     pos: Position
     inventory: Inventory
     utility: Optional['Utility'] = None
-    quotes: dict[str, float] = field(default_factory=dict)  # Money-aware: dict of all exchange pairs
+    quotes: dict[str, float] = field(default_factory=dict)  # Barter quotes: dict of A<->B exchange pairs
     vision_radius: int = 5
     move_budget_per_tick: int = 1
     home_pos: Optional[Position] = None  # Initial position for idle fallback
@@ -43,12 +39,6 @@ class Agent:
     # Decision context (cleared each tick)
     _preference_list: list[tuple[int, float, float, int]] = field(default_factory=list, repr=False)  # (partner_id, surplus, discounted_surplus, distance)
     _decision_target_type: Optional[str] = field(default=None, repr=False)  # "trade", "forage", "idle", "trade_paired"
-
-    # Money system state (Phase 1)
-    lambda_money: float = 1.0  # Marginal utility of money parameter (λ)
-    lambda_changed: bool = False  # Flag for Housekeeping
-    money_utility_form: str = "linear"  # "linear" or "log"
-    M_0: float = 0.0  # Shift parameter for log money utility
 
     def __post_init__(self):
         if self.id < 0:

@@ -89,7 +89,7 @@ VMT implements a **modular protocol system** where institutional rules are swapp
 
 ### Current Status (October 2025)
 ✅ **Phase 1 Complete:** Protocol architecture implemented with legacy adapters  
-✅ **Production Ready:** Spatial foraging, bilateral trade, money system  
+✅ **Production Ready:** Spatial foraging, bilateral barter trade  
 🚀 **Next:** Alternative protocol implementation (Phase 2a starting)
 
 ### Implemented Architecture
@@ -122,15 +122,7 @@ VMT implements a **modular protocol system** where institutional rules are swapp
 - **Quadratic Utility Functions** - Bliss points and satiation behavior
 - **Translog Utility Functions** - Flexible second-order approximation for empirical work
 - **Stone-Geary Utility Functions** - Subsistence constraints and hierarchical needs (LES foundation)
-- **Generic Matching Algorithm** - Supports barter (A↔B) and monetary exchange (A↔M, B↔M)
-- **Money System** - Flexible monetary economics simulation
-  - Three exchange regimes: `barter_only`, `money_only`, `mixed` (fully implemented)
-  - Two utility forms: linear (constant MU) or logarithmic (diminishing MU)
-  - Heterogeneous λ values supported for agent diversity
-  - Money-first tie-breaking in mixed economies
-  - Mode × regime interaction for temporal control
-  - Rich telemetry and analysis tools
-  - **Planned:** `mixed_liquidity_gated` regime
+- **Pure Barter Economy** - Direct good-for-good (A↔B) exchanges only
 - **Trade Pairing** - Three-pass algorithm with mutual consent and surplus-based fallback
 - **Price Search Algorithm** - Finds mutually beneficial prices despite integer rounding
 - **Reservation Pricing** - True economic reservation prices (zero bid-ask spread default)
@@ -175,9 +167,9 @@ VMT uses a **SQLite database** (`./logs/telemetry.db`) for all logging.
 ### Database Schema
 
 The telemetry database includes comprehensive tables:
-- **`simulation_runs`** — Run metadata with exchange_regime, money_mode
-- **`agent_snapshots`** — Per-tick agent state (position, inventory, utility, quotes, lambda)
-- **`trades`** — Successful trades with exchange pair type, money transfers, surplus decomposition
+- **`simulation_runs`** — Run metadata and configuration
+- **`agent_snapshots`** — Per-tick agent state (position, inventory, utility, quotes)
+- **`trades`** — Successful barter trades with exchange quantities and surplus decomposition
 - **`decisions`** — Agent decision outcomes with pairing status
 - **`pairings`** — Pairing/unpairing events with reason codes
 - **`preferences`** — Agent preference rankings (top 3 by default)
@@ -195,8 +187,8 @@ python view_logs.py
 The viewer allows you to:
 - Scrub through the simulation timeline tick-by-tick
 - Analyze individual agent states, trajectories, and trade histories
-- Visualize trade attempts and statistics with full money/pairing context
-- Filter by exchange regime, pairing status, and trade type
+- Visualize trade attempts and statistics with pairing context
+- Filter by pairing status and trade type
 - Export data to CSV for external analysis
 
 ### Python API
@@ -234,7 +226,6 @@ for agent in sim.agents:
 1. **Browse Templates:**
    - [`minimal_working_example.yaml`](docs/structures/minimal_working_example.yaml) - Simplest valid scenario
    - [`comprehensive_scenario_template.yaml`](docs/structures/comprehensive_scenario_template.yaml) - All parameters documented
-   - [`money_example.yaml`](docs/structures/money_example.yaml) - Monetary economy setup
    - [`parameter_quick_reference.md`](docs/structures/parameter_quick_reference.md) - Parameter documentation
 
 2. **Copy and Modify:**
@@ -310,82 +301,26 @@ See [Technical Manual](./2_technical_manual.md#resource-claiming-system) for imp
 
 ---
 
-## 💰 Money System
+## 💱 Trade System
 
-VMT implements a flexible money system with configurable **utility forms** and **exchange regimes**:
+**VMT is a pure barter economy.** All trades are direct A↔B exchanges.
 
-### Exchange Regimes
+### Configuration Example
 
-The `exchange_regime` parameter controls allowed exchange types:
-- **`"barter_only"`** (default) — Only A↔B trades; backward compatible with legacy scenarios
-- **`"money_only"`** — Only A↔M and B↔M trades (goods for money)
-- **`"mixed"`** — All exchange pairs allowed; generic matching selects highest-surplus pair
-- **`"mixed_liquidity_gated"`** — (PLANNED) Barter fallback when money market is thin
-
-### Money Utility Forms
-
-VMT supports two functional forms for money utility:
-
-#### 1. Linear Form (Quasilinear)
-```
-U_total = U_goods(A, B) + λ·M
-∂U/∂M = λ (constant marginal utility)
-```
-
-#### 2. Logarithmic Form (Diminishing MU)
-```
-U_total = U_goods(A, B) + λ·log(M + M_0)
-∂U/∂M = λ/(M + M_0) (diminishing marginal utility)
-```
-
-Where:
-- **U_goods** — Utility from goods (CES, Linear, Quadratic, Translog, or Stone-Geary)
-- **λ** (`lambda_money`) — Base marginal utility parameter (default: 1.0)
-- **M** — Money holdings in minor units (e.g., cents)
-- **M_0** — Shift parameter for log form (subsistence money level, default: 0.0)
-
-### Configuration Examples
-
-#### Linear Form (Constant MU)
+#### Barter Economy (A↔B trades)
 ```yaml
 initial_inventories:
   A: { uniform_int: [5, 15] }
   B: { uniform_int: [5, 15] }
-  M: 100  # Give each agent 100 units of money
 
-params:
-  exchange_regime: "mixed"         # Allow all exchange types
-  money_utility_form: "linear"     # Constant marginal utility (default)
-  lambda_money: 1.0                # Marginal utility of money
-  money_scale: 1                   # Minor units scale
+utilities:
+  mix:
+    - weight: 1.0
+      type: "ces"
+      sigma: 0.5  # Complementary goods
 ```
 
-#### Logarithmic Form (Diminishing MU)
-```yaml
-initial_inventories:
-  A: { uniform_int: [5, 15] }
-  B: { uniform_int: [5, 15] }
-  M: 100  # Give each agent 100 units of money
-
-params:
-  exchange_regime: "mixed"         # Allow all exchange types
-  money_utility_form: "log"        # Diminishing marginal utility
-  lambda_money: 10.0               # Base MU parameter
-  M_0: 10.0                       # Subsistence money level
-  money_scale: 1                   # Minor units scale
-```
-
-**Note:** `lambda_money` can be a list for heterogeneous agents (e.g., `[1.0, 2.0, 0.5]`)
-
-### Telemetry
-
-Money trades are logged with full context:
-- **`trades.dM`** — Money transfer amount
-- **`trades.exchange_pair_type`** — "A<->B", "A<->M", "B<->M"
-- **`trades.buyer_lambda`**, **`trades.seller_lambda`** — Lambda values at trade time
-- **`tick_states.active_pairs`** — JSON array of active exchange pairs per tick
-
-See [Technical Manual](./2_technical_manual.md#money-system) and [Type Specification](./4_typing_overview.md#7-money--market-contracts) for complete details.
+See [Technical Manual](./2_technical_manual.md) and [Type Specification](./4_typing_overview.md) for complete details.
 
 ---
 
@@ -462,14 +397,4 @@ VMT includes comprehensive documentation organized by audience and purpose:
 
 ### Demo Scenarios
 
-The `scenarios/demos/` directory contains annotated pedagogical scenarios:
-
-1. **demo_01_simple_money.yaml** - Why money? (double coincidence of wants -- note: as-is, this does *not* adequately demonstrate the issue, as agents' value money directly via utility functions, rather than instrumentally for the trading opportunities it opens up) 
-2. **demo_02_barter_vs_money.yaml** - Direct comparison of exchange systems
-3. **demo_03_mixed_regime.yaml** - Hybrid economy (barter + money coexistence)
-4. **demo_04_mode_schedule.yaml** - Temporal control (forage/trade cycles)
-5. **demo_05_liquidity_zones.yaml** - Market thickness and spatial variation
-6. **demo_06_money_aware_pairing.yaml** - Money-aware pairing mechanics
-7. **demo_06b_heterogeneous_utilities.yaml** - Mixed utility populations
-8. **demo_07_batch_trades.yaml** - Batch trading mechanics
-9. **demo_log_money.yaml** - Logarithmic money utility demonstration
+The `scenarios/demos/` directory contains annotated pedagogical scenarios demonstrating different exchange patterns and institutional mechanisms. See `scenarios/demos/README.md` for current scenario descriptions.

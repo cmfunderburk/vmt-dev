@@ -64,15 +64,13 @@ def build_world_view_for_agent(agent: "Agent", sim: "Simulation") -> WorldView:
         "vision_radius": sim.params.get("vision_radius", 5),
         "interaction_radius": sim.params.get("interaction_radius", 1),
         "move_budget_per_tick": sim.params.get("move_budget_per_tick", 1),
-        "dA_max": sim.params.get("dA_max", 50),
         "epsilon": sim.params.get("epsilon", 1e-9),
         
         # Resource claiming
         "enable_resource_claiming": sim.params.get("enable_resource_claiming", False),
         "resource_claims": sim.resource_claims.copy(),  # Pass global claims
         
-        # Money parameters
-        "money_scale": sim.params.get("money_scale", 1),
+        # Trade parameters
         "trade_cooldown_ticks": sim.params.get("trade_cooldown_ticks", 10),
         
         # Agent-specific
@@ -83,17 +81,14 @@ def build_world_view_for_agent(agent: "Agent", sim: "Simulation") -> WorldView:
     return WorldView(
         tick=sim.tick,
         mode=sim.current_mode,
-        exchange_regime=sim.params.get("exchange_regime", "barter_only"),
         agent_id=agent.id,
         pos=agent.pos,
         inventory={
             "A": agent.inventory.A,
             "B": agent.inventory.B,
-            "M": agent.inventory.M,
         },
         utility=agent.utility,
         quotes=agent.quotes.copy(),
-        lambda_money=agent.lambda_money,
         paired_with_id=agent.paired_with_id,
         trade_cooldowns=agent.trade_cooldowns.copy(),
         visible_agents=visible_agents,
@@ -151,25 +146,17 @@ def build_protocol_context(sim: "Simulation") -> ProtocolContext:
         "vision_radius": sim.params.get("vision_radius", 5),
         "interaction_radius": sim.params.get("interaction_radius", 1),
         "epsilon": sim.params.get("epsilon", 1e-9),
-        "exchange_regime": sim.params.get("exchange_regime", "barter_only"),
-        "dA_max": sim.params.get("dA_max", 50),
-        "money_scale": sim.params.get("money_scale", 1),
     }
     
-    # Add full agent state for matching protocols (inventory, utility, lambda_money)
+    # Add full agent state for matching protocols (inventory, utility)
     for agent in sim.agents:
         params[f"agent_{agent.id}_inv_A"] = agent.inventory.A
         params[f"agent_{agent.id}_inv_B"] = agent.inventory.B
-        params[f"agent_{agent.id}_inv_M"] = agent.inventory.M
         params[f"agent_{agent.id}_utility"] = agent.utility
-        params[f"agent_{agent.id}_lambda"] = agent.lambda_money
-        params[f"agent_{agent.id}_money_utility_form"] = agent.money_utility_form
-        params[f"agent_{agent.id}_M_0"] = agent.M_0
     
     return ProtocolContext(
         tick=sim.tick,
         mode=sim.current_mode,
-        exchange_regime=sim.params.get("exchange_regime", "barter_only"),
         all_agent_views=all_agent_views,
         all_resource_views=all_resource_views,
         current_pairings=current_pairings,
@@ -205,11 +192,7 @@ def build_trade_world_view(
     params_with_partner = world.params.copy()
     params_with_partner[f"partner_{agent_b.id}_inv_A"] = agent_b.inventory.A
     params_with_partner[f"partner_{agent_b.id}_inv_B"] = agent_b.inventory.B
-    params_with_partner[f"partner_{agent_b.id}_inv_M"] = agent_b.inventory.M
-    params_with_partner[f"partner_{agent_b.id}_lambda"] = agent_b.lambda_money
     params_with_partner[f"partner_{agent_b.id}_utility"] = agent_b.utility
-    params_with_partner[f"partner_{agent_b.id}_money_utility_form"] = agent_b.money_utility_form
-    params_with_partner[f"partner_{agent_b.id}_M_0"] = agent_b.M_0
     
     # Rebuild WorldView with extended params
     # Using dataclasses.replace would be cleaner but WorldView is frozen
@@ -217,13 +200,11 @@ def build_trade_world_view(
     return WorldView(
         tick=world.tick,
         mode=world.mode,
-        exchange_regime=world.exchange_regime,
         agent_id=world.agent_id,
         pos=world.pos,
         inventory=world.inventory,
         utility=world.utility,
         quotes=world.quotes,
-        lambda_money=world.lambda_money,
         paired_with_id=world.paired_with_id,
         trade_cooldowns=world.trade_cooldowns,
         visible_agents=world.visible_agents,

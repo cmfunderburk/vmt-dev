@@ -95,7 +95,6 @@ class WorldView:
     
     tick: int
     mode: str  # "trade" | "forage" | "both"
-    exchange_regime: str  # "barter_only" | "money_only" | "mixed"
     
     # -------------------------------------------------------------------------
     # Agent Perspective (Own State)
@@ -103,10 +102,9 @@ class WorldView:
     
     agent_id: int
     pos: Position
-    inventory: Inventory  # {"A": int, "B": int, "M": int}
+    inventory: Inventory  # {"A": int, "B": int}
     utility: Utility  # Agent's utility function
     quotes: dict[str, float]  # Own reservation prices
-    lambda_money: float  # Money utility parameter
     paired_with_id: Optional[int]  # None if unpaired
     trade_cooldowns: dict[int, int]  # {partner_id: ticks_remaining}
     
@@ -156,7 +154,6 @@ class ProtocolContext:
     
     tick: int
     mode: str
-    exchange_regime: str
     
     # Global state
     all_agent_views: dict[int, AgentView]  # All agents in simulation
@@ -185,12 +182,10 @@ def create_world_view(
     agent_id: int,
     tick: int,
     mode: str,
-    exchange_regime: str,
     pos: Position,
     inventory: Inventory,
     utility: Utility,
     quotes: dict[str, float],
-    lambda_money: float,
     paired_with_id: Optional[int],
     trade_cooldowns: dict[int, int],
     visible_agents: list[AgentView],
@@ -207,13 +202,11 @@ def create_world_view(
     return WorldView(
         tick=tick,
         mode=mode,
-        exchange_regime=exchange_regime,
         agent_id=agent_id,
         pos=pos,
         inventory=inventory,
         utility=utility,
         quotes=quotes,
-        lambda_money=lambda_money,
         paired_with_id=paired_with_id,
         trade_cooldowns=trade_cooldowns,
         visible_agents=visible_agents,
@@ -226,7 +219,6 @@ def create_world_view(
 def create_protocol_context(
     tick: int,
     mode: str,
-    exchange_regime: str,
     all_agent_views: dict[int, AgentView],
     all_resource_views: list[ResourceView],
     current_pairings: dict[int, int],
@@ -242,7 +234,6 @@ def create_protocol_context(
     return ProtocolContext(
         tick=tick,
         mode=mode,
-        exchange_regime=exchange_regime,
         all_agent_views=all_agent_views,
         all_resource_views=all_resource_views,
         current_pairings=current_pairings,

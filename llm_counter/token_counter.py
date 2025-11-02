@@ -82,7 +82,7 @@ class VMTTokenCounter:
         ]
         
         self.exclude_patterns = [
-            "__pycache__", ".git", ".pytest_cache", "node_modules", "venv",
+            "__pycache__", ".git", ".pytest_cache", "node_modules", "venv", ".venv",
             "*.pyc", "*.pyo", "launcher_logs", "gui_logs", "logs", "archive",
             ".mypy_cache", "economic_analysis_logs", "*.jsonl", "*.jsonl.gz",
             "*.log", "tests", "llm_counter"

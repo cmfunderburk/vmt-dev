@@ -51,10 +51,7 @@ class TelemetryDatabase:
                 num_agents INTEGER,
                 grid_width INTEGER,
                 grid_height INTEGER,
-                config_json TEXT,
-                exchange_regime TEXT DEFAULT 'barter_only',
-                money_mode TEXT DEFAULT NULL,
-                money_scale INTEGER DEFAULT 1
+                config_json TEXT
             )
         """)
         
@@ -69,20 +66,11 @@ class TelemetryDatabase:
                 y INTEGER NOT NULL,
                 inventory_A INTEGER NOT NULL,
                 inventory_B INTEGER NOT NULL,
-                inventory_M INTEGER DEFAULT 0,
                 utility REAL NOT NULL,
                 ask_A_in_B REAL,
                 bid_A_in_B REAL,
                 p_min REAL,
                 p_max REAL,
-                ask_A_in_M REAL DEFAULT NULL,
-                bid_A_in_M REAL DEFAULT NULL,
-                ask_B_in_M REAL DEFAULT NULL,
-                bid_B_in_M REAL DEFAULT NULL,
-                perceived_price_A REAL DEFAULT NULL,
-                perceived_price_B REAL DEFAULT NULL,
-                lambda_money REAL DEFAULT NULL,
-                lambda_changed INTEGER DEFAULT 0,
                 target_agent_id INTEGER,
                 target_x INTEGER,
                 target_y INTEGER,
@@ -163,12 +151,9 @@ class TelemetryDatabase:
                 seller_id INTEGER NOT NULL,
                 dA INTEGER NOT NULL,
                 dB INTEGER NOT NULL,
-                dM INTEGER DEFAULT 0,
                 price REAL NOT NULL,
                 direction TEXT NOT NULL,
                 exchange_pair_type TEXT DEFAULT 'A<->B',
-                buyer_lambda REAL DEFAULT NULL,
-                seller_lambda REAL DEFAULT NULL,
                 buyer_surplus REAL DEFAULT NULL,
                 seller_surplus REAL DEFAULT NULL,
                 FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id)
@@ -245,14 +230,13 @@ class TelemetryDatabase:
             ON mode_changes(run_id, tick)
         """)
         
-        # New tables for money system (Phase 1)
+        # Tick state tracking
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS tick_states (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 run_id INTEGER NOT NULL,
                 tick INTEGER NOT NULL,
                 current_mode TEXT NOT NULL,
-                exchange_regime TEXT NOT NULL,
                 active_pairs TEXT NOT NULL,
                 FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id),
                 UNIQUE(run_id, tick)
@@ -262,28 +246,6 @@ class TelemetryDatabase:
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_tick_states_run_tick 
             ON tick_states(run_id, tick)
-        """)
-
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS lambda_updates (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                run_id INTEGER NOT NULL,
-                tick INTEGER NOT NULL,
-                agent_id INTEGER NOT NULL,
-                lambda_old REAL NOT NULL,
-                lambda_new REAL NOT NULL,
-                lambda_hat_A REAL NOT NULL,
-                lambda_hat_B REAL NOT NULL,
-                lambda_hat REAL NOT NULL,
-                clamped INTEGER NOT NULL,
-                clamp_type TEXT,
-                FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id)
-            )
-        """)
-
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_lambda_updates_run_agent 
-            ON lambda_updates(run_id, agent_id, tick)
         """)
         
         # Trade pairing tables
@@ -393,10 +355,7 @@ class TelemetryDatabase:
     # Convenience methods for creating a run
     def create_run(self, scenario_name: str, start_time: str,
                    num_agents: int, grid_width: int, grid_height: int,
-                   config_json: str = "",
-                   exchange_regime: str = "barter_only",
-                   money_mode: Optional[str] = None,
-                   money_scale: int = 1) -> int:
+                   config_json: str = "") -> int:
         """
         Create a new simulation run entry.
         
@@ -405,11 +364,9 @@ class TelemetryDatabase:
         """
         cursor = self.execute("""
             INSERT INTO simulation_runs 
-            (scenario_name, start_time, num_agents, grid_width, grid_height, config_json,
-             exchange_regime, money_mode, money_scale)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (scenario_name, start_time, num_agents, grid_width, grid_height, config_json,
-              exchange_regime, money_mode, money_scale))
+            (scenario_name, start_time, num_agents, grid_width, grid_height, config_json)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (scenario_name, start_time, num_agents, grid_width, grid_height, config_json))
         self.commit()
         return cursor.lastrowid
     

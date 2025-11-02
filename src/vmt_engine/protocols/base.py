@@ -156,25 +156,21 @@ class Move(Effect):
 @dataclass
 class Trade(Effect):
     """
-    Execute a bilateral trade between two agents.
+    Execute a bilateral barter trade between two agents.
     
-    Trade types (pair_type):
-    - "A_for_B": Barter trade (good A for good B)
-    - "A_for_M": Monetary trade (good A for money)
-    - "B_for_M": Monetary trade (good B for money)
+    Trade type: A<->B barter only
     
     The simulation core validates:
     - Inventory feasibility (non-negative inventories)
     - Surplus positivity (both agents benefit)
-    - Conservation laws (goods + money conserved)
+    - Conservation laws (goods conserved)
     """
     
     buyer_id: int
     seller_id: int
-    pair_type: str  # "A_for_B" | "A_for_M" | "B_for_M"
+    pair_type: str  # Always "A<->B" for barter-only economy
     dA: int  # Change in good A (negative for seller, positive for buyer)
     dB: int  # Change in good B
-    dM: int  # Change in money
     price: float  # Price of the transaction
     metadata: dict[str, Any]  # Additional info (e.g., surplus, rounds)
 
@@ -212,7 +208,6 @@ class RefreshQuotes(Effect):
     
     Triggered when:
     - Inventory changes (after trade/forage)
-    - Lambda changes (money utility parameter)
     """
     
     agent_id: int

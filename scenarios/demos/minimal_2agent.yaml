@@ -1,0 +1,63 @@
+schema_version: 1
+name: minimal_2agent_barter
+N: 5
+agents: 2
+
+# Agent 1: A-rich (has 8A, 2B) → wants to trade A for B
+# Agent 2: B-rich (has 2A, 8B) → wants to trade B for A
+initial_inventories:
+  A: [8, 2]
+  B: [2, 8]
+
+# CES utility with ρ = 0.5 (complementary goods)
+# Both agents benefit from balanced inventories
+utilities:
+  mix:
+    - weight: 0.5
+      type: "ces"
+      params:
+        rho: 0.2
+        wA: 0.2
+        wB: 0.8
+    - weight: 0.5
+      type: "ces"
+      params:
+        rho: 0.9
+        wA: 0.8
+        wB: 0.2
+
+params:
+  # Spatial
+  vision_radius: 5          # Can see entire grid
+  interaction_radius: 0     # Must be co-located to trade
+  move_budget_per_tick: 1   # Can move 1 cell per tick
+  spread: 0.0               # No bid-ask spread
+  
+  # Trading
+  trade_cooldown_ticks: 0   # No cooldown (immediate re-trading allowed)
+  
+  # Foraging (minimal resources)
+  forage_rate: 1
+  enable_resource_claiming: true
+  enforce_single_harvester: true
+  resource_growth_rate: 1
+  resource_max_amount: 2
+  resource_regen_cooldown: 10
+  
+  # Economic
+  epsilon: 0.000000000001
+  beta: 0.95
+
+# Sparse resources (not main focus)
+resource_seed:
+  density: 0.1
+  amount: 2
+
+# Expected Outcome:
+# - Agents start at random positions
+# - Both have high utility from trade (A-rich wants B, B-rich wants A)
+# - Within 3-5 ticks: agents move adjacent
+# - First trade: ~3A for ~3B (depending on exact MRS)
+# - Result: More balanced inventories, higher utility for both
+# - Total trades: 1-2 (small grid, simple setup)
+

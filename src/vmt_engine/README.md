@@ -28,11 +28,8 @@ Seven-phase tick (fixed order)
 
 4) Trade
    - Only paired agents within interaction_radius attempt trades (commitment model)
-   - Generic money-aware matching: selects best exchange pair (A↔B, A↔M, or B↔M) based on exchange_regime
-     - "barter_only": Only A↔B trades (default, backward compatible)
-     - "money_only": Only A↔M and B↔M trades
-     - "mixed": All exchange pairs allowed
-   - Price search is discrete and compensating: scan ΔA ∈ [1..dA_max]; for each ΔA, try candidate prices in [ask, bid]
+   - Barter-only matching: A↔B exchange pairs only
+   - Price search is discrete and compensating: scan ΔA ∈ [1..seller.inventory.A]; for each ΔA, try candidate prices in [ask, bid]
    - Map price to quantity with round-half-up: ΔB = floor(price*ΔA + 0.5)
    - First-acceptable-trade principle: accept first (ΔA, ΔB, price) with ΔU > 0 for both
    - Successful trades maintain pairing; failed trades unpair and set cooldown until tick + trade_cooldown_ticks
@@ -46,9 +43,8 @@ Seven-phase tick (fixed order)
    - Regenerate resources per cell using resource_growth_rate, resource_max_amount, and resource_regen_cooldown.
 
 7) Housekeeping
-   - Refresh quotes only for agents whose inventory_changed or lambda_changed flags are set
+   - Refresh quotes only for agents whose inventory_changed flag is set
    - Pairing integrity checks: detect and repair asymmetric pairings
-   - Lambda updates (KKT mode, Phase 3+): adaptive marginal utility estimation from neighbor prices
    - Batch telemetry: agent snapshots, resource snapshots, tick states according to LogConfig
 
 Determinism rules (must hold everywhere)
@@ -63,12 +59,11 @@ Determinism rules (must hold everywhere)
 - Fallback pairing uses surplus-based greedy matching for welfare maximization
 
 Type and invariant contracts
-- Inventories (A, B, M), resources, positions, ΔA, ΔB, ΔM are integers
-- Money holdings (M) stored in minor units (e.g., cents); money_scale parameter for conversion
+- Inventories (A, B), resources, positions, ΔA, ΔB are integers
 - Spatial parameters (vision_radius, interaction_radius, move_budget_per_tick) are integers
-- Utility values, prices, lambda_money are floats
-- Quote constraints: ask ≥ p_min and bid ≤ p_max for all exchange pairs
-- Agent.quotes is dict[str, float] with keys for active exchange pairs (e.g., "ask_A_in_B", "bid_A_in_M")
+- Utility values, prices are floats
+- Quote constraints: ask ≥ p_min and bid ≤ p_max for barter exchange (A↔B)
+- Agent.quotes is dict[str, float] with keys for barter quotes (e.g., "ask_A_in_B", "bid_A_in_B", "p_min_A_in_B", "p_max_A_in_B")
 
 Data flow
 - YAML scenario → scenarios/loader.py → Simulation(...)
@@ -90,11 +85,10 @@ Quickstart
 Implementation tips
 - Keep loops deterministically ordered; avoid nondeterministic dict iteration for side effects
 - Set agent.inventory_changed = True when inventories mutate; quotes are recomputed in Housekeeping only
-- Set agent.lambda_changed = True when lambda updates occur (KKT mode)
 - Use SpatialIndex for all proximity and pair constructions
 - Be strict about integer math for goods, positions, and discrete trade quantities
 - Pairing state (paired_with_id) persists across ticks until unpair event
 - Preference lists (_preference_list) are cleared each tick after logging
-- Money-aware code should check exchange_regime to determine allowed exchange pairs
+- Pure barter economy: only A↔B trades are supported
 
 

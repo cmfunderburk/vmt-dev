@@ -52,7 +52,7 @@ class TradeCandidate:
     
     @property
     def pair_type(self) -> str:
-        """Exchange pair type (e.g., 'A<->M', 'B<->A')."""
+        """Exchange pair type (always 'A<->B' for barter)."""
         return f"{self.good_sold}<->{self.good_paid}"
 
 
@@ -133,7 +133,7 @@ class TradeSystem:
         seller = sim.agent_by_id[effect.seller_id]
         
         # Determine trade tuple format for execute_trade_generic
-        # Need to convert from Trade effect to (dA_i, dB_i, dM_i, dA_j, dB_j, dM_j, surplus_i, surplus_j)
+        # Need to convert from Trade effect to (dA_i, dB_i, dA_j, dB_j, surplus_i, surplus_j)
         
         # Determine which agent is buyer/seller relative to agent_i/agent_j
         if buyer.id < seller.id:
@@ -143,36 +143,15 @@ class TradeSystem:
             agent_i, agent_j = seller, buyer
             is_i_buyer = False
         
-        # Build trade tuple based on pair type and direction
-        if effect.pair_type == "A<->B":
-            if is_i_buyer:
-                # agent_i (buyer) receives A, pays B
-                dA_i, dB_i, dM_i = effect.dA, -effect.dB, 0
-                dA_j, dB_j, dM_j = -effect.dA, effect.dB, 0
-            else:
-                # agent_i (seller) pays A, receives B
-                dA_i, dB_i, dM_i = -effect.dA, effect.dB, 0
-                dA_j, dB_j, dM_j = effect.dA, -effect.dB, 0
-        
-        elif effect.pair_type == "A<->M":
-            if is_i_buyer:
-                # agent_i (buyer) receives A, pays M
-                dA_i, dB_i, dM_i = effect.dA, 0, -effect.dM
-                dA_j, dB_j, dM_j = -effect.dA, 0, effect.dM
-            else:
-                # agent_i (seller) pays A, receives M
-                dA_i, dB_i, dM_i = -effect.dA, 0, effect.dM
-                dA_j, dB_j, dM_j = effect.dA, 0, -effect.dM
-        
-        else:  # "B<->M"
-            if is_i_buyer:
-                # agent_i (buyer) receives B, pays M
-                dA_i, dB_i, dM_i = 0, effect.dB, -effect.dM
-                dA_j, dB_j, dM_j = 0, -effect.dB, effect.dM
-            else:
-                # agent_i (seller) pays B, receives M
-                dA_i, dB_i, dM_i = 0, -effect.dB, effect.dM
-                dA_j, dB_j, dM_j = 0, effect.dB, -effect.dM
+        # Build trade tuple (barter-only: A<->B)
+        if is_i_buyer:
+            # agent_i (buyer) receives A, pays B
+            dA_i, dB_i = effect.dA, -effect.dB
+            dA_j, dB_j = -effect.dA, effect.dB
+        else:
+            # agent_i (seller) pays A, receives B
+            dA_i, dB_i = -effect.dA, effect.dB
+            dA_j, dB_j = effect.dA, -effect.dB
         
         # Get surpluses from metadata
         surplus_buyer = effect.metadata.get("surplus_buyer", 0.0)
@@ -184,7 +163,7 @@ class TradeSystem:
             surplus_i, surplus_j = surplus_seller, surplus_buyer
         
         # Execute trade
-        trade_tuple = (dA_i, dB_i, dM_i, dA_j, dB_j, dM_j, surplus_i, surplus_j)
+        trade_tuple = (dA_i, dB_i, dA_j, dB_j, surplus_i, surplus_j)
         execute_trade_generic(agent_i, agent_j, trade_tuple)
         
         if hasattr(sim, "_trades_made"):
@@ -220,21 +199,11 @@ class TradeSystem:
         buyer = sim.agent_by_id[effect.buyer_id]
         seller = sim.agent_by_id[effect.seller_id]
         
-        # Determine direction string
-        if effect.pair_type == "A<->B":
-            direction = "A_traded_for_B"
-            dA, dB, dM = effect.dA, effect.dB, 0
-        elif effect.pair_type == "A<->M":
-            direction = "A_traded_for_M"
-            dA, dB, dM = effect.dA, 0, effect.dM
-        elif effect.pair_type == "B<->M":
-            direction = "B_traded_for_M"
-            dA, dB, dM = 0, effect.dB, effect.dM
-        else:
-            direction = "unknown"
-            dA, dB, dM = effect.dA, effect.dB, effect.dM
+        # Determine direction string (barter-only)
+        direction = "A_traded_for_B"
+        dA, dB = effect.dA, effect.dB
         
-        # Log trade event (using original API signature)
+        # Log trade event (barter-only)
         sim.telemetry.log_trade(
             tick=sim.tick,
             x=buyer.pos[0],
@@ -245,6 +214,5 @@ class TradeSystem:
             dB=dB,
             price=effect.price,
             direction=direction,
-            dM=dM,
-            exchange_pair_type=effect.pair_type
+            exchange_pair_type="A<->B"
         )

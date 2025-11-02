@@ -18,7 +18,7 @@ def create_mode_test_scenario(forage_ticks=10, trade_ticks=5):
         ]),
         params=ScenarioParams(
             vision_radius=5, interaction_radius=1, move_budget_per_tick=1,
-            dA_max=3, forage_rate=1, resource_growth_rate=1
+            forage_rate=1, resource_growth_rate=1
         ),
         resource_seed=ResourceSeed(density=0.2, amount=3),
         mode_schedule=ModeSchedule(

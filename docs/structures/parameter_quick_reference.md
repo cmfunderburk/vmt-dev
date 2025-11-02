@@ -23,8 +23,6 @@
 |-----------|------|---------|-------|----------------|-------|
 | `initial_inventories.A` | int \| list | - | ≥ 0 | 5-50 | Good A endowment |
 | `initial_inventories.B` | int \| list | - | ≥ 0 | 5-50 | Good B endowment |
-| `initial_inventories.M` | int \| list | - | ≥ 0 | 50-500 | Money (required for monetary regimes) |
-| `initial_inventories.lambda_money` | list[float] | `params.lambda_money` | > 0 | 0.1-5.0 | Per-agent λ values (RECOMMENDED for monetary trading) |
 
 ## Spatial Parameters
 
@@ -39,7 +37,6 @@
 
 | Parameter | Type | Default | Range | Typical Values | Notes |
 |-----------|------|---------|-------|----------------|-------|
-| `dA_max` | int | 5 | > 0 | 1-20 | Maximum trade size |
 | `trade_cooldown_ticks` | int | 5 | ≥ 0 | 0-20 | Failed trade cooldown |
 
 ## Foraging Parameters
@@ -65,37 +62,9 @@
 | `epsilon` | float | 1e-12 | > 0 | 1e-9 to 1e-15 | Numerical stability |
 | `beta` | float | 0.95 | (0, 1] | 0.8-0.95 | Distance discount |
 
-## Money System Parameters
+## Economy Type
 
-| Parameter | Type | Default | Range | Typical Values | Notes |
-|-----------|------|---------|-------|----------------|-------|
-| `exchange_regime` | string | "barter_only" | See below | "mixed" | Trade type control (mixed_liquidity_gated planned) |
-| `money_mode` | string | "quasilinear" | See below | "quasilinear" | Money utility mode (kkt_lambda planned) |
-| `money_utility_form` | string | "linear" | "linear", "log" | "log" | Money utility functional form |
-| `M_0` | float | 0.0 | ≥ 0 | 5-20 | Log money shift parameter (subsistence money) |
-| `money_scale` | int | 1 | ≥ 1 | 1, 10, 100 | Money scale factor |
-| `lambda_money` | float | 1.0 | > 0 | 0.1-5.0 | Fixed λ value |
-| `lambda_update_rate` | float | 0.2 | [0, 1] | 0.1-0.3 | λ update smoothing (kkt_lambda mode only) |
-| `lambda_bounds.lambda_min` | float | 1e-6 | > 0 | 0.01-1.0 | Minimum λ (kkt_lambda mode only) |
-| `lambda_bounds.lambda_max` | float | 1e6 | > lambda_min | 10-1000 | Maximum λ (kkt_lambda mode only) |
-| `liquidity_gate.min_quotes` | int | 3 | ≥ 0 | 3-5 | Min quotes for thick market (PLANNED) |
-| `earn_money_enabled` | bool | false | true/false | false | Placeholder (unused) |
-
-### Exchange Regime Values
-
-| Value | Barter (A↔B) | Monetary (A↔M, B↔M) | Condition | Requires M |
-|-------|-------------|---------------------|-----------|-------------|
-| `barter_only` | ✓ | ✗ | Default | No |
-| `money_only` | ✗ | ✓ | Pure monetary | Yes |
-| `mixed` | ✓ | ✓ | All trade types | Yes |
-| `mixed_liquidity_gated` | Conditional | ✓ | Barter if thin market (PLANNED) | Yes |
-
-### Money Mode Values
-
-| Value | Description | λ Behavior | Use Case | Status |
-|-------|-------------|------------|----------|--------|
-| `quasilinear` | Fixed λ | Constant | Pedagogical, simple | Implemented |
-| `kkt_lambda` | Endogenous λ | Updates from prices | Research, realistic | Planned |
+**VMT is a pure barter economy.** All trades are direct Good A ↔ Good B exchanges.
 
 ## Resource Seeding (Required)
 
@@ -162,29 +131,6 @@
 
 **Critical Constraint:** For Stone-Geary, initial inventories must satisfy `A > gamma_A` AND `B > gamma_B` for all agents.
 
-## Heterogeneous Lambda Values (RECOMMENDED for Monetary Trading)
-
-**Why Use Heterogeneous λ Values:**
-- High λ agents: value money more → lower ask prices in M → willing to sell goods for less money
-- Low λ agents: value money less → higher bid prices in M → demand more money for goods
-- Creates profitable monetary trading opportunities between agents with different λ values
-
-**How to Set Up:**
-```yaml
-initial_inventories:
-  M: 100
-  lambda_money: [1.0, 2.0, 0.5, 1.5, 0.8]  # Agent-specific λ values
-```
-
-**Typical Values:**
-- Range: 0.1-5.0
-- Variation: 2-3x between highest and lowest λ
-- Example: [0.5, 1.0, 1.5, 2.0, 0.8] for 5 agents
-
-**Effect on Trading:**
-- Homogeneous λ → few monetary trades (agents have similar money valuations)
-- Heterogeneous λ → more trading opportunities and realistic dynamics
-
 ## Common Parameter Combinations
 
 ### Pedagogical Scenarios
@@ -217,15 +163,11 @@ initial_inventories:
 - [ ] `N > 0` and `agents > 0`
 - [ ] Initial inventories ≥ 0
 - [ ] List lengths equal `agents` count
-- [ ] Money required for monetary regimes
 - [ ] Utility weights sum to 1.0
 - [ ] Stone-Geary inventories above subsistence
 - [ ] CES rho ≠ 1.0
-- [ ] Valid exchange regime (barter_only, money_only, mixed - mixed_liquidity_gated planned)
-- [ ] Valid money mode (quasilinear implemented, kkt_lambda planned)
 - [ ] Resource density [0, 1]
 - [ ] Mode schedule ticks > 0
-- [ ] **For monetary trading: Use heterogeneous lambda_money values**
 
 ## Performance Guidelines
 
@@ -245,11 +187,6 @@ initial_inventories:
 - Moderate: `move_budget_per_tick = 2-3`
 - Fast: `move_budget_per_tick = N/10`
 
-### Trade Size
-- Small: `dA_max = 1-3`
-- Typical: `dA_max = 5-10`
-- Large: `dA_max = 20+`
-- Constraint: ≤ typical inventory levels / 2
 
 ---
 

@@ -1,0 +1,94 @@
+schema_version: 1
+name: bargaining_comparison_6agent
+N: 10
+agents: 6
+
+# 3 complementary pairs for clear bargaining comparison
+# Pair 1: (0,1), Pair 2: (2,3), Pair 3: (4,5)
+initial_inventories:
+  A: [9, 3, 9, 3, 9, 3]   # Odd indices A-rich, even indices A-poor
+  B: [3, 9, 3, 9, 3, 9]   # Odd indices B-poor, even indices B-rich
+
+# CES utility with strong complementarity
+utilities:
+  mix:
+    - weight: 1.0
+      type: "ces"
+      params:
+        rho: 0.4
+        wA: 0.5
+        wB: 0.5
+
+params:
+  # Spatial
+  vision_radius: 10
+  interaction_radius: 1
+  move_budget_per_tick: 1
+  spread: 0.0
+  
+  # Trading
+  trade_cooldown_ticks: 0
+  
+  # Foraging (minimal)
+  forage_rate: 1
+  enable_resource_claiming: true
+  enforce_single_harvester: true
+  resource_growth_rate: 1
+  resource_max_amount: 2
+  resource_regen_cooldown: 10
+  
+  # Economic
+  epsilon: 0.000000000001
+  beta: 0.95
+
+resource_seed:
+  density: 0.15
+  amount: 2
+
+# Protocol configuration
+protocol_config:
+  search:
+    protocol: "legacy_distance_discounted"
+    params: {}
+  
+  matching:
+    protocol: "legacy_three_pass"
+    params:
+      beta: 0.95
+  
+  bargaining:
+    protocol: "split_difference"  # Change to compare
+    params:
+      epsilon: 0.000000001
+
+# How to Use This Scenario:
+# ========================
+#
+# Test 1: Split Difference (Fairness)
+#   python main.py scenarios/demos/bargaining_comparison_6agent.yaml \
+#     --override "protocol_config.bargaining.protocol=split_difference"
+#   Expected: Equal surplus split, ΔU_buyer ≈ ΔU_seller
+#
+# Test 2: Legacy Compensating Block (First Acceptable)
+#   python main.py scenarios/demos/bargaining_comparison_6agent.yaml \
+#     --override "protocol_config.bargaining.protocol=legacy_compensating_block"
+#   Expected: First feasible trade, potentially unequal surplus
+#
+# Analysis Questions:
+# - How does surplus distribution differ?
+# - Do different protocols affect number of trades?
+# - Which protocol leads to faster convergence?
+# - Is there a welfare difference (total utility)?
+#
+# Expected Pattern:
+# - Each pair should trade 1-2 times
+# - Total trades: 3-6
+# - Both protocols achieve Pareto improvements
+# - Split Difference: More equitable surplus distribution
+# - Legacy: May favor one party (whoever has better quotes)
+#
+# Telemetry to Check:
+# - trades.buyer_surplus vs trades.seller_surplus
+# - Final inventory distribution
+# - Time to market clearing
+

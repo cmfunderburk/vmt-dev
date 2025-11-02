@@ -201,7 +201,7 @@ surplus(i, j) := max(i.bid - j.ask, j.bid - i.ask)
 
 **Compensating Block Search** (First-Acceptable-Trade Principle):
 ```text
-// 1. Iterate through trade sizes ΔA from 1 to dA_max
+// 1. Iterate through trade sizes ΔA from 1 to seller's inventory
 // 2. For each ΔA, test multiple candidate prices within [seller.ask, buyer.bid]
 // 3. For each candidate price, compute rounded ΔB:
 ΔB = floor(price * ΔA + 0.5)
@@ -313,7 +313,6 @@ params:
   vision_radius: int              # How many cells an agent can see. Default: 5
   interaction_radius: int         # How close agents must be to trade. Default: 1
   move_budget_per_tick: int       # Max Manhattan distance to move per tick. Default: 1
-  dA_max: int                     # Max trade size to search for good A. Default: 5
   forage_rate: int                # Max resources to forage per tick. Default: 1
   epsilon: float                  # Small number for safe division. Default: 1e-12
   beta: float                     # Discount factor for foraging scores. Default: 0.95
@@ -344,9 +343,7 @@ Stores metadata for each simulation run.
 *   `num_agents` (INTEGER): Number of agents in the run.
 *   `grid_width`, `grid_height` (INTEGER): Dimensions of the grid.
 *   `config_json` (TEXT): A JSON dump of the full scenario configuration.
-*   `exchange_regime` (TEXT): Exchange type control ("barter_only", "money_only", "mixed") `[IMPLEMENTED Phase 1]`
-*   `money_mode` (TEXT): Money utility mode ("quasilinear", "kkt_lambda") `[IMPLEMENTED Phase 1]`
-*   `money_scale` (INTEGER): Minor units scale for money `[IMPLEMENTED Phase 1]`
+*   **NOTE**: Money system parameters (exchange_regime, money_mode, money_scale) have been removed - VMT is now a pure barter economy
 
 #### Table: `agent_snapshots`
 Records the state of each agent at periodic intervals.
@@ -463,30 +460,15 @@ Tracks KKT lambda estimation diagnostics (KKT mode only).
 
 This part outlines planned extensions to the type system and provides reference material for ports to other languages.
 
-### 7. Money & Market Contracts
+### 7. Trade Contracts
 
-This section documents the money system implementation and plans for centralized markets.
+This section documents the barter trade system.
 
-#### 7.1 Core Monetary Concepts `[IMPLEMENTED]`
-*   **Numéraire (Money):** Good with identifier `"M"`, stored as `Inventory.M: int` in minor units (e.g., cents)
-*   **Exchange Regimes:** `exchange_regime` parameter controls allowed exchange types:
-    *   `"barter_only"`: Only A↔B trades (default, backward compatible) `[IMPLEMENTED]`
-    *   `"money_only"`: Only A↔M and B↔M trades `[IMPLEMENTED]`
-    *   `"mixed"`: All exchange pairs allowed `[IMPLEMENTED]`
-    *   `"mixed_liquidity_gated"`: Mixed with minimum quote depth requirement `[PLANNED]`
-*   **Quasilinear Utility:** Current implementation uses U_total = U_goods(A, B) + λ·M where λ = marginal utility of money `[IMPLEMENTED]`
-*   **Lambda Management:** 
-    *   Fixed λ (quasilinear mode) with per-agent heterogeneity `[IMPLEMENTED]`
-    *   Adaptive λ (KKT mode) estimated from neighbor prices `[PLANNED]`
-*   **Money Scale:** `money_scale` converts between whole units and minor units (default: 1 = no conversion) `[IMPLEMENTED]`
-
-#### 7.2 Bilateral Money Exchange `[IMPLEMENTED]`
-Current implementation provides decentralized bilateral money exchange:
-*   Agents trade goods (A or B) for money (M) with adjacent partners
-*   Generic matching algorithm selects best exchange pair (A↔M, B↔M, or A↔B)
-*   Quotes computed for all active exchange pairs based on marginal utilities
-*   Same pairing and compensating block logic as barter
-*   Money transfers recorded in `trades.dM` telemetry field
+#### 7.1 Barter Economy
+*   **Pure Barter:** VMT is now a pure barter economy - all trades are A↔B exchanges (money system removed)
+*   **Trade Mechanism:** Agents directly exchange Good A for Good B using bilateral matching
+*   Quotes computed based on marginal utilities
+*   Compensating block logic finds mutually beneficial trade quantities
 
 #### 7.3 Market Maker & Order Book `[PLANNED]`
 A new type of entity, the `MarketMakerAgent`, will be introduced to facilitate centralized exchange.
@@ -579,17 +561,12 @@ This section tracks major revisions to this type and data contract specification
     *   Expanded 7-Phase Tick Cycle with pairing, claiming, and single-harvester details `[IMPLEMENTED]`
     *   Extended telemetry schema with money fields and new tables `[IMPLEMENTED Phases 1-2]`
     *   Added tick_states, pairings, and preferences tables `[IMPLEMENTED]`
-    *   Updated Money & Market Contracts section with Phase 1-2 implementation status
-*   **Money System Implementation (2025-10-21):**
-    *   Core money system complete: quasilinear utility, three exchange regimes
-    *   Marked `exchange_pair_type` as `[IMPLEMENTED]` in trades table
-    *   Documented money-first tie-breaking algorithm
-    *   Documented mode × regime interaction (two-layer control)
-    *   Money-aware pairing and matching algorithms
-    *   Comprehensive telemetry and demo scenarios
+    *   Updated Trade Contracts section with barter-only economy status
+*   **Money System Removal (2025-10-31):**
+    *   Removed money system - VMT is now a pure barter economy (A↔B trades only)
+    *   Removed money parameters: exchange_regime, money_mode, money_scale, lambda_money, M inventory
+    *   Updated all documentation to reflect barter-only trading
 *   **Implementation Status Clarification (2025-01-27):**
-    *   Clarified that kkt_lambda mode is `[PLANNED]`, not implemented
-    *   Clarified that mixed_liquidity_gated regime is `[PLANNED]`, not implemented
     *   Updated all documents to reflect actual implementation status
-    *   Documented protocol modularization requirement before Phase C
+    *   Documented protocol modularization requirement
 ---

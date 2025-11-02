@@ -17,7 +17,7 @@ from scenarios.protocol_factory import (
 def build_scenario(
     N: int = 8,
     agents: int = 10,
-    regime: str = "barter_only",
+    regime: str = "barter_only",  # Kept for backward compatibility, but ignored
     name: str = "test_scenario",
     resource_density: float = 0.0,
 ) -> ScenarioConfig:
@@ -26,16 +26,16 @@ def build_scenario(
     - Alternates A-rich and B-rich to encourage trade
     - Uses CES utility mix by default for simplicity
     - Sets reasonable defaults that match engine expectations
+    
+    Note: regime parameter is deprecated and ignored (barter-only economy).
     """
     inventories_A = [8 if i % 2 == 0 else 2 for i in range(agents)]
     inventories_B = [2 if i % 2 == 0 else 8 for i in range(agents)]
 
     params = ScenarioParams(
-        exchange_regime=regime,
         vision_radius=N,
         interaction_radius=1,
         move_budget_per_tick=3,
-        dA_max=3,
         forage_rate=1,
         epsilon=1e-9,
         beta=0.95,

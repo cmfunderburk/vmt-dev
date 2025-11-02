@@ -72,7 +72,6 @@ class ScenarioParams:
     vision_radius: int = 5
     interaction_radius: int = 1
     move_budget_per_tick: int = 1
-    dA_max: int = 5  # Maximum trade size to search (formerly ΔA_max)
     forage_rate: int = 1
     epsilon: float = 1e-12
     beta: float = 0.95
@@ -82,90 +81,12 @@ class ScenarioParams:
     trade_cooldown_ticks: int = 5          # Ticks to wait after failed trade before re-attempting same partner
     
     # --- Trade execution parameters ---
-    trade_execution_mode: Literal["minimum", "maximum"] = "minimum"
-    """
-    Controls how trade quantities are determined when a mutually beneficial price is found.
-    - 'minimum': Execute the minimum batch (starting from dA=1) that results in positive
-      utility for both agents. Default for pedagogical clarity and backward compatibility.
-    - 'maximum': Execute the maximum batch at the chosen price that still results in
-      positive utility for both agents. More efficient but less pedagogical.
-    """
+    # Note: Trade batch size decisions moved to protocols (trade_execution_mode removed)
     
     # --- Resource claiming system parameters ---
     enable_resource_claiming: bool = True  # Enable claim-based resource allocation
     enforce_single_harvester: bool = True  # Only one agent per resource cell per tick
 
-    # --- Money system parameters (Phase 1+) ---
-    
-    exchange_regime: Literal["barter_only", "money_only", "mixed", "mixed_liquidity_gated"] = "barter_only"
-    """
-    Controls which types of exchanges are permitted in the TradeSystem.
-    - 'barter_only': Only A<->B trades are allowed. Default for backward compatibility.
-    - 'money_only': Only A<->M and B<->M trades are allowed.
-    - 'mixed': All trade types (A<->B, A<->M, B<->M) are allowed.
-    - 'mixed_liquidity_gated': Monetary trades are always allowed; barter is only
-      allowed if the monetary market is considered "thin" (see liquidity_gate).
-    """
-
-    money_mode: Literal["quasilinear", "kkt_lambda"] = "quasilinear"
-    """
-    Determines how the marginal utility of money (lambda) is handled.
-    - 'quasilinear': Lambda is a fixed constant provided by `lambda_money`. Total
-      utility is U(A,B) + lambda * M.
-    - 'kkt_lambda': Lambda is endogenously estimated by each agent based on
-      observed market prices for goods in terms of money.
-    """
-
-    money_scale: int = 1
-    """
-    The scale factor for money, representing minor units. E.g., a scale of 100
-    means M=100 is equivalent to 1 major unit of currency. All calculations are
-    done in minor units. Must be >= 1.
-    """
-
-    lambda_money: float = 1.0
-    """
-    The fixed marginal utility of money (λ) used in 'quasilinear' mode. Must be positive.
-    """
-
-    money_utility_form: Literal["linear", "log"] = "linear"
-    """
-    Functional form for money utility component.
-    - 'linear': U_money = λ·M (constant marginal utility)
-    - 'log': U_money = λ·log(M + M_0) (diminishing marginal utility)
-    """
-
-    M_0: float = 0.0
-    """
-    Shift parameter for logarithmic money utility. Prevents log(0) singularity
-    and calibrates the curvature of money's marginal utility. Must be >= 0.
-    Ignored when money_utility_form='linear'.
-    """
-
-    lambda_update_rate: float = 0.2
-    """
-    The smoothing factor (alpha) for updating lambda in 'kkt_lambda' mode.
-    λ_new = (1 - α) * λ_old + α * λ_hat. Must be in [0, 1].
-    """
-    
-    lambda_bounds: dict[str, float] = field(default_factory=lambda: {"lambda_min": 1e-6, "lambda_max": 1e6})
-    """
-    The minimum and maximum allowed values for lambda in 'kkt_lambda' mode.
-    """
-
-    liquidity_gate: dict[str, int] = field(default_factory=lambda: {"min_quotes": 3})
-    """
-    Configuration for the 'mixed_liquidity_gated' exchange regime.
-    - 'min_quotes': The minimum number of unique monetary quotes an agent must
-      observe for the market to be considered "thick", thus disabling barter.
-    """
-
-    earn_money_enabled: bool = False
-    """
-    Placeholder for future features where agents can earn money through activities
-    other than trade (e.g., labor, production). Currently unused.
-    """
-    
     # --- Telemetry parameters ---
     log_preferences: bool = False
     """
@@ -184,8 +105,6 @@ class ScenarioParams:
             raise ValueError(f"interaction_radius must be non-negative, got {self.interaction_radius}")
         if self.move_budget_per_tick <= 0:
             raise ValueError(f"move_budget_per_tick must be positive, got {self.move_budget_per_tick}")
-        if self.dA_max <= 0:
-            raise ValueError(f"dA_max must be positive, got {self.dA_max}")
         if self.forage_rate <= 0:
             raise ValueError(f"forage_rate must be positive, got {self.forage_rate}")
         if self.epsilon <= 0:
@@ -200,26 +119,6 @@ class ScenarioParams:
             raise ValueError(f"resource_regen_cooldown must be non-negative, got {self.resource_regen_cooldown}")
         if self.trade_cooldown_ticks < 0:
             raise ValueError(f"trade_cooldown_ticks must be non-negative, got {self.trade_cooldown_ticks}")
-        
-        # Money system validation
-        if self.money_scale < 1:
-            raise ValueError(f"money_scale must be >= 1, got {self.money_scale}")
-        if self.lambda_money <= 0:
-            raise ValueError(f"lambda_money must be positive, got {self.lambda_money}")
-        if self.M_0 < 0:
-            raise ValueError(f"M_0 must be non-negative, got {self.M_0}")
-        if self.money_utility_form not in ["linear", "log"]:
-            raise ValueError(f"money_utility_form must be 'linear' or 'log', got {self.money_utility_form}")
-        if not 0 <= self.lambda_update_rate <= 1:
-            raise ValueError(f"lambda_update_rate must be in [0, 1], got {self.lambda_update_rate}")
-        if "lambda_min" in self.lambda_bounds and "lambda_max" in self.lambda_bounds:
-            if self.lambda_bounds["lambda_min"] >= self.lambda_bounds["lambda_max"]:
-                raise ValueError("lambda_min must be < lambda_max")
-            if self.lambda_bounds["lambda_min"] <= 0:
-                raise ValueError("lambda_min must be positive")
-        if "min_quotes" in self.liquidity_gate:
-            if self.liquidity_gate["min_quotes"] < 0:
-                raise ValueError("liquidity_gate.min_quotes must be non-negative")
 
 
 @dataclass
@@ -362,14 +261,6 @@ class ScenarioConfig:
         # Validate mode schedule if present
         if self.mode_schedule:
             self.mode_schedule.validate()
-
-        # Money inventory validation
-        if self.params.exchange_regime in ["money_only", "mixed", "mixed_liquidity_gated"]:
-            if "M" not in self.initial_inventories:
-                raise ValueError(
-                    f"exchange_regime={self.params.exchange_regime} requires M in initial_inventories"
-                )
-        
         # Validate protocol names if specified (lazy import to ensure registry is populated)
         # Force protocol modules to import so decorators run and register entries
         import vmt_engine.protocols.search as _protocols_search  # noqa: F401

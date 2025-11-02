@@ -1,0 +1,92 @@
+schema_version: 1
+name: protocol_comparison_4agent
+N: 8
+agents: 4
+
+# Setup designed to highlight matching algorithm differences
+# All agents have moderate complementary endowments
+initial_inventories:
+  A: [8, 6, 4, 6]
+  B: [4, 6, 8, 6]
+
+# CES utility with complementarity
+utilities:
+  mix:
+    - weight: 1.0
+      type: "ces"
+      params:
+        rho: 0.5
+        wA: 0.5
+        wB: 0.5
+
+params:
+  # Spatial
+  vision_radius: 8
+  interaction_radius: 1
+  move_budget_per_tick: 1
+  spread: 0.0
+  
+  # Trading
+  trade_cooldown_ticks: 0
+  
+  # Foraging (minimal)
+  forage_rate: 1
+  enable_resource_claiming: true
+  enforce_single_harvester: true
+  resource_growth_rate: 1
+  resource_max_amount: 2
+  resource_regen_cooldown: 10
+  
+  # Economic
+  epsilon: 0.000000000001
+  beta: 0.95
+
+resource_seed:
+  density: 0.1
+  amount: 2
+
+# Protocol configuration (can be overridden via CLI)
+protocol_config:
+  search:
+    protocol: "legacy_distance_discounted"
+    params: {}
+  
+  matching:
+    protocol: "legacy_three_pass"  # Change to test different matching
+    params:
+      beta: 0.95
+  
+  bargaining:
+    protocol: "split_difference"
+    params:
+      epsilon: 0.000000001
+
+# How to Use This Scenario:
+# ========================
+#
+# Test 1: Central Planner (Greedy Surplus)
+#   python main.py scenarios/demos/protocol_comparison_4agent.yaml \
+#     --override "protocol_config.matching.protocol=greedy_surplus"
+#   Expected: Maximum welfare, most trades, no consent requirement
+#
+# Test 2: Decentralized (Legacy Three-Pass)
+#   python main.py scenarios/demos/protocol_comparison_4agent.yaml \
+#     --override "protocol_config.matching.protocol=legacy_three_pass"
+#   Expected: Moderate welfare, mutual consent required
+#
+# Test 3: Random Baseline
+#   python main.py scenarios/demos/protocol_comparison_4agent.yaml \
+#     --override "protocol_config.matching.protocol=random_matching"
+#   Expected: Lowest welfare, random pairing (null hypothesis)
+#
+# Compare Results:
+# - Total trades executed
+# - Final total utility (sum across agents)
+# - Time to convergence
+# - Surplus distribution
+#
+# Expected Differences:
+# - Greedy: ~4-6 trades, total utility +30%
+# - Legacy: ~3-5 trades, total utility +25%
+# - Random: ~2-3 trades, total utility +15%
+

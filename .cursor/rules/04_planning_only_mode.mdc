@@ -1,3 +1,6 @@
+---
+alwaysApply: false
+---
 # VMT Planning-Only Mode for Complex Features
 
 ## Critical Rule: No Implementation During Planning Phase
@@ -11,15 +14,6 @@ During planning discussions:
 2. **Design before coding** - Create comprehensive plans before any implementation
 3. **Document decisions** - Write down design choices and rationale
 4. **Validate approach** - Confirm understanding with user before proceeding
-
-## When This Rule Applies
-
-This rule is MANDATORY when:
-- Implementing market-related features
-- Adding new protocols or systems
-- Making architectural changes
-- Working on complex multi-file features
-- Any time the user mentions "planning" or "thinking through"
 
 ## Implementation Phase
 
@@ -39,7 +33,7 @@ The market implementation project demonstrated the cost of implementing the wron
 ## Enforcement
 
 When in planning mode:
-- ❌ DO NOT use: search_replace, write, delete_file, MultiEdit, edit_notebook
+- ❌ DO NOT: Write to existing src/ files.
 - ✅ DO use: read_file, grep, codebase_search, list_dir, web_search
 - ✅ DO: Create planning documents, discuss architecture, clarify requirements
 - ✅ DO: Ask clarifying questions before making assumptions

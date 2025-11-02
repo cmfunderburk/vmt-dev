@@ -76,9 +76,8 @@ All other parameters in `src/scenarios/schema.py` are properly documented in the
 - ✅ `move_budget_per_tick`
 
 ### Trading Parameters
-- ✅ `dA_max`
 - ✅ `trade_cooldown_ticks`
-- ✅ `trade_execution_mode` (newly added)
+- ⚠️ `trade_execution_mode` (removed - decisions moved to protocols)
 
 ### Foraging Parameters
 - ✅ `forage_rate`
@@ -162,7 +161,6 @@ No linter errors in modified files:
 1. ✅ **COMPLETED:** Update comprehensive template with missing parameters
 2. ✅ **COMPLETED:** Add trade_execution_mode guidelines for choosing between minimum/maximum modes
 3. ✅ **COMPLETED:** Formalize log_preferences in schema
-4. 🔄 **SUGGESTED:** Consider adding a validation warning if `trade_execution_mode: "maximum"` is used with small `dA_max` values (e.g., < 5), as this limits the effectiveness of maximum mode
 5. 🔄 **SUGGESTED:** Consider documenting the performance trade-offs of `log_preferences: true` more explicitly (database size impact, query performance)
 
 ---

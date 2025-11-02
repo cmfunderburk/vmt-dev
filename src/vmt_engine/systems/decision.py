@@ -261,13 +261,10 @@ class DecisionSystem:
     
     def _calculate_surplus(self, agent: "Agent", partner: "Agent", sim: "Simulation") -> float:
         """Calculate surplus for an agent-partner pair (for telemetry)."""
-        from .matching import compute_surplus, estimate_money_aware_surplus
+        from .matching import compute_surplus
         
-        exchange_regime = sim.params.get("exchange_regime", "barter_only")
-        if exchange_regime in ("money_only", "mixed", "mixed_liquidity_gated"):
-            surplus, _ = estimate_money_aware_surplus(agent, partner, exchange_regime)
-        else:
-            surplus = compute_surplus(agent, partner)
+        # Barter-only economy
+        surplus = compute_surplus(agent, partner)
         
         return surplus
     

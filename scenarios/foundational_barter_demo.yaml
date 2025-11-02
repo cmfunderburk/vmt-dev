@@ -20,7 +20,6 @@ params:
   vision_radius: 8         # See most of the grid to find partners
   interaction_radius: 1    # Must be adjacent to trade
   move_budget_per_tick: 1  # Manhattan steps per tick
-  dA_max: 3                # Keep search small for determinism and testability
   forage_rate: 1
   epsilon: 0.000000000001  # Zero-safe only for ratios in CES MRS
   beta: 0.95
