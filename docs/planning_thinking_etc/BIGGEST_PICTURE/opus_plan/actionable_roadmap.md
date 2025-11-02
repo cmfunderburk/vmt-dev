@@ -17,7 +17,6 @@
 
 ### What's Not Working or Unknown
 - ❓ No idea what patterns emerge from current system
-- ❓ No performance benchmarks established
 - ❌ Only one set of institutional rules
 - ❌ No way to compare different approaches
 - ❌ No Game Theory or Neoclassical capabilities
@@ -30,7 +29,7 @@ You have a working spatial ABM but don't fully understand its behavior. Before a
 ## Development Stages: A Pragmatic Sequence
 
 ### 🔍 Stage 1: Understand What You Have
-**Duration**: 2-3 weeks  
+**Duration**: 2 weeks  
 **Why First**: Can't build on unknown foundations
 
 #### Week 1: Behavioral Mapping
@@ -50,30 +49,12 @@ Run each scenario 100 times with different seeds. Document:
 - What spatial patterns emerge?
 - Where does the system break?
 
-#### Week 2: Performance Baseline
-```bash
-# Profile current implementation
-python -m cProfile -o baseline.prof main.py scenarios/demos/minimal_2agent.yaml
-python -m memory_profiler main.py scenarios/demos/protocol_comparison_4agent.yaml
-
-# Benchmark at different scales
-for n in 10 25 50 100 200; do
-    python scripts/benchmark_performance.py --agents $n
-done
-```
-
-Document:
-- FPS at different agent counts
-- Memory usage patterns
-- CPU bottlenecks (computation vs rendering)
-- Maximum practical agent count
-
-#### Week 3: Create Behavioral Documentation
+#### Week 2: Create Behavioral Documentation
 Write up findings in `docs/behavioral_baseline.md`:
 - Expected vs actual behaviors
 - Emergent patterns discovered
-- Performance limits
 - Edge cases and failures
+- Trade patterns and outcomes
 
 **Deliverable**: Complete understanding of current system behavior  
 **Success Metric**: Can predict outcomes for any scenario configuration
@@ -83,6 +64,8 @@ Write up findings in `docs/behavioral_baseline.md`:
 ### 🔧 Stage 2: Diversify Your Protocols
 **Duration**: 3-4 weeks  
 **Why Second**: Need comparisons to show institutions matter
+
+**PREREQUISITE**: Complete protocol architecture restructure (see `protocol_restructure_plan.md`). Move existing protocols to proper module homes before adding new ones.
 
 #### Week 1: Baseline Protocols
 Implement the simplest alternatives:
@@ -196,6 +179,8 @@ class BargainingSolver:
         """Return dict of all solutions for comparison"""
 ```
 
+**Note**: New bargaining protocols implemented this week go in `game_theory/bargaining/` module. ABM imports and uses them. See `protocol_restructure_plan.md` for architecture details.
+
 **Deliverable**: Fully functional Edgeworth Box with multiple bargaining solutions  
 **Success Metric**: Can demonstrate Nash, KS, and Rubinstein solutions visually
 
@@ -297,7 +282,7 @@ class MarketInformedBargaining(BargainingProtocol):
 #### Weeks 7-8: Comparison Studies
 Run experiments:
 - Uninformed vs informed trading
-- Speed of convergence with/without signals
+- Convergence patterns with/without signals
 - Quality of price discovery
 - Spatial patterns of information flow
 
@@ -406,12 +391,10 @@ mkdir -p scenarios/test
 # Run each 10 times, document results
 ```
 
-### Wednesday-Thursday: Performance Profiling
-```bash
-python -m cProfile main.py scenarios/demos/minimal_2agent.yaml
-# Identify bottlenecks
-# Document current FPS limits
-```
+### Wednesday-Thursday: Deep Behavioral Analysis
+- Run extended scenario tests
+- Document unexpected behaviors
+- Identify edge cases
 
 ### Friday: Write Behavioral Baseline
 - Compile findings into `docs/behavioral_baseline.md`

@@ -122,7 +122,7 @@ FUTURE STAGES: EXTENSIONS
 How much should tracks share vs stay independent?
 
 **Resolution**: 
-**Share data models and economic logic, separate presentation and interaction**
+**Share data models, economic logic, and bargaining protocols; separate presentation and interaction**
 
 ```python
 # SHARED (all tracks use these)
@@ -136,6 +136,11 @@ class Trade:
     participants: List[Agent]
     quantities: Dict[Good, float]
 
+class BargainingProtocol:
+    """Shared bargaining protocols work in both ABM and Game Theory"""
+    def negotiate(pair, world_view) -> list[Effect]
+    # Context-independent: works with or without spatial info
+
 # TRACK-SPECIFIC (each track has its own)
 class SpatialABMRenderer:
     """Pygame real-time visualization"""
@@ -145,9 +150,16 @@ class EdgeworthBoxRenderer:
     
 class EquilibriumRenderer:
     """Time series convergence plots"""
+
+# AGENT-BASED ONLY (require spatial context)
+class SearchProtocol:
+    """Spatial search protocols"""
+    
+class MatchingProtocol:
+    """Spatial matching protocols"""
 ```
 
-This ensures economic consistency while allowing optimal visualization for each paradigm.
+This ensures economic consistency and protocol compatibility while allowing optimal visualization for each paradigm. Bargaining protocols bridge the tracks, enabling theoretical understanding before spatial implementation.
 
 ---
 
@@ -176,7 +188,7 @@ User Flow:
 4. Results accessible from all tracks for comparison
 ```
 
-This provides consistency at the entry point while allowing optimized experiences for each paradigm.
+This provides consistency at the entry point while allowing appropriate experiences for each paradigm.
 
 ---
 
@@ -189,19 +201,42 @@ This provides consistency at the entry point while allowing optimized experience
 - Are these the same thing?
 
 **The Conceptual Muddle**: 
-The word "protocol" means different things in different contexts.
+The word "protocol" means different things in different contexts, and the relationship between tracks is unclear.
 
 **Resolution**: 
-**Distinguish between behavioral protocols and solution methods**
+**Protocol ownership by domain: Game Theory owns matching and bargaining; Agent-Based owns search**
 
-| Concept | Agent-Based | Game Theory | Neoclassical |
-|---------|------------|-------------|--------------|
-| What it is | Behavioral rules agents follow | Solution concepts | Adjustment algorithms |
-| Examples | Random walk, greedy matching | Nash, Rubinstein | Tatonnement, Newton |
-| Implementation | Protocol→Effect→State | Direct calculation | Iterative solver |
-| Purpose | Generate behavior | Find theoretical solution | Compute equilibrium |
+| Protocol Type | Agent-Based | Game Theory | Neoclassical | Ownership |
+|--------------|------------|-------------|--------------|-----------|
+| **Bargaining Protocols** | ✓ imports | ✓ home | - | **Game Theory** |
+| **Matching Protocols** | ✓ imports | ✓ home | - | **Game Theory** |
+| **Search Protocols** | ✓ home | - | - | **Agent-Based** |
+| **Solution Methods** | - | ✓ | ✓ | Track-specific |
 
-Agent-Based protocols are behavioral rules. Game Theory and Neoclassical "protocols" are mathematical solution methods.
+**Key Distinction**:
+
+1. **Bargaining & Matching Protocols (Game Theory Owned)**: 
+   - All implementations live in `game_theory/bargaining/` and `game_theory/matching/`
+   - Agent-Based Track imports from Game Theory module
+   - Examples: Nash bargaining, Split-the-difference, Gale-Shapley matching, Random matching
+   - Interface: `negotiate(pair, world_view) -> effects` or `find_matches(preferences) -> effects`
+   - Context-independent: Works in 2-agent Game Theory context and multi-agent spatial context
+   - **Purpose**: Theoretical development in Game Theory Track; import to Agent-Based Track
+
+2. **Search Protocols (Agent-Based Owned)**:
+   - All implementations live in `agent_based/search/`
+   - Game Theory Track doesn't need search (2-agent context)
+   - Examples: Random walk, distance-discounted, myopic, memory-based
+   - Require spatial context (grid, neighbors, movement, vision)
+   - Not applicable to Game Theory Track's isolated 2-agent context
+
+3. **Solution Methods (Track-Specific)**:
+   - Game Theory: Mathematical solution concepts (contract curve, Pareto frontier)
+   - Neoclassical: Equilibrium computation algorithms (tatonnement, Newton-Raphson)
+   - These are calculation/analysis methods, not behavioral protocols
+
+**Implementation Principle**: 
+Develop and validate all bargaining and matching protocols in Game Theory Track. Agent-Based Track imports these protocols. This ensures theoretical clarity before observing emergent spatial behavior. See `protocol_restructure_plan.md` for detailed migration path.
 
 ---
 
@@ -232,53 +267,23 @@ Wrong sequencing could confuse students about what's assumption vs reality.
 
 ---
 
-### 8. Performance Expectations: Real-time vs Analytical
-
-**The Ambiguity**:
-- "Real-time" for ABM (30+ FPS)
-- "Interactive" for Game Theory
-- "Fast" for equilibrium computation
-- What does this actually mean?
-
-**The Technical Challenge**: 
-Different tracks have fundamentally different performance characteristics.
-
-**Resolution**: 
-**Define track-specific performance targets**
-
-```
-Agent-Based Track:
-- Metric: Frames per second
-- Target: 30 FPS @ 100 agents (smooth animation)
-- Degradation: 10 FPS @ 1000 agents (still usable)
-
-Game Theory Track:
-- Metric: Interaction latency
-- Target: <100ms response to parameter changes
-- Degradation: <500ms for complex utilities
-
-Neoclassical Track:
-- Metric: Solution time
-- Target: <1s for 2-good economy
-- Degradation: <10s for 10-good economy
-```
-
-Don't try to make all tracks perform identically. Optimize each for its use case.
-
----
-
 ## Specific Document Conflicts to Resolve
 
 ### Conflict: Treatment of Bargaining
 
 **In Agent-Based context**: Bargaining is a protocol for bilateral price determination
 **In Game Theory context**: Bargaining is the entire focus with multiple solution concepts
-**In documentation**: Sometimes conflated, sometimes separated
+**In documentation**: Sometimes conflated, sometimes separated, sometimes suggested as separate implementations
 
 **Resolution**: 
-- Agent-Based uses **simple** bargaining (split-the-difference, take-it-or-leave-it)
-- Game Theory uses **sophisticated** bargaining (Nash, Kalai-Smorodinsky, Rubinstein)
-- Document clearly that these serve different purposes
+- **Bargaining protocols are SHARED between Agent-Based and Game Theory tracks**
+- Same protocol classes work in both contexts (context-independent design)
+- Game Theory Track serves as theoretical testing ground before spatial deployment
+- All bargaining protocols (simple and sophisticated) must be compatible with both tracks:
+  - Simple: Split-the-difference, take-it-or-leave-it (already implemented)
+  - Sophisticated: Nash, Kalai-Smorodinsky, Rubinstein (to be developed in Game Theory Track first)
+- Protocols developed in Game Theory Track are directly importable to Agent-Based Track
+- This enables: theoretical understanding → validation → spatial emergence observation
 
 ### Conflict: Role of Edgeworth Box
 
@@ -357,6 +362,7 @@ The resolutions are straightforward:
 2. **Equilibrium as contrast** (not replacement for emergence)
 3. **Staged development** (exchange first, extensions later)
 4. **Clear boundaries** (what's shared vs track-specific)
+5. **Protocol compatibility** (bargaining protocols shared between tracks; search/matching ABM-only)
 
 With these clarifications, the path forward is clear: Build a solid foundation of bilateral exchange across three complementary paradigms, each illuminating different aspects of how markets work (or don't).
 

@@ -1,24 +1,24 @@
 # vmt-dev - Token Analysis Report
 
-*Generated on 2025-10-30 21:36:34*
+*Generated on 2025-11-02 11:26:06*
 
 ## 📊 Executive Summary
 
 | Metric | Value |
 |--------|--------|
-| **Total Tokens** | 214.6K tokens |
-| **Total Files** | 125 files |
-| **Repository Size** | 0.9 MB |
-| **Average Tokens/File** | 1717 tokens |
+| **Total Tokens** | 234.1K tokens |
+| **Total Files** | 119 files |
+| **Repository Size** | 1.0 MB |
+| **Average Tokens/File** | 1967 tokens |
 
 ## 📄 File Type Breakdown
 
 | File Type | Token Count | Percentage | Files |
 |-----------|-------------|------------|-------|
-| Python | 102.0K | 47.5% | 70 |
-| Markdown | 100.0K | 46.6% | 32 |
-| YAML | 11.7K | 5.5% | 15 |
-| Other | 556 | 0.3% | 4 |
+| Markdown | 121.0K | 51.7% | 29 |
+| Python | 100.8K | 43.1% | 70 |
+| YAML | 11.4K | 4.9% | 15 |
+| Other | 556 | 0.2% | 1 |
 | Build/Meta | 222 | 0.1% | 1 |
 | Text | 41 | 0.0% | 1 |
 | JSON | 37 | 0.0% | 1 |
@@ -28,26 +28,26 @@
 
 | File | Tokens | Size |
 |------|--------|------|
-| `docs/CURRENT/critical/comprehensive_7_phase_tick_review.md` | 17.9K | 0.1 MB |
+| `...etc/BIGGEST_PICTURE/Knowledge Base for Economic Models.md` | 22.1K | 0.1 MB |
 | `src/vmt_pygame/renderer.py` | 10.0K | 0.0 MB |
-| `docs/BIGGEST_PICTURE/vision_and_architecture.md` | 7.2K | 0.0 MB |
-| `src/vmt_engine/systems/matching.py` | 7.2K | 0.0 MB |
+| `..._plan/implementation/COMPREHENSIVE_IMPLEMENTATION_PLAN.md` | 7.4K | 0.0 MB |
+| `...king_etc/BIGGEST_PICTURE/vision_and_architecture (old).md` | 7.2K | 0.0 MB |
 | `docs/4_typing_overview.md` | 6.8K | 0.0 MB |
-| `...T/market_brainstorms/phase3_market_post_implementation.md` | 6.7K | 0.0 MB |
+| `..._plan/implementation/stage3_game_theory_implementation.md` | 6.6K | 0.0 MB |
+| `src/vmt_engine/systems/matching.py` | 6.4K | 0.0 MB |
+| `...plan/implementation/stage6_neoclassical_implementation.md` | 6.3K | 0.0 MB |
+| `...pus_plan/implementation/stage4_launcher_implementation.md` | 5.8K | 0.0 MB |
+| `...mplementation/stage5_market_information_implementation.md` | 5.7K | 0.0 MB |
+| `...inking_etc/BIGGEST_PICTURE/initial_planning (ORIGINAL).md` | 5.4K | 0.0 MB |
 | `src/vmt_engine/econ/utility.py` | 5.3K | 0.0 MB |
-| `...ainstorms/bilateral_negotiation_price_signals_analysis.md` | 5.2K | 0.0 MB |
 | `docs/2_technical_manual.md` | 4.9K | 0.0 MB |
 | `src/telemetry/db_loggers.py` | 4.8K | 0.0 MB |
-| `docs/structures/comprehensive_scenario_template.yaml` | 4.4K | 0.0 MB |
-| `...et_brainstorms/phase3_centralized_markets_architecture.md` | 4.2K | 0.0 MB |
+| `...GEST_PICTURE/opus_plan/unified_implementation_overview.md` | 4.3K | 0.0 MB |
+| `docs/structures/comprehensive_scenario_template.yaml` | 4.2K | 0.0 MB |
+| `.github/copilot-instructions.md` | 4.2K | 0.0 MB |
 | `src/vmt_log_viewer/viewer.py` | 4.1K | 0.0 MB |
-| `.github/copilot-instructions.mdc` | 4.1K | 0.0 MB |
 | `CHANGELOG.md` | 3.9K | 0.0 MB |
-| `docs/CURRENT/critical/step_function_protocol_review.md` | 3.9K | 0.0 MB |
 | `docs/1_project_overview.md` | 3.9K | 0.0 MB |
-| `src/vmt_engine/simulation.py` | 3.5K | 0.0 MB |
-| `src/scenarios/schema.py` | 3.4K | 0.0 MB |
-| `src/vmt_engine/protocols/bargaining/take_it_or_leave_it.py` | 3.0K | 0.0 MB |
 
 
 ## 🤖 LLM Context Analysis
@@ -56,24 +56,24 @@
 
 | Model | Context Window | Repo Coverage |
 |-------|---------------|---------------|
-| GPT-4 | ~128K tokens | 59.6% |
-| Claude 3 | ~200K tokens | 93.2% |
-| Claude 3.5 Sonnet | ~200K tokens | 93.2% |
-| Gemini 1.5 Pro | ~1M tokens | 465.9% |
+| GPT-4 | ~128K tokens | 54.7% |
+| Claude 3 | ~200K tokens | 85.4% |
+| Claude 3.5 Sonnet | ~200K tokens | 85.4% |
+| Gemini 1.5 Pro | ~1M tokens | 427.2% |
 
 ### Recommendations
 
-- **Full Repository**: 214.6K tokens fits in: Gemini 1.5 Pro (~1.0M)
+- **Full Repository**: 234.1K tokens fits in: Gemini 1.5 Pro (~1.0M)
 - **Targeted Analysis**: Consider focusing on 40-60% of files for detailed reviews
 - **Code Reviews**: Use token counts to prioritize which files/modules to include
-- **Documentation**: 46.6% of tokens are documentation (substantial docs available)
+- **Documentation**: 51.7% of tokens are documentation (substantial docs available)
 
 
 ## 📈 Analysis Metadata
 
 - **Analysis Tool**: Repository Token Counter (full version with repotokens)
 - **Tokenization**: Accurate repotokens library
-- **Files Processed**: 125 code files
+- **Files Processed**: 119 code files
 - **Excluded**: Binary files, caches, logs, virtual environments
 - **Repository**: vmt-dev
 

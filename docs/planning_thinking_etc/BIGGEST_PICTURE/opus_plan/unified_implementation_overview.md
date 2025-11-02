@@ -84,17 +84,27 @@ VMT Platform
 │   ├── Trade Recording & Analysis
 │   └── Random Number Management (deterministic seeds)
 │
+├── Shared Infrastructure (protocols/ module)
+│   ├── Effect Types (Trade, Pair, Unpair, Move, etc.)
+│   ├── ProtocolBase ABC
+│   ├── WorldView, ProtocolContext interfaces
+│   ├── ProtocolRegistry
+│   └── Context builder functions
+│
 ├── Track Implementations
 │   │
 │   ├── Agent-Based Track
 │   │   ├── Spatial World (NxN grid)
-│   │   ├── Movement & Search Protocols
-│   │   ├── Matching Protocols
-│   │   ├── Bargaining Protocols
+│   │   ├── agent_based/search/ - Search Protocols
+│   │   │   └── (SearchProtocol ABC + implementations)
 │   │   ├── Market Information Systems
 │   │   └── Pygame Visualization
 │   │
 │   ├── Game Theory Track
+│   │   ├── game_theory/matching/ - Matching Protocols
+│   │   │   └── (MatchingProtocol ABC + implementations)
+│   │   ├── game_theory/bargaining/ - Bargaining Protocols
+│   │   │   └── (BargainingProtocol ABC + implementations)
 │   │   ├── 2-Agent Exchange Engine
 │   │   ├── Feasible Set Computation
 │   │   ├── Bargaining Solutions (Nash, KS, Rubinstein)
@@ -113,6 +123,10 @@ VMT Platform
     ├── Track Selection Interface
     ├── Scenario Configuration
     └── Results Comparison Tools
+
+Key Insight: Game Theory Track owns Matching and Bargaining protocols.
+Agent-Based Track imports and calls them from Game Theory module.
+Search protocols remain Agent-Based only (spatial context required).
 ```
 
 ### Design Principles
@@ -121,6 +135,82 @@ VMT Platform
 2. **Consistency**: Protocol→Effect→State pattern applies across all paradigms
 3. **Comparison**: Built-in tools to compare outcomes across tracks
 4. **Extensibility**: New protocols/mechanisms can be added without architectural changes
+5. **Protocol Compatibility**: Bargaining protocols must work in both Agent-Based and Game Theory tracks
+
+### Protocol Compatibility Architecture
+
+**Critical Requirement**: Bargaining protocols must be compatible between the Agent-Based Track and Game Theory Track. This enables:
+- **Theoretical Understanding**: Users analyze protocols in simplified Game Theory context before seeing them in spatial simulations
+- **Consistency**: Same bargaining logic produces comparable results in both tracks
+- **Pedagogical Flow**: Students understand strategic mechanics theoretically, then observe emergent behavior spatially
+
+**Implementation Strategy**:
+
+**CRITICAL**: All Bargaining and Matching protocols live in `game_theory/` module. ABM imports and calls them.
+
+1. **Domain Ownership**: 
+   - `game_theory/bargaining/` owns all bargaining protocol classes
+   - `game_theory/matching/` owns all matching protocol classes
+   - `agent_based/search/` owns all search protocol classes
+
+2. **Shared Protocol Core**: All bargaining and matching protocols extend base classes in `game_theory/` with context-independent interfaces:
+   - Agent pair (two agent IDs)
+   - Agent states (inventories, utility functions, preferences)
+   - Parameters (epsilon, negotiation timeouts, etc.)
+   - Random number generator (for stochastic protocols)
+
+3. **Context Independence**: Protocols do not depend on:
+   - Spatial coordinates or grid layout
+   - Movement or search mechanisms
+   - Other agents' locations
+   - Telemetry or logging systems
+
+4. **Game Theory Track Implementation**: Direct use of protocols in canonical home:
+   - Provides simplified 2-agent context (no spatial world)
+   - Directly calls `negotiate()` or `find_matches()` with minimal state
+   - Visualizes results in Edgeworth Box
+
+5. **Agent-Based Track Usage**: Imports and calls protocols from Game Theory:
+   - `from vmt_engine.game_theory.bargaining import BargainingProtocol`
+   - `from vmt_engine.game_theory.matching import MatchingProtocol`
+   - Embeds in spatial matching/search context
+   - Provides full WorldView with spatial neighbors
+   - Executes as part of multi-agent 7-phase simulation
+
+**Example Flow**:
+```
+Nash Bargaining Protocol Development:
+  1. Implement in game_theory/bargaining/nash.py
+  2. Test in Game Theory Track (2 agents, Edgeworth Box visualization)
+  3. Verify theoretical properties (Pareto efficiency, symmetry)
+  4. Compare with textbook solutions
+  5. Import same protocol class to Agent-Based Track
+  6. Observe how Nash bargaining emerges (or fails) in spatial context
+
+Gale-Shapley Matching Development:
+  1. Implement in game_theory/matching/gale_shapley.py
+  2. Test stability properties theoretically
+  3. Import to Agent-Based Track for spatial matching
+  4. Compare stable matching vs greedy matching
+```
+
+**Protocol Interface**:
+```python
+class BargainingProtocol:
+    """Works in both Game Theory and Agent-Based contexts"""
+    
+    def negotiate(
+        self, 
+        pair: tuple[int, int],  # Two agent IDs
+        world: WorldView        # Agent states + params (spatial info optional)
+    ) -> list[Effect]:          # Trade or Unpair effects
+        """
+        Core negotiation logic that works identically in:
+        - Game Theory Track: 2 isolated agents
+        - Agent-Based Track: 2 agents in spatial context
+        """
+        pass
+```
 
 ---
 
@@ -143,6 +233,10 @@ VMT Platform
 ### Stage 2: Game Theory Track Development
 **Purpose**: Build tools for strategic analysis in simplified settings
 
+**Key Requirement**: The Game Theory Track serves as the **theoretical testing ground** and **canonical home** for bargaining and matching protocols before they are deployed in the Agent-Based Track. 
+
+**IMPORTANT**: All Bargaining and Matching protocols live in the `game_theory/` module. ABM imports them from there. See `protocol_restructure_plan.md` for detailed architecture changes.
+
 **Core Components**:
 ```python
 class GameTheoryTrack:
@@ -151,7 +245,7 @@ class GameTheoryTrack:
     def __init__(self):
         self.exchange_engine = TwoAgentExchange()
         self.visualizer = EdgeworthBoxVisualizer()
-        self.solvers = BargainingSolvers()
+        self.bargaining_protocols = BargainingProtocolRegistry()  # Shared with ABM
     
     def compute_contract_curve(self):
         """Find all Pareto efficient allocations"""
@@ -159,9 +253,49 @@ class GameTheoryTrack:
     def find_competitive_equilibrium(self):
         """Compute market-clearing prices and allocation"""
         
-    def solve_bargaining(self, method='nash'):
-        """Apply bargaining solution concepts"""
+    def test_bargaining_protocol(self, protocol_name: str, agent_a: Agent, agent_b: Agent):
+        """
+        Test a bargaining protocol in isolated 2-agent context.
+        
+        Uses the SAME protocol classes as Agent-Based Track:
+        - Import from shared bargaining protocol module
+        - Create minimal WorldView (no spatial context)
+        - Call protocol.negotiate() directly
+        - Visualize outcome in Edgeworth Box
+        
+        This allows users to:
+        1. Understand protocol mechanics theoretically
+        2. Verify protocol properties (efficiency, fairness, etc.)
+        3. Predict outcomes before spatial simulation
+        4. Debug protocol logic in simplified context
+        """
+        protocol = self.bargaining_protocols.get(protocol_name)
+        world_view = self._create_minimal_worldview(agent_a, agent_b)
+        effects = protocol.negotiate((agent_a.id, agent_b.id), world_view)
+        return self._analyze_effects(effects)
 ```
+
+**Protocol Development Workflow**:
+1. **Design Phase**: Implement bargaining logic in Game Theory Track
+   - Start with 2-agent Edgeworth Box visualization
+   - Test against known theoretical results
+   - Verify Pareto efficiency, individual rationality, etc.
+
+2. **Validation Phase**: Confirm protocol behavior
+   - Compare with textbook solutions (Nash, Kalai-Smorodinsky, Rubinstein)
+   - Test edge cases (corner solutions, no gains from trade)
+   - Document economic properties
+
+3. **Integration Phase**: Deploy to Agent-Based Track
+   - Import the validated protocol class (no modifications needed)
+   - Protocol automatically works in spatial context
+   - Compare emergent outcomes with theoretical predictions
+
+**Benefits**:
+- **Theoretical Clarity**: Users understand protocols in simplified context first
+- **Debugging**: Isolate protocol logic from spatial complexity
+- **Validation**: Verify protocols match theoretical expectations
+- **Pedagogy**: Bridge between abstract theory and spatial emergence
 
 **Visualization Features**:
 - Interactive Edgeworth Box with draggable allocations
@@ -240,19 +374,10 @@ class UnifiedLauncher(QMainWindow):
 
 ## Part V: Technical Specifications
 
-### Performance Requirements
-
-| Component | Metric | Educational Target | Research Target |
-|-----------|--------|-------------------|-----------------|
-| Spatial ABM | Frame Rate | 30 FPS @ 100 agents | 15 FPS @ 1000 agents |
-| Game Theory | Interaction Response | <100ms | <50ms |
-| Equilibrium Solver | 2-Good Solution | <1 second | <100ms |
-| Market Info | Update Frequency | 1 Hz | 10 Hz |
-
 ### Technology Stack
 
 **Core**:
-- Python 3.11+ (type hints, performance)
+- Python 3.11+ (type hints)
 - NumPy (numerical computation)
 - SciPy (optimization, solvers)
 
@@ -318,14 +443,34 @@ class UnifiedLauncher(QMainWindow):
 - Statistical analysis
 - Custom protocol development
 
+### Decision 5: Protocol Compatibility Between Tracks
+
+**Choice**: Bargaining protocols must be shared and compatible between Agent-Based and Game Theory tracks
+
+**Rationale**:
+- **Pedagogical Value**: Users understand protocols theoretically in Game Theory Track before seeing emergent behavior in Agent-Based Track
+- **Consistency**: Same protocol logic produces comparable results in both contexts
+- **Development Efficiency**: Develop and validate protocols once, use in both tracks
+- **Validation**: Theoretical predictions from Game Theory Track inform expectations for Agent-Based simulations
+
+**Implementation**:
+- **Protocol Location**: All bargaining and matching protocols live in `game_theory/` module
+- **ABM Usage**: Agent-Based Track imports from `game_theory.bargaining` and `game_theory.matching`
+- Protocols designed with context-independent interface (agent pair + state, no spatial dependencies)
+- Game Theory Track uses protocols in canonical home with minimal 2-agent context
+- Agent-Based Track imports same classes for use in spatial simulation context
+- Both tracks import from shared protocol registry (in `protocols/` module)
+
+**Consequence**: 
+- Search protocols remain Agent-Based only (inherently spatial)
+- Matching and bargaining protocols importable by ABM from Game Theory
+- Any protocol that mixes spatial and strategic logic must separate concerns
+
 ---
 
 ## Part VII: Risk Management
 
 ### Technical Risks
-
-**Risk**: Performance degradation with multiple tracks  
-**Mitigation**: Profile continuously, optimize only proven bottlenecks
 
 **Risk**: Integration complexity between tracks  
 **Mitigation**: Keep tracks independent initially, share only data models
@@ -359,7 +504,6 @@ class UnifiedLauncher(QMainWindow):
 - Students can predict which paradigm applies to real situations
 
 ### Technical Success
-- All tracks meet performance targets
 - New protocols implementable in <1 day
 - Deterministic reproducibility across all modes
 
