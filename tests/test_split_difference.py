@@ -15,7 +15,7 @@ import pytest
 from tests.helpers import builders, run as run_helpers
 from scenarios.loader import load_scenario
 from vmt_engine.simulation import Simulation
-from vmt_engine.game_theory.bargaining import SplitDifference, LegacyBargainingProtocol
+from vmt_engine.game_theory.bargaining import SplitDifference, CompensatingBlockBargaining
 
 
 def create_test_scenario(agent_count: int = 10, grid_size: int = 15):
@@ -105,7 +105,7 @@ class TestSplitDifferenceComparison:
         sim_split.run(15)
         
         # Run with legacy
-        sim_legacy = Simulation(scenario, seed=42, bargaining_protocol=LegacyBargainingProtocol())
+        sim_legacy = Simulation(scenario, seed=42, bargaining_protocol=CompensatingBlockBargaining())
         sim_legacy.run(15)
         
         # Extract final agent states

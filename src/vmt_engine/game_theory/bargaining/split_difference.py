@@ -21,7 +21,8 @@ from ...protocols.registry import register_protocol
 from .base import BargainingProtocol
 from ...protocols.base import Effect, Trade, Unpair
 from ...protocols.context import WorldView
-from ...systems.matching import find_all_feasible_trades
+from .discovery import CompensatingBlockDiscoverer
+from ...systems.trade_evaluation import TradeDiscoverer
 
 
 @register_protocol(
@@ -66,6 +67,15 @@ class SplitDifference(BargainingProtocol):
     # Class-level for registry
     VERSION = "2025.10.28"
     
+    def __init__(self, discoverer: TradeDiscoverer | None = None):
+        """
+        Initialize split difference bargaining.
+        
+        Args:
+            discoverer: Trade discovery algorithm (default: CompensatingBlockDiscoverer)
+        """
+        self.discoverer = discoverer or CompensatingBlockDiscoverer()
+    
     def negotiate(self, pair: tuple[int, int], world: WorldView) -> list[Effect]:
         """
         Find trade that splits surplus equally.
@@ -84,14 +94,14 @@ class SplitDifference(BargainingProtocol):
         agent_i = self._build_agent_from_world(world, agent_a_id)
         agent_j = self._build_agent_from_world(world, agent_b_id)
         
-        # Get all feasible trades
+        # Discover trade using injected discovery algorithm
         epsilon = world.params.get("epsilon", 1e-9)
         
-        feasible_trades = find_all_feasible_trades(
+        trade_tuple_obj = self.discoverer.discover_trade(
             agent_i, agent_j, world.params, epsilon
         )
         
-        if not feasible_trades:
+        if trade_tuple_obj is None:
             # No mutually beneficial trade - unpair
             return [Unpair(
                 protocol_name=self.name,
@@ -101,30 +111,20 @@ class SplitDifference(BargainingProtocol):
                 reason="no_feasible_trade"
             )]
         
-        # Find trade with most equal surplus split
-        best_trade = None
-        best_pair_name = None
-        best_evenness = float('inf')
+        # Convert TradeTuple to the format expected by the rest of the method
+        # trade_tuple = (dA_i, dB_i, dA_j, dB_j, surplus_i, surplus_j)
+        best_trade = (
+            trade_tuple_obj.dA_i,
+            trade_tuple_obj.dB_i,
+            trade_tuple_obj.dA_j,
+            trade_tuple_obj.dB_j,
+            trade_tuple_obj.surplus_i,
+            trade_tuple_obj.surplus_j
+        )
+        best_pair_name = "A<->B"
         
-        for pair_name, trade_tuple in feasible_trades:
-            # trade_tuple = (dA_i, dB_i, dA_j, dB_j, surplus_i, surplus_j)
-            surplus_i = trade_tuple[4]
-            surplus_j = trade_tuple[5]
-            
-            # Both must have positive surplus (should always be true from find_all_feasible_trades)
-            if surplus_i <= 0 or surplus_j <= 0:
-                continue
-            
-            # Calculate how far from equal split
-            total_surplus = surplus_i + surplus_j
-            evenness = abs(surplus_i - total_surplus / 2)
-            
-            # Select trade closest to 50/50 split
-            if evenness < best_evenness:
-                best_evenness = evenness
-                best_trade = trade_tuple
-                best_pair_name = pair_name
-        
+        # Note: With single trade discovery, we don't search for most equal split
+        # We use the discovered trade directly
         if best_trade is None:
             # No positive-surplus trade found (shouldn't happen but defensive)
             return [Unpair(
@@ -136,8 +136,9 @@ class SplitDifference(BargainingProtocol):
             )]
         
         # Convert to Trade effect
+        # Note: evenness is 0.0 since we no longer optimize for equal split with single trade discovery
         return [self._create_trade_effect(
-            agent_a_id, agent_b_id, best_pair_name, best_trade, best_evenness, world
+            agent_a_id, agent_b_id, best_pair_name, best_trade, 0.0, world
         )]
     
     def _build_agent_from_world(self, world: WorldView, agent_id: int):

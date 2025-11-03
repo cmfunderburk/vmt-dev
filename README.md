@@ -89,7 +89,7 @@ max_ticks: 100
 # Select protocols (institutional rules)
 search_protocol: "legacy_distance_discounted"     # or "random_walk"
 matching_protocol: "legacy_three_pass"            # or "random_matching"
-bargaining_protocol: "legacy_compensating_block"  # or "split_difference"
+bargaining_protocol: "compensating_block"  # or "split_difference"
 
 # Agent configuration
 agents:
@@ -111,7 +111,7 @@ See `docs/structures/` for complete templates and `scenarios/demos/` for example
 - `random_matching`: Random pairing
 
 **Bargaining** (how prices are negotiated):
-- `legacy_compensating_block`: Bilateral feasibility search
+- `compensating_block`: Bilateral feasibility search
 - `split_difference`: Equal surplus division
 
 Query available protocols programmatically:

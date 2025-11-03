@@ -37,7 +37,8 @@ from ...protocols.registry import register_protocol
 from .base import BargainingProtocol
 from ...protocols.base import Effect, Trade, Unpair
 from ...protocols.context import WorldView
-from ...systems.matching import find_all_feasible_trades
+from .discovery import CompensatingBlockDiscoverer
+from ...systems.trade_evaluation import TradeDiscoverer
 
 
 @register_protocol(
@@ -74,11 +75,17 @@ class TakeItOrLeaveIt(BargainingProtocol):
     # Class-level for registry
     VERSION = "2025.10.28"
     
-    def __init__(self, proposer_power: float = 0.9, proposer_selection: str = "random"):
+    def __init__(
+        self,
+        discoverer: TradeDiscoverer | None = None,
+        proposer_power: float = 0.9,
+        proposer_selection: str = "random"
+    ):
         """
         Initialize TIOL bargaining protocol.
         
         Args:
+            discoverer: Trade discovery algorithm (default: CompensatingBlockDiscoverer)
             proposer_power: Fraction of surplus going to proposer [0, 1]. Default 0.9.
             proposer_selection: How to select proposer. Options:
                 - "random": Random selection using RNG (default)
@@ -94,6 +101,7 @@ class TakeItOrLeaveIt(BargainingProtocol):
                 f"Got: {proposer_selection}"
             )
         
+        self.discoverer = discoverer or CompensatingBlockDiscoverer()
         self.proposer_power = proposer_power
         self.proposer_selection = proposer_selection
     
@@ -125,14 +133,14 @@ class TakeItOrLeaveIt(BargainingProtocol):
             agent_j_obj = self._build_agent_from_world(world, agent_a_id)
             agent_i_id, agent_j_id = agent_b_id, agent_a_id
         
-        # Get all feasible trades (i=lower ID, j=higher ID)
+        # Discover trade using injected discovery algorithm
         epsilon = world.params.get("epsilon", 1e-9)
         
-        feasible_trades = find_all_feasible_trades(
+        trade_tuple_obj = self.discoverer.discover_trade(
             agent_i_obj, agent_j_obj, {}, epsilon
         )
         
-        if not feasible_trades:
+        if trade_tuple_obj is None:
             # No mutually beneficial trade - unpair
             return [Unpair(
                 protocol_name=self.name,
@@ -142,48 +150,35 @@ class TakeItOrLeaveIt(BargainingProtocol):
                 reason="no_feasible_trade"
             )]
         
-        # Find trade that maximizes proposer surplus while responder gets >= epsilon
-        # Try to achieve proposer_power fraction of total surplus
-        best_trade = None
-        best_pair_name = None
-        best_proposer_surplus = -float('inf')
+        # Convert TradeTuple to the format expected by the rest of the method
+        # trade_tuple = (dA_i, dB_i, dA_j, dB_j, surplus_i, surplus_j)
+        trade_tuple = (
+            trade_tuple_obj.dA_i,
+            trade_tuple_obj.dB_i,
+            trade_tuple_obj.dA_j,
+            trade_tuple_obj.dB_j,
+            trade_tuple_obj.surplus_i,
+            trade_tuple_obj.surplus_j
+        )
+        pair_name = "A<->B"
         
-        # IMPORTANT: In trade_tuple, i=lower ID agent, j=higher ID agent
         # Map proposer/responder to trade tuple indices
         if proposer_id == agent_i_id:
             proposer_is_i = True
         else:
             proposer_is_i = False
         
-        for pair_name, trade_tuple in feasible_trades:
-            # trade_tuple = (dA_i, dB_i, dA_j, dB_j, surplus_i, surplus_j)
-            # i=lower ID agent, j=higher ID agent
-            if proposer_is_i:
-                proposer_surplus = trade_tuple[4]  # surplus_i
-                responder_surplus = trade_tuple[5]  # surplus_j
-            else:
-                proposer_surplus = trade_tuple[5]  # surplus_j
-                responder_surplus = trade_tuple[4]  # surplus_i
-            
-            # Responder must get at least epsilon (individual rationality)
-            if responder_surplus < epsilon:
-                continue
-            
-            # Total surplus
-            total_surplus = proposer_surplus + responder_surplus
-            
-            # Check if this trade gives proposer desired fraction
-            if total_surplus > 0:
-                actual_proposer_fraction = proposer_surplus / total_surplus
-                
-                # Select trade closest to desired proposer_power, prioritizing higher proposer surplus
-                # We want to maximize proposer surplus while respecting responder's minimum
-                if proposer_surplus > best_proposer_surplus:
-                    best_proposer_surplus = proposer_surplus
-                    best_trade = trade_tuple
-                    best_pair_name = pair_name
+        # trade_tuple = (dA_i, dB_i, dA_j, dB_j, surplus_i, surplus_j)
+        # i=lower ID agent, j=higher ID agent
+        if proposer_is_i:
+            proposer_surplus = trade_tuple[4]  # surplus_i
+            responder_surplus = trade_tuple[5]  # surplus_j
+        else:
+            proposer_surplus = trade_tuple[5]  # surplus_j
+            responder_surplus = trade_tuple[4]  # surplus_i
         
-        if best_trade is None:
+        # Responder must get at least epsilon (individual rationality)
+        if responder_surplus < epsilon:
             # No trade satisfies responder's minimum - unpair
             return [Unpair(
                 protocol_name=self.name,
@@ -198,7 +193,7 @@ class TakeItOrLeaveIt(BargainingProtocol):
         return [self._create_trade_effect(
             proposer_id, responder_id, agent_a_id, agent_b_id,
             agent_i_id, agent_j_id, proposer_is_i,
-            best_pair_name, best_trade, world
+            pair_name, trade_tuple, world
         )]
     
     def _select_proposer(

@@ -48,7 +48,7 @@ def create_test_scenario(n_agents: int, grid_size: int) -> ScenarioConfig:
         # Set protocol fields explicitly to avoid test failures
         search_protocol="legacy_distance_discounted",
         matching_protocol="legacy_three_pass", 
-        bargaining_protocol="legacy_compensating_block",
+        bargaining_protocol="compensating_block",
     )
 
 

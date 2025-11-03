@@ -26,7 +26,7 @@ def test_all_protocols_registered():
     assert "legacy_three_pass" in protocols["matching"]
     assert "random_matching" in protocols["matching"]
 
-    assert "legacy_compensating_block" in protocols["bargaining"]
+    assert "compensating_block" in protocols["bargaining"]
     assert "split_difference" in protocols["bargaining"]
 
 
@@ -78,7 +78,7 @@ def test_factory_uses_registry_for_defaults_and_explicit():
     # Defaults
     assert get_search_protocol(None).__class__.__name__ == "LegacySearchProtocol"
     assert get_matching_protocol(None).__class__.__name__ == "LegacyMatchingProtocol"
-    assert get_bargaining_protocol(None).__class__.__name__ == "LegacyBargainingProtocol"
+    assert get_bargaining_protocol(None).__class__.__name__ == "CompensatingBlockBargaining"
 
     # Explicit
     assert get_search_protocol("random_walk").__class__.__name__ == "RandomWalkSearch"

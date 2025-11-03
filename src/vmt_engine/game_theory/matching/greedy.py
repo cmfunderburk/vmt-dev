@@ -31,7 +31,7 @@ from ...protocols.registry import register_protocol
 from .base import MatchingProtocol
 from ...protocols.base import Effect, Pair
 from ...protocols.context import ProtocolContext
-from ...systems.matching import find_all_feasible_trades
+from ...systems.trade_evaluation import TradePotentialEvaluator, QuoteBasedTradeEvaluator
 from ...core.agent import Agent
 
 
@@ -62,6 +62,15 @@ class GreedySurplusMatching(MatchingProtocol):
         - Not strategy-proof
         - Useful for efficiency benchmarks
     """
+    
+    def __init__(self, evaluator: TradePotentialEvaluator | None = None):
+        """
+        Initialize greedy surplus matching.
+        
+        Args:
+            evaluator: Trade potential evaluator (default: QuoteBasedTradeEvaluator)
+        """
+        self.evaluator = evaluator or QuoteBasedTradeEvaluator()
     
     @property
     def name(self) -> str:
@@ -182,24 +191,14 @@ class GreedySurplusMatching(MatchingProtocol):
         agent_a = self._build_agent_from_context(world, agent_a_id)
         agent_b = self._build_agent_from_context(world, agent_b_id)
         
-        # Find all feasible trades
-        feasible_trades = find_all_feasible_trades(
-            agent_a, agent_b, {}, epsilon
-        )
+        # Use lightweight evaluation instead of full trade discovery
+        potential = self.evaluator.evaluate_pair_potential(agent_a, agent_b, {})
         
-        if not feasible_trades:
+        if not potential.is_feasible:
             return (0.0, 0.0, 0)
         
-        # Find trade with maximum total surplus
-        best_total_surplus = 0.0
-        for pair_name, trade_tuple in feasible_trades:
-            # trade_tuple = (dA_i, dB_i, dA_j, dB_j, surplus_i, surplus_j)
-            surplus_a = trade_tuple[4]
-            surplus_b = trade_tuple[5]
-            total_surplus = surplus_a + surplus_b
-            
-            if total_surplus > best_total_surplus:
-                best_total_surplus = total_surplus
+        # Use estimated surplus for pairing decision
+        best_total_surplus = potential.estimated_surplus
         
         # Calculate distance
         view_a = world.all_agent_views[agent_a_id]

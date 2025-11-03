@@ -57,7 +57,7 @@ class TestProtocolYAMLConfiguration:
         # Verify protocols
         assert sim.search_protocol.name == "random_walk"
         assert sim.matching_protocol.name == "legacy_three_pass"
-        assert sim.bargaining_protocol.name == "legacy_compensating_block"
+        assert sim.bargaining_protocol.name == "compensating_block"
     
     def test_cli_override_yaml_protocol(self):
         """CLI arguments override YAML protocol configuration."""
@@ -86,7 +86,7 @@ class TestProtocolYAMLConfiguration:
         sim = Simulation(scenario, seed=42)
         assert sim.search_protocol.name == "legacy_distance_discounted"
         assert sim.matching_protocol.name == "legacy_three_pass"
-        assert sim.bargaining_protocol.name == "legacy_compensating_block"
+        assert sim.bargaining_protocol.name == "compensating_block"
 
 
 class TestProtocolValidation:
