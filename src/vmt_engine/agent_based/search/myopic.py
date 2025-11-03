@@ -27,7 +27,7 @@ Version: 2025.10.28 (Phase 2b - Pedagogical Protocol)
 from typing import Any
 from ...protocols.registry import register_protocol
 from .base import SearchProtocol
-from ...protocols.base import Effect, SetTarget
+from ...protocols.base import Effect, SetTarget, ClaimResource
 from ...protocols.context import WorldView
 from ...systems.matching import compute_surplus, estimate_money_aware_surplus
 
@@ -278,8 +278,6 @@ class MyopicSearch(SearchProtocol):
     
     def _select_forage_target(self, world: WorldView) -> list[Effect]:
         """Select best forage target within vision radius."""
-        from ..base import ClaimResource
-        
         forage_prefs = self._build_forage_preferences(world, vision_radius=1)
         
         if not forage_prefs:
