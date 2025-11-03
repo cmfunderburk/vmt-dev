@@ -1,3 +1,5 @@
+# OUTDATED -- NEEDS A THOROUGH REWRITE
+# SEE docs/planning_thinking_etc/BIGGEST_PICTURE/opus_plan for updated thinking
 # VMT - Visualizing Microeconomic Theory
 
 **A spatial agent-based simulation investigating how market phenomena emerge from micro-level interactions.**

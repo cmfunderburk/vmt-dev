@@ -1,3 +1,5 @@
+# OUTDATED -- NEEDS A THOROUGH REWRITE
+# SEE docs/planning_thinking_etc/BIGGEST_PICTURE/opus_plan for updated thinking
 # VMT Technical Manual
 
 This document provides a detailed technical overview of the Visualizing Microeconomic Theory (VMT) engine. It is intended for developers, researchers, and users who wish to understand the internal mechanics of the simulation.

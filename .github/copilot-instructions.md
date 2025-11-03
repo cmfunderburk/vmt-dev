@@ -1,412 +1,341 @@
-# VMT (Visualizing Microeconomic Theory) - AI Agent Instructions
+# VMT (Visualizing Microeconomic Theory) - AI Agent Guide
 
-## Quick Start for AI Agents
+## Project Overview
 
-**New to this codebase?** Read in this order:
-1. This file (high-level patterns and workflows)
-2. `docs/BIGGEST_PICTURE/vision_and_architecture.md` (research agenda, Phase 2.5-4 sections)
-3. `docs/2_technical_manual.md` (7-phase tick cycle, economic logic)
-4. `.cursor/rules/*.mdc` (critical architecture rules)
+VMT is a spatial agent-based simulation platform for studying microeconomic exchange mechanisms. Agents with heterogeneous preferences forage for resources and trade through configurable institutional rules (protocols for search, matching, and bargaining). The platform demonstrates how different market institutions produce different outcomes—prices and markets are emergent phenomena, not assumptions.
 
-**Key Commands**:
-- Run tests: `bash -c "source venv/bin/activate && python -m pytest tests/test_*.py -v"`
-- Run simulation: `python main.py scenarios/demos/minimal_2agent.yaml 42`
-- View results: `python view_logs.py`
+**Core Philosophy**: Markets don't "just happen"—they require explicit institutional mechanisms. VMT makes these mechanisms swappable and comparable.
 
-**Current Focus**: Phase 2.5 - Scenario curation and behavioral validation (see below)
+## Architecture: The Big Picture
 
----
+### Protocol-Driven Design
 
-## Project Mission & Philosophy
+The entire simulation is built around **swappable protocols** that define institutional rules:
 
-VMT is a **spatial agent-based simulation** for studying how market phenomena **emerge** from micro-level interactions. Unlike traditional economics that assumes equilibrium prices or centralized coordination, VMT demonstrates when/how markets form through **explicit agent behaviors and institutional mechanisms**: search protocols, matching algorithms, and bargaining rules.
+- **Search Protocols** (`src/vmt_engine/agent_based/search/`): How agents find trading partners (e.g., `myopic`, `random_walk`, `legacy`)
+- **Matching Protocols** (`src/vmt_engine/game_theory/matching/`): How pairs form (e.g., `greedy`, `random`, `legacy`)
+- **Bargaining Protocols** (`src/vmt_engine/game_theory/bargaining/`): How prices are negotiated (e.g., `split_difference`, `take_it_or_leave_it`, `legacy`)
 
-**Core Principle**: No external calculus. Markets, prices, and money must emerge from agent interactions—never imposed from above.
+**Why domain-organized**: Search is agent-based behavior; matching and bargaining are game-theoretic mechanisms. This organization reflects the conceptual distinction.
 
-## Current Phase: Scenario Curation & Behavioral Validation (Phase 2.5)
+### Effect-Based Execution
 
-**Priority**: Before implementing new protocols or information mechanisms, validate existing bilateral exchange behavior through carefully designed scenarios.
-
-**Activities**:
-- Design scenarios that isolate specific behavioral patterns
-- Document actual vs expected protocol outcomes
-- Build empirical understanding of search, matching, and bargaining interactions
-- Create pedagogical examples demonstrating core mechanisms
-
-**Why First**: Can't build extensions on unstable foundation. Must understand current behavior deeply before adding complexity.
-
-## Critical Architecture: Protocol → Effect → State
-
-**This is THE fundamental pattern. NO EXCEPTIONS.**
-
-### The Flow (7-Phase Tick Cycle)
-```
-1. Perception    → Agents observe frozen WorldView snapshot
-2. Decision      → Protocols generate Effects (search + matching)
-3. Movement      → MoveEffect changes agent positions  
-4. Trade         → Paired agents negotiate (bargaining protocol returns TradeEffect)
-5. Foraging      → HarvestEffect claims resources
-6. Regeneration  → Resources regrow
-7. Housekeeping  → Quote refresh, telemetry, cleanup
-```
-
-### Protocol Pattern
+Protocols return **declarative Effects** (not mutating state directly):
 ```python
-# CORRECT: Protocol returns declarative Effects
-class MySearchProtocol(SearchProtocol):
-    def execute(self, context: ProtocolContext) -> list[Effect]:
-        return [SetTargetEffect(agent_id=1, target_id=2)]
-
-# WRONG: Never mutate state directly
-# agent.target = other_agent  # ❌ FORBIDDEN
-# agent.position = (5,5)      # ❌ FORBIDDEN
+# Protocols produce effects
+effects = [
+    Pair(agent_i=1, agent_j=2),
+    Trade(agent_i=1, agent_j=2, delta_A=5, delta_B=3),
+    Move(agent_id=1, new_pos=(10, 15))
+]
+# Effects are applied by systems to maintain determinism
 ```
 
-**Key files**: 
-- `src/vmt_engine/protocols/base.py` - All Effect types
-- `src/vmt_engine/systems/` - Phase execution logic
-- `src/vmt_engine/core/agent.py` - Agent state (read-only in protocols)
+This separation ensures determinism and enables protocol testing without full simulation context.
 
-## Determinism is Non-Negotiable
+### The 7-Phase Tick Cycle
 
-Same seed → **bit-identical results**. Required for scientific validity.
+**CRITICAL**: Every tick executes exactly 7 phases in this order:
 
-### Mandatory Rules
-1. **RNG**: Use ONLY `self.rng` (agents) or `world.rng` (engine). Never `random.random()`, `numpy.random`, time-based sources
-2. **Iteration Order**: ALWAYS sort before iterating: `for agent in sorted(agents, key=lambda a: a.id)`
-3. **No Unordered Collections**: Never iterate dicts/sets without sorting keys first
-4. **Effects Execute in Order**: All state changes via Effect objects applied deterministically
+1. **Perception**: Build immutable WorldView snapshots for each agent
+2. **Decision**: Three-pass pairing algorithm + target selection
+3. **Movement**: Manhattan movement toward targets with deterministic tie-breaking
+4. **Trade**: Paired agents within interaction radius attempt trades
+5. **Foraging**: Unpaired agents harvest resources
+6. **Regeneration**: Resources respawn with cooldowns
+7. **Housekeeping**: Quote refresh, pairing integrity checks, telemetry logging
 
-### Test Pattern - ALWAYS Use Virtual Environment
+**Why this matters**: Code must never violate phase ordering. Agents use frozen snapshots during decision-making to prevent race conditions.
+
+## Critical Development Patterns
+
+### Integer Math and Rounding
+
+All goods, positions, and inventories are **integers**. Prices are floats, but trade quantities must be integers.
+
+**Critical rounding rule**: Use **round-half-up** for price-to-quantity conversion:
+```python
+delta_B = int(np.floor(price * delta_A + 0.5))  # Round-half-up
+```
+
+Why: Ensures consistency in compensating block search across different price paths.
+
+### The Three-Pass Pairing Algorithm
+
+Agent pairing uses a sophisticated three-pass system (implemented in `src/vmt_engine/systems/decision.py`):
+
+1. **Pass 1**: Each agent ranks visible neighbors by **distance-discounted surplus** = `surplus × β^distance`
+2. **Pass 2**: Mutual consent pairing (both agents rank each other as top choice)
+3. **Pass 3**: Greedy surplus matching for unpaired agents
+
+**Why this matters**: Once paired, agents maintain **exclusive commitment** across ticks—they ignore other opportunities until trade fails or mode changes. This is not greedy reselection each tick.
+
+**Telemetry captures**: Preference lists (top 3 by default), pairing/unpairing events, and commitment state.
+
+### WorldView Pattern
+
+Protocols receive **immutable snapshots** via `WorldView` objects—never direct access to simulation state:
+
+```python
+@dataclass
+class WorldView:
+    tick: int
+    agents: dict[int, AgentView]  # Read-only agent data
+    resources: dict[Position, ResourceView]
+    spatial_index: SpatialIndex
+    # No methods that mutate state
+```
+
+**Why**: Prevents protocols from creating side effects, ensures determinism, enables protocol unit testing.
+
+## Developer Workflows
+
+### Environment Setup
+
+**ALWAYS activate the virtual environment before any Python command**:
 ```bash
-# CORRECT - All Python commands
-bash -c "source venv/bin/activate && python -m pytest tests/test_*.py -v"
-
-# WRONG - Never run outside venv or without bash -c
-# python -m pytest  # ❌ Shell may not be bash, venv may not activate
+source venv/bin/activate  # macOS/Linux
+# venv\Scripts\activate  # Windows
 ```
 
-**Why**: Non-bash shells may not properly activate venv with `source`. `bash -c` ensures correct execution.
+**Dependencies**: pygame, numpy, pyyaml, pytest, PyQt6 (see `requirements.txt`)
 
-## Pure Barter Economy (Money System Removed - Oct 2025)
+### Running Simulations
 
-**Current State**: VMT is a **pure barter economy**. All trades are direct A↔B good-for-good exchanges.
+```bash
+# GUI launcher (recommended for exploration)
+python launcher.py
 
-**What Was Removed**:
-- `Inventory.M` field (money)
-- `Agent.lambda_money`, `money_utility_form` parameters
-- Money-aware utility functions (`u_total()`, `mu_money()`)
-- Money quotes (A↔M, B↔M)
-- Exchange regimes (`money_only`, `mixed`)
+# CLI with visualization
+python main.py scenarios/demos/minimal_2agent.yaml 42
 
-**What Remains**:
-- Two goods: A and B
-- Utility functions over goods only: `u(A, B)` → float
-- Barter quotes: `ask_A_in_B`, `bid_A_in_B`, etc.
-- Bilateral negotiation for A↔B exchanges
+# Headless (programmatic)
+python scripts/run_headless.py
+```
 
-**Future**: Money will be **re-introduced as emergent phenomenon** (Phase 4), not imposed through utility functions.
+### Testing
 
-## Research Agenda (Updated Oct 2025)
+```bash
+# Full suite (316+ tests)
+pytest
 
-### Phase 1: Baseline Protocols ✅ COMPLETE
-- ✅ Legacy protocols: Distance-discounted search, three-pass matching, compensating block bargaining
-- ✅ Effect-based architecture working
-- ✅ Pure barter trading (A↔B only)
+# Specific test file
+pytest tests/test_barter_integration.py
 
-### Phase 2a: Alternative Bilateral Protocols 🔜 PLANNED
-- Simple baselines: Random walk search, random matching, split-the-difference bargaining
-- Goal: Comparison of bilateral mechanisms, establish efficiency/fairness baselines
+# Specific test function
+pytest tests/test_protocol_registry.py::test_protocol_registration
 
-### Phase 2.5: Scenario Curation ⭐ **CURRENT PRIORITY**
-- Manually design scenarios that validate/demonstrate protocol behavior
-- Build empirical understanding before extending architecture
-- Create pedagogical examples
-- Document actual behavioral patterns
+# Verbose with output
+pytest -v -s
+```
 
-### Phase 3: Market Information and Coordination 🎯 NEXT
-**Philosophy**: Markets are **information aggregators** that enhance bilateral trading, not replacements for it.
+**Test organization**: Tests are named `test_<feature>.py`. Helper fixtures in `tests/helpers/`.
 
-**NOT implementing**: Walrasian auctioneer, imposed clearing prices, external equilibrium calculation
+**Testing patterns**:
+- Integration tests: Load YAML scenario, run simulation, check trade counts and final inventories
+- Unit tests: Directly test protocol logic with mock WorldView objects
 
-**INSTEAD implementing**:
-- Information hubs: Agents observe aggregate price signals from recent trades
-- Market-informed bargaining: Use market data to inform bilateral negotiations
-- Price broadcasting: Disseminate transaction history without imposing coordination
-- Convergence study: When do informed bilateral negotiations produce uniform prices?
+### Telemetry and Debugging
 
-**Goal**: Study how information affects decentralized price discovery through actual bilateral trading.
+Simulations log comprehensive telemetry to `./logs/telemetry.db` (SQLite):
 
-### Phase 4: Commodity Money Emergence 🔮 FUTURE
-**Philosophy**: Money should **emerge endogenously** from trading patterns, not be valued directly in utility functions.
+**Key tables**:
+- `simulation_runs`: Run metadata and configuration
+- `agent_snapshots`: Per-tick agent state (position, inventory, utility, quotes)
+- `trades`: Successful trades with quantities and surplus decomposition
+- `pairings`: Pairing/unpairing events with reason codes
+- `preferences`: Agent preference rankings (top 3 by default)
+- `decisions`: Decision outcomes with pairing status
+- `tick_states`: Per-tick mode and regime state
 
-**Mechanisms**:
-- Indirect exchange: Enable multi-step trades (A→B→C paths)
-- Marketability differences: Some goods easier to trade than others
-- Observation: Agents discover which goods function as better intermediaries
-- Salability premium: Goods with higher resale potential become money-like
+**Viewing logs**:
+```bash
+python view_logs.py  # PyQt6 GUI for exploring telemetry
+```
 
-**Goal**: Demonstrate how money emerges from the "double coincidence of wants" problem.
+**Programmatic access**:
+```python
+import sqlite3
+conn = sqlite3.connect('./logs/telemetry.db')
+cursor = conn.execute("SELECT * FROM trades WHERE run_id = ? ORDER BY tick", (run_id,))
+```
 
-### Phase 5: Advanced Mechanisms 📚 LONG-TERM
-- Memory-based search (learning)
-- Stable matching (Gale-Shapley)
-- Nash bargaining
-- Rubinstein alternating offers
-- Network formation
+## Scenario Configuration
 
-## Protocol System
+Scenarios are defined in YAML files in `scenarios/` directory:
 
-### Protocol Registry
-Protocols auto-discovered via `src/vmt_engine/protocols/registry.py`:
-- Scans `protocols/{search,matching,bargaining}/` subdirectories
-- YAML scenarios specify by name: `search_protocol: "myopic"`
-- Test helper: `make_sim(scenario, search="random_walk", matching="greedy_surplus")`
-
-### Implementing New Protocols
-1. Extend base class: `SearchProtocol`, `MatchingProtocol`, or `BargainingProtocol`
-2. Implement `execute(context: ProtocolContext) -> list[Effect]`
-3. Place in appropriate subdirectory (auto-registered)
-4. **Add docstring explaining economic mechanism** (not just code)
-5. Write tests using `tests/helpers/builders.py`
-
-**Example files**:
-- `src/vmt_engine/protocols/search/myopic.py` - Greedy best-partner search
-- `src/vmt_engine/protocols/matching/greedy.py` - Highest surplus matching
-- `src/vmt_engine/protocols/bargaining/split_difference.py` - Equal surplus division
-
-## Scenario Files (YAML Configuration)
-
-### Directory Structure
-- `scenarios/` - Root-level scenarios (foundational examples)
-- `scenarios/demos/` - Curated pedagogical scenarios (start here)
-- `scenarios/curated/` - Research scenarios
-- `scenarios/test/` - Test-specific scenarios
-- `docs/structures/` - Templates and schema reference
-
-### Minimal Barter Scenario
+**Key structure**:
 ```yaml
-schema_version: 1
-name: "Simple Barter"
-N: 10                    # Grid size (10×10)
-agents: 20               # Number of agents
+grid_size: 32
+num_agents: 10
+max_ticks: 100
 
+# Protocol selection (institutional rules)
+search_protocol: "myopic"              # or "random_walk", "legacy"
+matching_protocol: "greedy_surplus"     # or "random", "legacy"
+bargaining_protocol: "split_difference" # or "take_it_or_leave_it", "legacy"
+
+# Agent configuration
 initial_inventories:
-  A: [10, 5, 8, ...]     # Per-agent inventories (goods only)
-  B: [5, 10, 6, ...]
+  A: {uniform_int: [5, 15]}
+  B: {uniform_int: [5, 15]}
 
 utilities:
   mix:
-    - type: ces          # CES, linear, quadratic, translog, stone_geary
-      weight: 0.6
+    - type: ces
+      weight: 0.7
       params: {rho: -0.5, wA: 1.0, wB: 1.0}
     - type: linear
-      weight: 0.4
-      params: {vA: 1.0, vB: 1.2}
+      weight: 0.3
+      params: {vA: 1.0, vB: 1.5}
 
 params:
-  vision_radius: 10
-  interaction_radius: 1
-  dA_max: 5              # Max trade size to search
-  spread: 0.0            # Quote spread (0 = no spread)
-  
-# Optional protocol overrides
-search_protocol: "myopic"
-matching_protocol: "greedy_surplus"
-bargaining_protocol: "split_difference"
+  spread: 0.0                  # Bid-ask spread (0 = true reservation prices)
+  trade_cooldown_ticks: 5      # Cooldown after failed trade
+  beta: 0.95                   # Time discount factor
+  # ... see docs/structures/ for complete reference
 ```
 
-**Schema**: `src/scenarios/schema.py` for all available parameters.
-**Loader**: `src/scenarios/loader.py` - `load_scenario(path)` function for programmatic use.
+**Templates**: `docs/structures/minimal_working_example.yaml` and `comprehensive_scenario_template.yaml`
 
-## Running Simulations
+## Code Organization Quick Reference
 
-### GUI (Recommended for Exploration)
-```bash
-python launcher.py
+```
+src/vmt_engine/
+├── core/                    # Primitives: Agent, Grid, State, Position
+├── econ/                    # Utility functions (CES, Linear, Quadratic, Translog, Stone-Geary)
+├── protocols/               # Protocol system infrastructure
+│   ├── base.py             # Effect types, ProtocolBase
+│   ├── context.py          # WorldView, ProtocolContext
+│   └── registry.py         # Protocol registration and lookup
+├── agent_based/search/      # Search protocols (target selection)
+├── game_theory/
+│   ├── matching/           # Matching protocols (pairing)
+│   └── bargaining/         # Bargaining protocols (price negotiation)
+├── systems/                # Phase implementations (perception, decision, movement, etc.)
+└── simulation.py           # Main simulation orchestration
+
+src/scenarios/
+├── schema.py               # YAML schema validation
+└── loader.py               # Scenario loading logic
+
+src/telemetry/
+├── database.py             # SQLite schema
+├── db_loggers.py           # Logging manager
+└── config.py               # Logging configuration
+
+scenarios/
+├── demos/                  # Example scenarios
+├── baseline/               # Benchmark scenarios
+└── test/                   # Test scenarios
+
+tests/                      # 316+ tests covering all systems
+scripts/                    # Analysis tools (analyze_baseline.py, etc.)
+docs/                       # Documentation
+└── planning_thinking_etc/BIGGEST_PICTURE/opus_plan/  # Updated planning docs
 ```
 
-### CLI (Reproducible Runs)
-```bash
-python main.py scenarios/demos/minimal_2agent.yaml 42  # seed=42
-```
+## Common Tasks
 
-### Headless (Analysis/Testing)
+### Adding a New Protocol
+
+1. Create protocol file in appropriate domain directory:
+   - Search → `src/vmt_engine/agent_based/search/my_search.py`
+   - Matching → `src/vmt_engine/game_theory/matching/my_matching.py`
+   - Bargaining → `src/vmt_engine/game_theory/bargaining/my_bargaining.py`
+
+2. Inherit from base class and use `@register_protocol` decorator:
 ```python
-from scenarios.loader import load_scenario
-from vmt_engine.simulation import Simulation
+from vmt_engine.protocols import ProtocolBase, register_protocol, Effect
 
-scenario = load_scenario("scenarios/demos/minimal_2agent.yaml")
-sim = Simulation(scenario, seed=42)
-sim.run(max_ticks=100)
+@register_protocol("my_search", "search")
+class MySearchProtocol(ProtocolBase):
+    def execute(self, context: ProtocolContext) -> list[Effect]:
+        # Return effects, don't mutate state
+        return [SetTarget(agent_id=context.agent_id, target_pos=(x, y))]
 ```
 
-### Viewing Results
-```bash
-python view_logs.py  # GUI viewer for telemetry databases
-```
+3. Add import to module's `__init__.py` to trigger registration
+4. Write tests in `tests/test_my_search.py`
+5. Add protocol to scenario YAML: `search_protocol: "my_search"`
 
-**Telemetry System**: All runs automatically log to SQLite databases in `logs/` directory:
-- Agent snapshots (position, inventory, utility)
-- Trade events (price, quantity, surplus)
-- Pairing events and preference rankings
-- Resource states and regeneration
+### Reading Code: Start Here
 
-**Analysis Scripts**: `scripts/` directory contains tools for analyzing simulation results:
-- `analyze_trade_distribution.py` - Price and volume analysis
-- `compare_telemetry_snapshots.py` - Compare multiple runs
-- `benchmark_performance.py` - Performance profiling
+1. **Understand the tick cycle**: `src/vmt_engine/README.md` (definitive reference)
+2. **See protocols in action**: `src/vmt_engine/agent_based/search/myopic.py` (well-documented example)
+3. **Understand effects**: `src/vmt_engine/protocols/base.py` (effect types)
+4. **Study decision-making**: `src/vmt_engine/systems/decision.py` (three-pass algorithm)
+5. **Examine trade logic**: `src/vmt_engine/systems/matching.py` (compensating block search)
 
-## Test Suite (300+ Tests)
+### Debugging Common Issues
 
-### Test Structure
-- `tests/test_*.py` - Individual test files
-- `tests/helpers/` - Shared utilities
-  - `builders.py` - `build_scenario()`, `make_sim()` helpers (essential for all tests)
-  - `run_helpers.py` - `run_ticks()` execution helpers
-  - `assertions.py` - Domain-specific assertions
+**Simulation not deterministic**:
+- Check agent iteration order (must be sorted by ID)
+- Verify no global random state usage
+- Confirm quotes aren't being refreshed mid-tick
 
-### Test Pattern
-```python
-from tests.helpers import builders, run_helpers
+**Trades not executing**:
+- Check agents are within `interaction_radius`
+- Verify agents are paired (check `agent.paired_with_id`)
+- Confirm no active trade cooldowns (check `agent.trade_cooldowns`)
+- Examine quote overlaps (bid must exceed ask)
 
-def test_protocol_behavior():
-    # Always use builders.build_scenario() - sets correct defaults
-    scenario = builders.build_scenario(N=10, agents=4)
-    
-    # make_sim() handles protocol overrides by name
-    sim = builders.make_sim(scenario, seed=42, matching="greedy_surplus")
-    
-    # run_ticks() executes simulation
-    run_helpers.run_ticks(sim, 10)
-    
-    # Verify behavior
-    assert sim.tick == 10
-    assert len([a for a in sim.agents if a.target_id is not None]) >= 0
-```
+**Protocol not being used**:
+- Verify protocol is imported in module's `__init__.py` to trigger `@register_protocol`
+- Check protocol name in YAML matches registered name
+- Run `list_all_protocols()` to confirm registration
 
-### Running Tests
-```bash
-# Single test file
-bash -c "source venv/bin/activate && python -m pytest tests/test_greedy_surplus_matching.py -v"
+## Project-Specific Conventions
 
-# All tests
-bash -c "source venv/bin/activate && python -m pytest tests/ -v"
+### Pure Barter Economy
 
-# With coverage
-bash -c "source venv/bin/activate && python -m pytest tests/ --cov=src/vmt_engine --cov-report=html"
+VMT currently only supports **A↔B direct barter**. No money, no centralized markets (yet—these are planned for Stage 3).
 
-# Specific test method
-bash -c "source venv/bin/activate && python -m pytest tests/test_greedy_surplus_matching.py::TestGreedySurplusMatchingInterface::test_has_required_properties -v"
-```
+**Implications**:
+- All trades are bilateral agent-to-agent exchanges
+- Trade matching logic is in `src/vmt_engine/systems/matching.py:find_best_trade()`
+- Quote keys: `"ask_A_in_B"`, `"bid_A_in_B"`, `"p_min_A_in_B"`, etc.
 
-### Test Conventions
-- **Never construct Simulation directly** - always use `builders.make_sim()`
-- **Use complementary inventories** - `build_scenario()` creates alternating A-rich/B-rich agents
-- **Check determinism** - run twice with same seed, verify identical outcomes
-- **Test protocols in isolation** - override specific protocols while keeping others default
+### Resource Claiming System
 
-## Documentation Structure
+Enabled by default to reduce clustering:
+- Agents "claim" forage targets during Decision phase
+- Other agents see claimed resources as unavailable
+- Claims expire when agent reaches resource or changes target
+- Only first agent (by ID) harvests per tick if `enforce_single_harvester=True`
 
-**Essential Reading**:
-- `README.md` - Quick start, overview
-- `docs/BIGGEST_PICTURE/vision_and_architecture.md` - Strategic vision, research agenda (READ Phase 2.5-4 sections!)
-- `docs/2_technical_manual.md` - 7-phase cycle, economic logic, current protocols
-- `.cursor/rules/*.mdc` - Architecture rules (determinism, test execution, planning discipline)
+**Why**: Without claiming, agents cluster inefficiently on high-value resources.
 
-**Current Development**:
-- `docs/CURRENT/` - Active development notes, protocol status
-- `docs/market_brainstorms/` - Phase 3 design thinking (information hubs, price signals)
-- `docs/CURRENT/critical/` - Deep architectural analyses
+### Quote Stability Within Tick
 
-**Reference**:
-- `docs/1_project_overview.md` - Feature documentation
-- `docs/structures/` - Scenario templates and parameter reference
+Agent quotes are **frozen during the tick** and only refreshed in Housekeeping phase:
+- Agents see consistent neighbor quotes during decision-making
+- Quote updates happen only when `agent.inventory_changed=True` flag is set
+- This prevents mid-tick inconsistencies
 
-## Common Workflows
+### Commitment Model
 
-### Adding a New Bilateral Protocol (Phase 2a/2b)
-1. Create file: `src/vmt_engine/protocols/{search|matching|bargaining}/my_protocol.py`
-2. Extend base class, implement `execute()` returning `list[Effect]`
-3. Add docstring explaining **economic mechanism** (e.g., "Maximizes total surplus" or "Ensures stability")
-4. Write tests in `tests/test_my_protocol.py` using `builders` helpers
-5. Run: `bash -c "source venv/bin/activate && python -m pytest tests/test_my_protocol.py -v"`
-6. Update protocol registry documentation if needed
+Paired agents maintain **exclusive commitment** until unpaired:
+- Paired agents ignore forage opportunities
+- Paired agents don't re-evaluate partner selection
+- Successful trades maintain pairing (agents attempt another trade next tick)
+- Failed trades unpair and set mutual cooldown
 
-**Safe for implementation**: Well-understood, extends existing interfaces.
+**Why**: Demonstrates opportunity cost of commitment and iterative bilateral exchange.
 
-### Creating a Curated Scenario (Phase 2.5) ⭐ **CURRENT FOCUS**
-1. Copy template from `scenarios/demos/` or use `docs/structures/minimal_working_example.yaml`
-2. Add pedagogical comment header explaining learning objective
-3. Design **complementary inventories** to create trading opportunities (e.g., agent 0 has excess A, wants B; agent 1 opposite)
-4. Choose utility functions that produce clear incentives
-5. Test: `python main.py scenarios/my_scenario.yaml 42`
-6. Document expected behavior vs actual behavior
-7. Iterate until scenario reliably demonstrates intended pattern
+## Important Documentation
 
-**Purpose**: Build empirical foundation, understand protocol behavior, create teaching materials.
+- **Type specifications**: `docs/4_typing_overview.md`
+- **Technical manual**: `docs/2_technical_manual.md` (OUTDATED warning—check opus_plan docs)
+- **Updated planning**: `docs/planning_thinking_etc/BIGGEST_PICTURE/opus_plan/`
+- **Scenario templates**: `docs/structures/`
 
-### Debugging Determinism Issues
-1. Check all RNG calls use `self.rng` / `world.rng` (grep for `random.` or `np.random`)
-2. Verify iteration order: `sorted(agents, key=lambda a: a.id)` before any loops
-3. Confirm Effects used for all state changes (no direct mutations)
-4. Run twice with same seed, compare outputs
-5. Check telemetry databases for divergence point
+## Planning Context
 
-### Planning Phase 3 Work (Market Information) 🚧
-**CRITICAL**: Phase 3 requires architectural design discussion BEFORE implementation.
+Current development follows staged roadmap in `docs/planning_thinking_etc/BIGGEST_PICTURE/opus_plan/`:
+- **Stage 0** (Complete): Protocol architecture restructure
+- **Stage 1-2** (In Progress): Behavioral baseline analysis and protocol comparison infrastructure
+- **Stage 3** (Planned): Centralized market mechanisms (Walrasian auctioneer, double auctions)
 
-**Questions to answer first**:
-- How do agents observe aggregate price information? New fields in `WorldView`?
-- Where in 7-phase cycle does information aggregation occur? New system?
-- How does information affect bilateral bargaining? New `ProtocolContext` data?
-- What's the pedagogical story: "Information enhances coordination" not "Markets impose equilibrium"
-
-**Pattern**: Design → Discuss → Document → Implement (in that order).
-
-## Code Style Conventions
-
-- **Type hints**: Required for public APIs, protocols, Effect classes
-- **Docstrings**: All protocols must explain economic mechanism, not just interface
-- **Immutability**: `WorldView`/`ProtocolContext` are read-only snapshots
-- **Naming**: `dA_max` (trade size), `N` (grid size), `beta` (discount factor)
-- **Tests**: Use `builders` helpers, never raw `Simulation` construction
-- **Comments**: Explain "why" (economic intuition), not "what" (code is self-documenting)
-
-## Critical Rules: Planning Before Implementation
-
-**When working on complex features (Phase 3+, architectural changes)**:
-1. ✅ **DO**: Discuss design, clarify requirements, document approach
-2. ✅ **DO**: Ask questions about integration with 7-phase cycle
-3. ✅ **DO**: Explain tradeoffs and alternatives
-4. ❌ **DON'T**: Make code changes until user says "start implementing"
-5. ❌ **DON'T**: Assume you know the "right" solution without discussion
-
-**Rationale**: Complex features often have hidden architectural implications. Better to discover issues during design than after implementation.
-
-## Open Research Questions (Guide Discussion, Don't "Solve")
-
-### Phase 3: Information Mechanisms
-- How should price information be represented? Time-weighted average? Last N trades? Spatial distribution?
-- Should information be global (all agents see same data) or local (distance-based)?
-- How does information affect bargaining? Better BATNAs? Tighter spreads? Focal points?
-- Can we avoid creating "magic" information channels that break spatial realism?
-
-### Phase 4: Money Emergence
-- How to model "indirect exchange" in a tick-based system? Multi-tick trading chains?
-- What makes a good "salable"? Objective metric or subjective perception?
-- Should agents "learn" which goods are money-like? How to represent that knowledge?
-- How does double coincidence of wants actually create trading frictions in the simulation?
-
-**For AI Agents**: When user asks about these topics, lead with questions, explore alternatives, discuss tradeoffs. Design before coding.
-
----
-
-**Quick Reference Files**:
-- Architecture: `src/vmt_engine/protocols/base.py` (Effects), `src/vmt_engine/systems/` (phases)
-- Core Types: `src/vmt_engine/core/agent.py`, `src/vmt_engine/core/grid.py`
-- Scenarios: `src/scenarios/schema.py`, `scenarios/demos/*.yaml`
-- Testing: `tests/helpers/builders.py`, `pytest.ini`
-- Vision: `docs/BIGGEST_PICTURE/vision_and_architecture.md` (Phases 2.5-4)
-- Rules: `.cursor/rules/*.mdc` (architecture, test execution, determinism)
+**Key principle**: Don't implement complex features until explicitly told to start—focus on planning, design clarity, and understanding current behavior first.
 

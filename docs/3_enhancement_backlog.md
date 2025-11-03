@@ -1,3 +1,4 @@
+# OUTDATED -- NEEDS A THOROUGH REWRITE
 # With the exception of Scenario Loader Information Pane -- most of the ideas currently contained were "seeded" by Claude Opus, which went a bit further with a prompt than I expected. Some commentary by me (cmf) is included marked by > cmf: in the text.
 ---
 # VMT Enhancement Backlog
