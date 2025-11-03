@@ -144,7 +144,7 @@ class Simulation:
         
         # Track initial state for post-run summaries
         from decimal import Decimal
-        self._start_inventory: dict[int, dict[str, int]] = {}
+        self._start_inventory: dict[int, dict[str, Decimal]] = {}
         self._start_utility: dict[int, Optional[float]] = {}
         self._gathered_resources: dict[int, dict[str, Decimal]] = {}
         self._trades_made: dict[int, int] = {}
@@ -152,8 +152,8 @@ class Simulation:
 
         for agent in self.agents:
             self._start_inventory[agent.id] = {
-                "A": int(agent.inventory.A),
-                "B": int(agent.inventory.B),
+                "A": agent.inventory.A,  # Store as Decimal
+                "B": agent.inventory.B,  # Store as Decimal
             }
 
             if agent.utility is not None:
@@ -371,6 +371,13 @@ class Simulation:
         if getattr(self, "_summary_printed", False):
             return
 
+        def fmt_decimal(value: Decimal) -> str:
+            """Format Decimal value without trailing zeros."""
+            s = f"{value:.10f}"
+            if '.' in s:
+                s = s.rstrip('0').rstrip('.')
+            return s
+
         def fmt_signed_int(value: int) -> str:
             if value > 0:
                 return f"+{value}"
@@ -386,14 +393,19 @@ class Simulation:
         print(f"\nPost-sim summary (ticks={self.tick})")
 
         for agent in sorted(self.agents, key=lambda a: a.id):
-            start_inv = self._start_inventory.get(agent.id, {"A": 0, "B": 0})
-            end_inv = {
-                "A": int(agent.inventory.A),
-                "B": int(agent.inventory.B),
-            }
-
-            delta_a = end_inv["A"] - start_inv["A"]
-            delta_b = end_inv["B"] - start_inv["B"]
+            start_inv = self._start_inventory.get(agent.id, {"A": Decimal('0'), "B": Decimal('0')})
+            # Format end inventory as decimals without trailing zeros
+            end_inv_A = fmt_decimal(agent.inventory.A)
+            end_inv_B = fmt_decimal(agent.inventory.B)
+            
+            # Calculate deltas using Decimal values
+            # Ensure start values are Decimal (convert if they were stored as int)
+            start_A_dec = Decimal(str(start_inv["A"])) if not isinstance(start_inv["A"], Decimal) else start_inv["A"]
+            start_B_dec = Decimal(str(start_inv["B"])) if not isinstance(start_inv["B"], Decimal) else start_inv["B"]
+            delta_a_dec = agent.inventory.A - start_A_dec
+            delta_b_dec = agent.inventory.B - start_B_dec
+            delta_a = fmt_decimal(delta_a_dec)
+            delta_b = fmt_decimal(delta_b_dec)
 
             start_util = self._start_utility.get(agent.id)
             end_util: Optional[float] = None
@@ -413,12 +425,22 @@ class Simulation:
             gathered = self._gathered_resources.get(agent.id, {"A": Decimal('0'), "B": Decimal('0')})
             trades = self._trades_made.get(agent.id, 0)
 
+            # Format start inventory for display
+            start_A_str = fmt_decimal(start_A_dec)
+            start_B_str = fmt_decimal(start_B_dec)
+            
+            # Format delta with sign
+            delta_a_signed = f"+{delta_a}" if delta_a_dec >= 0 else delta_a
+            delta_b_signed = f"+{delta_b}" if delta_b_dec >= 0 else delta_b
+            
             inventory_segment = (
-                f"A {start_inv['A']}->{end_inv['A']} (d {fmt_signed_int(delta_a)}), "
-                f"B {start_inv['B']}->{end_inv['B']} (d {fmt_signed_int(delta_b)})"
+                f"A {start_A_str}->{end_inv_A} (d {delta_a_signed}), "
+                f"B {start_B_str}->{end_inv_B} (d {delta_b_signed})"
             )
 
-            gathered_segment = f"gathered A:{gathered.get('A', Decimal('0'))} B:{gathered.get('B', Decimal('0'))}"
+            gathered_A = fmt_decimal(gathered.get('A', Decimal('0')))
+            gathered_B = fmt_decimal(gathered.get('B', Decimal('0')))
+            gathered_segment = f"gathered A:{gathered_A} B:{gathered_B}"
 
             if agent.utility is not None:
                 utility_label = agent.utility.__class__.__name__
