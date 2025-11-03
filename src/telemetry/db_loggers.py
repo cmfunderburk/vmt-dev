@@ -11,6 +11,8 @@ from .config import LogConfig
 
 if TYPE_CHECKING:
     from vmt_engine.core import Agent, Grid
+else:
+    from vmt_engine.core.decimal_config import to_storage_int
 
 
 class TelemetryManager:
@@ -129,7 +131,7 @@ class TelemetryManager:
             self._agent_snapshot_buffer.append((
                 self.run_id, tick, agent.id,
                 int(agent.pos[0]), int(agent.pos[1]),  # Convert numpy int to Python int
-                int(agent.inventory.A), int(agent.inventory.B), float(utility_val),
+                to_storage_int(agent.inventory.A), to_storage_int(agent.inventory.B), float(utility_val),
                 ask_A_in_B, bid_A_in_B, p_min, p_max,
                 target_agent_id, target_x if target_x is None else int(target_x), 
                 target_y if target_y is None else int(target_y), utility_type
@@ -161,7 +163,7 @@ class TelemetryManager:
                 self._resource_snapshot_buffer.append((
                     self.run_id, tick,
                     int(cell.position[0]), int(cell.position[1]),  # Convert numpy int to Python int
-                    cell.resource.type, int(cell.resource.amount)
+                    cell.resource.type, to_storage_int(cell.resource.amount)
                 ))
         
         # Flush buffer if needed
@@ -216,7 +218,7 @@ class TelemetryManager:
             self._flush_decisions()
     
     def log_trade(self, tick: int, x: int, y: int, buyer_id: int, seller_id: int,
-                  dA: int, dB: int, price: float, direction: str,
+                  dA: int | float, dB: int | float, price: float, direction: str,
                   exchange_pair_type: str = "A<->B"):
         """
         Log a successful trade.
@@ -226,8 +228,8 @@ class TelemetryManager:
             x, y: Location of trade
             buyer_id: ID of buying agent
             seller_id: ID of selling agent
-            dA: Amount of good A traded
-            dB: Amount of good B traded
+            dA: Amount of good A traded (int, Decimal, or float)
+            dB: Amount of good B traded (int, Decimal, or float)
             price: Trade price
             direction: Trade direction string
             exchange_pair_type: Type of exchange (always "A<->B" for barter-only economy)
@@ -235,10 +237,15 @@ class TelemetryManager:
         if not self.config.log_trades or self.db is None or self.run_id is None:
             return
         
+        # Convert Decimal to storage int if needed
+        from decimal import Decimal
+        dA_storage = to_storage_int(dA) if isinstance(dA, Decimal) else int(dA)
+        dB_storage = to_storage_int(dB) if isinstance(dB, Decimal) else int(dB)
+        
         self._trade_buffer.append((
             self.run_id, tick, int(x), int(y),
             int(buyer_id), int(seller_id),
-            int(dA), int(dB), float(price), direction,
+            dA_storage, dB_storage, float(price), direction,
             exchange_pair_type
         ))
         
@@ -260,12 +267,12 @@ class TelemetryManager:
                           direction: str, price: float,
                           buyer_ask: float, buyer_bid: float,
                           seller_ask: float, seller_bid: float, surplus: float,
-                          dA: int, dB: int,
-                          buyer_A_init: int, buyer_B_init: int, buyer_U_init: float,
-                          buyer_A_final: int, buyer_B_final: int, buyer_U_final: float,
+                          dA: int | float, dB: int | float,
+                          buyer_A_init: int | float, buyer_B_init: int | float, buyer_U_init: float,
+                          buyer_A_final: int | float, buyer_B_final: int | float, buyer_U_final: float,
                           buyer_improves: bool,
-                          seller_A_init: int, seller_B_init: int, seller_U_init: float,
-                          seller_A_final: int, seller_B_final: int, seller_U_final: float,
+                          seller_A_init: int | float, seller_B_init: int | float, seller_U_init: float,
+                          seller_A_final: int | float, seller_B_final: int | float, seller_U_final: float,
                           seller_improves: bool,
                           buyer_feasible: bool, seller_feasible: bool,
                           result: str, result_reason: str):
@@ -277,16 +284,22 @@ class TelemetryManager:
         if not self.config.log_trade_attempts or self.db is None or self.run_id is None:
             return
         
+        # Convert Decimal values to storage int
+        from decimal import Decimal
+        
+        def to_int(val):
+            return to_storage_int(val) if isinstance(val, Decimal) else int(val)
+        
         self._trade_attempt_buffer.append((
             self.run_id, tick, int(buyer_id), int(seller_id),
             direction, float(price),
             float(buyer_ask), float(buyer_bid), float(seller_ask), float(seller_bid), float(surplus),
-            int(dA), int(dB),
-            int(buyer_A_init), int(buyer_B_init), float(buyer_U_init),
-            int(buyer_A_final), int(buyer_B_final), float(buyer_U_final),
+            to_int(dA), to_int(dB),
+            to_int(buyer_A_init), to_int(buyer_B_init), float(buyer_U_init),
+            to_int(buyer_A_final), to_int(buyer_B_final), float(buyer_U_final),
             1 if buyer_improves else 0,
-            int(seller_A_init), int(seller_B_init), float(seller_U_init),
-            int(seller_A_final), int(seller_B_final), float(seller_U_final),
+            to_int(seller_A_init), to_int(seller_B_init), float(seller_U_init),
+            to_int(seller_A_final), to_int(seller_B_final), float(seller_U_final),
             1 if seller_improves else 0,
             1 if buyer_feasible else 0, 1 if seller_feasible else 0,
             result, result_reason
@@ -300,12 +313,12 @@ class TelemetryManager:
                       direction: str, price: float,
                       buyer_ask: float, buyer_bid: float,
                       seller_ask: float, seller_bid: float, surplus: float,
-                      dA: int, dB: int,
-                      buyer_A_init: int, buyer_B_init: int, buyer_U_init: float,
-                      buyer_A_final: int, buyer_B_final: int, buyer_U_final: float,
+                      dA: int | float, dB: int | float,
+                      buyer_A_init: int | float, buyer_B_init: int | float, buyer_U_init: float,
+                      buyer_A_final: int | float, buyer_B_final: int | float, buyer_U_final: float,
                       buyer_improves: bool,
-                      seller_A_init: int, seller_B_init: int, seller_U_init: float,
-                      seller_A_final: int, seller_B_final: int, seller_U_final: float,
+                      seller_A_init: int | float, seller_B_init: int | float, seller_U_init: float,
+                      seller_A_final: int | float, seller_B_final: int | float, seller_U_final: float,
                       seller_improves: bool,
                       buyer_feasible: bool, seller_feasible: bool,
                       result: str, result_reason: str):

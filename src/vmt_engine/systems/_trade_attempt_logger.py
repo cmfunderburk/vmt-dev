@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
+from decimal import Decimal
 
 if TYPE_CHECKING:
     from ..core import Agent
@@ -13,8 +14,8 @@ def log_trade_attempt(
     direction: str,
     price: float,
     surplus: float,
-    dA: int,
-    dB: int,
+    dA: int | Decimal,
+    dB: int | Decimal,
     buyer_improves: bool,
     seller_improves: bool,
     buyer_feasible: bool,

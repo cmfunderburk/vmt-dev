@@ -12,11 +12,15 @@ Determinism and discrete search principles:
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Optional
 from math import floor
+from decimal import Decimal
 from ._trade_attempt_logger import log_trade_attempt
 
 if TYPE_CHECKING:
     from ..core import Agent
     from telemetry import TelemetryManager
+else:
+    # Avoid circular import
+    from ..core.decimal_config import quantize_quantity
 
 
 def compute_surplus(agent_i: 'Agent', agent_j: 'Agent') -> float:
@@ -202,14 +206,14 @@ def choose_partner(agent: 'Agent', neighbors: list[tuple[int, tuple[int, int]]],
     return chosen_id, chosen_surplus, all_candidates_with_surplus
 
 
-def improves(agent: 'Agent', dA: int, dB: int, eps: float = 1e-12) -> bool:
+def improves(agent: 'Agent', dA: int | Decimal, dB: int | Decimal, eps: float = 1e-12) -> bool:
     """
     Check if trade improves agent's utility strictly.
     
     Args:
         agent: Agent considering the trade
-        dA: Change in A (can be positive or negative)
-        dB: Change in B (can be positive or negative)
+        dA: Change in A (can be positive or negative, int or Decimal)
+        dB: Change in B (can be positive or negative, int or Decimal)
         eps: Epsilon for strict improvement check
         
     Returns:
@@ -267,13 +271,13 @@ def generate_price_candidates(ask: float, bid: float, dA: int) -> list[float]:
 def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
                            epsilon: float, tick: int = 0,
                            direction: str = "", surplus: float = 0.0,
-                           telemetry: Optional['TelemetryManager'] = None) -> Optional[tuple[int, int, float]]:
+                           telemetry: Optional['TelemetryManager'] = None) -> Optional[tuple[Decimal, Decimal, float]]:
     """
     Find minimal ΔA ∈ [1..seller.inventory.A] and a price where both agents improve utility.
     
     Searches multiple candidate prices within [seller.ask, buyer.bid] range
     to find mutually beneficial terms of trade. This handles the case where
-    the midpoint price doesn't work due to integer rounding effects.
+    the midpoint price doesn't work due to decimal rounding effects.
     
     Args:
         buyer: Agent buying good A
@@ -287,7 +291,10 @@ def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
         
     Returns:
         (dA, dB, actual_price) tuple or None if no feasible block found
+        dA and dB are Decimal values quantized to the configured precision
     """
+    from ..core.decimal_config import quantize_quantity
+    
     # Get the valid price range
     ask = seller.quotes.get('ask_A_in_B', 1.0)
     bid = buyer.quotes.get('bid_A_in_B', 1.0)
@@ -297,15 +304,19 @@ def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
     if max_dA <= 0:
         return None  # Seller has nothing to sell
     
+    # Convert to int for range iteration
+    max_dA_int = int(max_dA)
+    
     # Iterate over trade sizes
-    for dA in range(1, max_dA + 1):
+    for dA in range(1, max_dA_int + 1):
         # Generate candidate prices for this trade size
         price_candidates = generate_price_candidates(ask, bid, dA)
         
         # Try each price candidate
         for test_price in price_candidates:
-            # Round-half-up: floor(x + 0.5)
-            dB = int(floor(test_price * dA + 0.5))
+            # Calculate dB and quantize to configured precision
+            dB_raw = Decimal(str(test_price)) * Decimal(str(dA))
+            dB = quantize_quantity(dB_raw)
             
             # Check if dB is valid
             if dB <= 0:
@@ -340,12 +351,14 @@ def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
             
             if buyer_improves_flag and seller_improves_flag:
                 # Success! Found a mutually beneficial trade
+                # Convert dA to Decimal for consistency
+                dA_decimal = quantize_quantity(Decimal(str(dA)))
                 if telemetry:
                     log_trade_attempt(
                         telemetry, tick, buyer, seller, direction, test_price, surplus,
                         dA, dB, True, True, True, True, "success", "utility_improves_both"
                     )
-                return (dA, dB, test_price)  # Return the price that worked
+                return (dA_decimal, dB, test_price)  # Return the price that worked
             else:
                 if telemetry:
                     reason = "utility_no_improvement"
@@ -366,15 +379,15 @@ def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
     return None
 
 
-def execute_trade(buyer: 'Agent', seller: 'Agent', dA: int, dB: int):
+def execute_trade(buyer: 'Agent', seller: 'Agent', dA: int | Decimal, dB: int | Decimal):
     """
     Execute trade block, updating inventories.
     
     Args:
         buyer: Agent buying good A
         seller: Agent selling good A
-        dA: Amount of good A to trade
-        dB: Amount of good B to trade
+        dA: Amount of good A to trade (int or Decimal)
+        dB: Amount of good B to trade (int or Decimal)
     """
     # Validate inventories
     assert seller.inventory.A >= dA, f"Seller {seller.id} has insufficient A: {seller.inventory.A} < {dA}"
@@ -494,7 +507,7 @@ def find_compensating_block_generic(
     pair: str,
     params: dict[str, Any],
     epsilon: float = 1e-9
-) -> tuple[int, int, int, int, float, float] | None:
+) -> tuple[Decimal, Decimal, Decimal, Decimal, float, float] | None:
     """
     Find mutually beneficial trade block for barter exchange (A<->B only).
     
@@ -508,6 +521,9 @@ def find_compensating_block_generic(
     Returns:
         Tuple of (dA_i, dB_i, dA_j, dB_j, surplus_i, surplus_j)
         or None if no mutually beneficial trade exists.
+        
+        All quantity deltas (dA_i, dB_i, dA_j, dB_j) are Decimal values
+        quantized to the configured precision.
     """
     # Get agent utilities
     if not agent_i.utility or not agent_j.utility:
@@ -522,6 +538,7 @@ def find_compensating_block_generic(
     
     # Barter: agent i and j exchange A for B
     from ..core.state import Inventory
+    from ..core.decimal_config import quantize_quantity
     
     # Direction 1: agent i sells A, buys B
     ask_i = agent_i.quotes.get('ask_A_in_B', float('inf'))
@@ -530,22 +547,29 @@ def find_compensating_block_generic(
     if ask_i <= bid_j:
         # Return first feasible trade (minimum mode)
         # Note: Trade batch size decisions will be handled by protocols in the future
-        for dA in range(1, agent_i.inventory.A + 1):
+        # Convert to int for range iteration
+        max_dA = int(agent_i.inventory.A)
+        for dA in range(1, max_dA + 1):
             for price in generate_price_candidates(ask_i, bid_j, dA):
-                dB = int(floor(price * dA + 0.5))
+                # Calculate dB and quantize to configured precision
+                dB_raw = Decimal(str(price)) * Decimal(str(dA))
+                dB = quantize_quantity(dB_raw)
                 
                 if dB <= 0 or dB > agent_j.inventory.B:
                     continue
                 
+                # Convert dA to Decimal for utility calculations
+                dA_decimal = quantize_quantity(Decimal(str(dA)))
+                
                 # Calculate utility with new inventories
-                u_i_new = agent_i.utility.u(agent_i.inventory.A - dA, agent_i.inventory.B + dB)
-                u_j_new = agent_j.utility.u(agent_j.inventory.A + dA, agent_j.inventory.B - dB)
+                u_i_new = agent_i.utility.u(agent_i.inventory.A - dA_decimal, agent_i.inventory.B + dB)
+                u_j_new = agent_j.utility.u(agent_j.inventory.A + dA_decimal, agent_j.inventory.B - dB)
                 
                 surplus_i = u_i_new - u_i_0
                 surplus_j = u_j_new - u_j_0
                 
                 if surplus_i > epsilon and surplus_j > epsilon:
-                    return (-dA, dB, dA, -dB, surplus_i, surplus_j)
+                    return (-dA_decimal, dB, dA_decimal, -dB, surplus_i, surplus_j)
     
     # Direction 2: agent i buys A, sells B
     bid_i = agent_i.quotes.get('bid_A_in_B', 0.0)
@@ -554,21 +578,28 @@ def find_compensating_block_generic(
     if ask_j <= bid_i:
         # Return first feasible trade (minimum mode)
         # Note: Trade batch size decisions will be handled by protocols in the future
-        for dA in range(1, agent_j.inventory.A + 1):
+        # Convert to int for range iteration
+        max_dA = int(agent_j.inventory.A)
+        for dA in range(1, max_dA + 1):
             for price in generate_price_candidates(ask_j, bid_i, dA):
-                dB = int(floor(price * dA + 0.5))
+                # Calculate dB and quantize to configured precision
+                dB_raw = Decimal(str(price)) * Decimal(str(dA))
+                dB = quantize_quantity(dB_raw)
                 
                 if dB <= 0 or dB > agent_i.inventory.B:
                     continue
                 
-                u_i_new = agent_i.utility.u(agent_i.inventory.A + dA, agent_i.inventory.B - dB)
-                u_j_new = agent_j.utility.u(agent_j.inventory.A - dA, agent_j.inventory.B + dB)
+                # Convert dA to Decimal for utility calculations
+                dA_decimal = quantize_quantity(Decimal(str(dA)))
+                
+                u_i_new = agent_i.utility.u(agent_i.inventory.A + dA_decimal, agent_i.inventory.B - dB)
+                u_j_new = agent_j.utility.u(agent_j.inventory.A - dA_decimal, agent_j.inventory.B + dB)
                 
                 surplus_i = u_i_new - u_i_0
                 surplus_j = u_j_new - u_j_0
                 
                 if surplus_i > epsilon and surplus_j > epsilon:
-                    return (dA, -dB, -dA, dB, surplus_i, surplus_j)
+                    return (dA_decimal, -dB, -dA_decimal, dB, surplus_i, surplus_j)
     
     # No mutually beneficial trade found
     return None
@@ -684,7 +715,7 @@ def execute_trade_generic(
     Invariants maintained:
     - Non-negativity: All inventories remain ≥ 0
     - Conservation: dA_i + dA_j = 0, dB_i + dB_j = 0
-    - Integer quantities
+    - Decimal quantities (quantized to configured precision)
     - inventory_changed flags set for both agents
     """
     dA_i, dB_i, dA_j, dB_j, surplus_i, surplus_j = trade

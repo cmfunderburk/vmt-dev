@@ -2,8 +2,11 @@
 Core state structures for VMT simulation.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import TypeAlias
+
+from .decimal_config import decimal_from_numeric, quantize_quantity
 
 
 @dataclass
@@ -12,13 +15,25 @@ class Inventory:
     Agent inventory state.
     
     Attributes:
-        A: Quantity of good A (integer ≥ 0)
-        B: Quantity of good B (integer ≥ 0)
+        A: Quantity of good A (Decimal ≥ 0)
+        B: Quantity of good B (Decimal ≥ 0)
     """
-    A: int = 0
-    B: int = 0
+    A: Decimal = field(default_factory=lambda: Decimal('0'))
+    B: Decimal = field(default_factory=lambda: Decimal('0'))
 
     def __post_init__(self):
+        # Convert to Decimal if needed and quantize
+        if isinstance(self.A, (int, float)):
+            self.A = decimal_from_numeric(self.A)
+        else:
+            self.A = quantize_quantity(self.A)
+        
+        if isinstance(self.B, (int, float)):
+            self.B = decimal_from_numeric(self.B)
+        else:
+            self.B = quantize_quantity(self.B)
+        
+        # Validate non-negativity
         if self.A < 0 or self.B < 0:
             raise ValueError(f"Inventory cannot be negative: A={self.A}, B={self.B}")
 

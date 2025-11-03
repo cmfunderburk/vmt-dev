@@ -24,7 +24,7 @@ AgentID     := int (non-negative, unique)
 Tick        := int (simulation time step, ≥ 0)
 Coord       := tuple<int, int>  // (x, y) cartesian coordinates
 Good        := str              // Identifier for a good, e.g., "A", "B", "M" (Money)
-Quantity    := int              // Discrete amount of a good or resource (≥ 0)
+Quantity    := Decimal          // Fixed-precision decimal quantity (≥ 0, 4 decimal places)
 Price       := float            // Exchange rate, typically in terms of a numéraire
 UtilityVal  := float            // A scalar value representing an agent's utility
 ```
@@ -39,13 +39,17 @@ These composite types represent the state of entities within the simulation.
 ```text
 Position := Coord
 Inventory := {
-  A: Quantity,  // Amount of good A
-  B: Quantity,  // Amount of good B
+  A: Quantity,  // Amount of good A (Decimal, 4 decimal places)
+  B: Quantity,  // Amount of good B (Decimal, 4 decimal places)
   M: Quantity   // Money holdings in minor units [IMPLEMENTED Phase 1]
 }
 ```
-*   **Invariant:** All quantities in an inventory must be non-negative (integer ≥ 0).
-*   **Source of Truth:** `src/vmt_engine/core/state.py:Inventory`
+*   **Invariant:** All quantities in an inventory must be non-negative (Decimal ≥ 0).
+*   **Precision:** All quantities use fixed-precision `Decimal` representation with 4 decimal places (configurable via `QUANTITY_DECIMAL_PLACES` in `decimal_config.py`). Quantities are quantized using `quantize_quantity()` to maintain consistent precision.
+*   **Conversion:** Initialization accepts `int` or `float` and converts via `decimal_from_numeric()` to avoid binary float artifacts.
+*   **Storage:** Database storage converts `Decimal` to integer minor units using `to_storage_int()` (multiplies by 10^4) and recovers via `from_storage_int()`.
+*   **Source of Truth:** `src/vmt_engine/core/state.py:Inventory`, `src/vmt_engine/core/decimal_config.py`
+*   **Note:** The `M` field is retained for future money system implementation but is currently unused in pure barter economy
 
 #### 2.2 Economic State: Quotes `[IMPLEMENTED]`
 An agent's trading posture is represented as a dictionary mapping exchange pair keys to prices.
@@ -119,6 +123,7 @@ Environment := {
 }
 ```
 *   **Source of Truth:** `src/vmt_engine/core/grid.py`
+*   **Quantity Handling:** Resource `amount` and `original_amount` fields use `Decimal` with the same precision configuration as inventory quantities
 
 ### 3. Economic Logic
 
@@ -178,14 +183,20 @@ initial_A > gamma_A  AND  initial_B > gamma_B
 This constraint is validated during scenario loading to prevent agents from starting below subsistence.
 
 **Money-Aware Utility API** (Phase 2+):
-*   `u_goods(A: int, B: int) -> float`: Compute utility from goods only (canonical method)
-*   `mu_A(A: int, B: int) -> float`: Marginal utility of good A (∂U/∂A)
-*   `mu_B(A: int, B: int) -> float`: Marginal utility of good B (∂U/∂B)
+*   `u_goods(A: Decimal, B: Decimal) -> float`: Compute utility from goods only (canonical method)
+*   `mu_A(A: Decimal, B: Decimal) -> float`: Marginal utility of good A (∂U/∂A)
+*   `mu_B(A: Decimal, B: Decimal) -> float`: Marginal utility of good B (∂U/∂B)
 *   `u_total(inventory, params) -> float`: Total utility including money `[PLANNED Phase 3+]`
 
 **Legacy API** (backward compatible):
-*   `u(A: int, B: int) -> float`: Routes to `u_goods()` `[DEPRECATED]`
-*   `mu(A: int, B: int) -> tuple[float, float]`: Routes to `(mu_A(), mu_B())` `[DEPRECATED]`
+*   `u(A: Decimal, B: Decimal) -> float`: Routes to `u_goods()` `[DEPRECATED]`
+*   `mu(A: Decimal, B: Decimal) -> tuple[float, float]`: Routes to `(mu_A(), mu_B())` `[DEPRECATED]`
+
+**Decimal Precision Handling**:
+*   All utility methods accept `Decimal` quantity inputs for precision
+*   Internally convert to `float` for mathematical operations (`math` module, numpy, etc.)
+*   Return `float` utility values for computational efficiency
+*   This preserves `Decimal` precision for quantities while maintaining performance for complex calculations
 
 *   **Source of Truth:** `src/vmt_engine/econ/utility.py`
 *   **Note:** Cobb-Douglas is implemented as a special case of CES where `rho` approaches 0.
@@ -202,13 +213,17 @@ surplus(i, j) := max(i.bid - j.ask, j.bid - i.ask)
 **Compensating Block Search** (First-Acceptable-Trade Principle):
 ```text
 // 1. Iterate through trade sizes ΔA from 1 to seller's inventory
+//    (Convert Decimal inventory to int for range iteration)
 // 2. For each ΔA, test multiple candidate prices within [seller.ask, buyer.bid]
-// 3. For each candidate price, compute rounded ΔB:
-ΔB = floor(price * ΔA + 0.5)
+// 3. For each candidate price, compute quantized ΔB:
+ΔB = quantize_quantity(Decimal(str(price)) * Decimal(str(ΔA)))
+//    Uses Decimal arithmetic then quantizes to configured precision (4 places)
 
 // 4. Accept the FIRST (ΔA, ΔB, price) tuple that yields strict utility gain for both:
 if ΔU_buyer > 0 AND ΔU_seller > 0:
     execute trade and return
+
+// All quantity deltas (ΔA, ΔB) are Decimal values
 ```
 
 **Generic Matching** (Phase 2):
@@ -352,7 +367,7 @@ Records the state of each agent at periodic intervals.
 *   `tick` (INTEGER)
 *   `agent_id` (INTEGER)
 *   `x`, `y` (INTEGER): Agent's position.
-*   `inventory_A`, `inventory_B` (INTEGER): Agent's goods inventory.
+*   `inventory_A`, `inventory_B` (INTEGER): Agent's goods inventory (stored as integer minor units: value × 10^4).
 *   `inventory_M` (INTEGER): Agent's money holdings in minor units `[IMPLEMENTED Phase 1]`
 *   `utility` (REAL): Agent's calculated utility value.
 *   `ask_A_in_B`, `bid_A_in_B` (REAL): Barter quotes for A in terms of B.
@@ -373,7 +388,7 @@ Records the state of resources on the grid at periodic intervals.
 *   `tick` (INTEGER)
 *   `x`, `y` (INTEGER): Cell position.
 *   `resource_type` (TEXT): The `Good` in the cell.
-*   `amount` (INTEGER): The quantity of the resource.
+*   `amount` (INTEGER): The quantity of the resource (stored as integer minor units: value × 10^4).
 
 #### Table: `trades`
 Records every successful trade that occurs.
@@ -382,7 +397,7 @@ Records every successful trade that occurs.
 *   `tick` (INTEGER)
 *   `x`, `y` (INTEGER): Location of the trade.
 *   `buyer_id`, `seller_id` (INTEGER)
-*   `dA`, `dB` (INTEGER): The amounts of goods A and B exchanged.
+*   `dA`, `dB` (INTEGER): The amounts of goods A and B exchanged (stored as integer minor units: value × 10^4 using `to_storage_int()` conversion).
 *   `dM` (INTEGER): Money transfer amount (0 for barter) `[IMPLEMENTED Phase 2]`
 *   `price` (REAL): The price of the trade.
 *   `direction` (TEXT): String indicating who initiated the trade.
@@ -569,4 +584,16 @@ This section tracks major revisions to this type and data contract specification
 *   **Implementation Status Clarification (2025-01-27):**
     *   Updated all documents to reflect actual implementation status
     *   Documented protocol modularization requirement
+*   **Decimal Precision Migration (2025-12-19):**
+    *   Migrated all quantity representations from `int` to `Decimal` for fixed-precision arithmetic
+    *   Created `decimal_config.py` with centralized precision configuration (`QUANTITY_DECIMAL_PLACES = 4`)
+    *   Implemented `quantize_quantity()` and `decimal_from_numeric()` for consistent `Decimal` handling
+    *   Updated `Inventory` and `Resource` dataclasses with `__post_init__` auto-conversion from `int`/`float`
+    *   Updated all utility functions to accept `Decimal` inputs while returning `float` outputs
+    *   Modified trade/matching operations to use decimal arithmetic with proper quantization
+    *   Updated foraging operations to work with `Decimal` quantities
+    *   Implemented storage conversion functions `to_storage_int()` and `from_storage_int()` for database persistence
+    *   All telemetry INTEGER columns now store quantities as minor units (value × 10^4)
+    *   Ensures exact, reproducible arithmetic operations and maintains determinism
+    *   Updated trade block search to use `quantize_quantity()` for proper decimal rounding (not integer rounding)
 ---

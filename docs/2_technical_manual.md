@@ -75,6 +75,7 @@ Determinism is the cornerstone of the VMT engine. Given the same scenario file a
 -   **Fixed Tick Order**: The 7-phase cycle never changes.
 -   **Sorted Iteration**: All loops over agents are sorted by `agent.id`. All loops over potential trade pairs are sorted by `(min_id, max_id)`. There is no reliance on non-deterministic data structures like Python dictionaries for iteration.
 -   **Deterministic Tie-Breaking**: Any situation that could be ambiguous is resolved with a fixed rule. For example, when choosing a movement path, agents prefer reducing distance on the x-axis before the y-axis, and prefer negative directions on ties.
+-   **Fixed-Precision Arithmetic**: All quantity calculations use Python's `Decimal` type with a fixed precision of 4 decimal places (configurable via `QUANTITY_DECIMAL_PLACES`). This ensures exact, reproducible arithmetic operations and avoids floating-point rounding errors that could affect determinism. Quantities are stored in the database as integer minor units (value × 10^4) using `to_storage_int()` conversion.
 
 ### Economic Logic
 
@@ -86,10 +87,11 @@ Determinism is the cornerstone of the VMT engine. Given the same scenario file a
     *   `UTranslog` — Transcendental logarithmic (flexible second-order approximation)
     *   `UStoneGeary` — Subsistence constraints (foundation of Linear Expenditure System)
 -   **Utility API**: The utility interface provides core methods:
-    *   `u(A, B)` — Utility from goods (canonical method)
+    *   `u(A, B)` — Utility from goods (canonical method), accepts `Decimal` inputs, returns `float`
     *   `u_goods(A, B)` — Alias for `u(A, B)` (backward compatibility)
-    *   `mu_A(A, B)`, `mu_B(A, B)` — Marginal utilities of goods A and B (∂U/∂A, ∂U/∂B)
+    *   `mu_A(A, B)`, `mu_B(A, B)` — Marginal utilities of goods A and B (∂U/∂A, ∂U/∂B), accept `Decimal`, return `float`
     *   `mu(A, B)` — Returns tuple (MU_A, MU_B)
+    *   All quantity inputs use `Decimal` for precision; calculations convert to `float` internally for mathematical operations
 -   **Pure Barter Economy**: VMT is a pure barter economy - all trades are direct A↔B exchanges
 -   **Reservation Bounds**: Agents' willingness to trade is determined by their reservation price, which is derived from their marginal rate of substitution (MRS). The engine uses a generic `reservation_bounds_A_in_B(A, B, eps)` function. This returns the minimum price an agent would accept (`p_min`) and the maximum price they would pay (`p_max`).
 -   **Zero-Inventory Guard**: A critical feature is the handling of zero-inventory cases for CES utilities. When an agent has zero of a good, its MRS can be undefined or infinite. The engine handles this by adding a tiny `epsilon` value to the inventory levels *only for the ratio calculation* used to determine reservation bounds. The core utility calculation `u(A, B)` always uses the true integer inventories.
@@ -140,11 +142,12 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
 -   **Barter Matching Algorithm**: The engine finds mutually beneficial A↔B trades:
     *   Function: `find_best_trade(agent_i, agent_j, params)` in `src/vmt_engine/systems/matching.py`
     *   Only A↔B barter trades are supported
--   **Price Search Algorithm**: Because goods are discrete integers, a price that looks good on paper (based on MRS) might not result in a mutually beneficial trade after rounding. The `find_compensating_block_generic` function solves this:
+-   **Price Search Algorithm**: Because goods are discrete quantities, a price that looks good on paper (based on MRS) might not result in a mutually beneficial trade after rounding. The `find_compensating_block_generic` function solves this:
     *   Probes multiple prices within the valid `[ask_seller, bid_buyer]` range
-    *   For each price, scans trade quantities from `ΔA=1` up to seller's inventory
-    *   Applies **round-half-up** rounding: `ΔB = floor(price * ΔA + 0.5)`
+    *   For each price, scans trade quantities from `ΔA=1` up to seller's inventory (converts Decimal to int for range iteration)
+    *   Applies **decimal quantization**: `ΔB = quantize_quantity(Decimal(str(price)) * Decimal(str(ΔA)))`
     *   Accepts the **first** trade block `(ΔA, ΔB)` that provides **strict utility improvement (ΔU > 0)** for both agents
+    *   All quantity deltas are `Decimal` values quantized to configured precision (4 decimal places)
     *   This is the **first-acceptable-trade principle**, not highest-surplus search
 
 ### Behavioral Logic

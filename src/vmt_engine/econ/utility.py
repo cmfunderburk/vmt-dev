@@ -5,7 +5,7 @@ This module contains concrete implementations of the Utility base class.
 See base.py for the abstract interface definition.
 
 Contracts and zero-handling:
-- Inventories A, B are integers; utility returns floats; prices/MRS are floats.
+- Inventories A, B are Decimal; utility returns floats; prices/MRS are floats.
 - CES MRS uses a zero-safe epsilon only for the A/B ratio when either A or B
   is zero; the utility function itself is not epsilon-shifted.
 - Linear utility has constant MRS vA/vB and reservation bounds equal to MRS.
@@ -14,6 +14,7 @@ Contracts and zero-handling:
 from __future__ import annotations
 import math
 import warnings
+from decimal import Decimal
 
 from .base import Utility
 
@@ -41,7 +42,7 @@ class UCES(Utility):
         self.wB = wB
         self.epsilon = epsilon
     
-    def u(self, A: int, B: int) -> float:
+    def u(self, A: Decimal, B: Decimal) -> float:
         """
         Compute CES utility with epsilon-shift for zero inventories when rho < 0.
         
@@ -50,16 +51,20 @@ class UCES(Utility):
         
         This ensures agents still value acquiring the first unit of a good.
         """
-        if A == 0 and B == 0:
+        # Convert to float for math operations
+        A_float = float(A)
+        B_float = float(B)
+        
+        if A_float == 0 and B_float == 0:
             return 0.0
         
         # Epsilon-shift for zero inventories when rho < 0 to avoid division by zero
         if self.rho < 0:
-            A_safe = max(A, self.epsilon)
-            B_safe = max(B, self.epsilon)
+            A_safe = max(A_float, self.epsilon)
+            B_safe = max(B_float, self.epsilon)
         else:
-            A_safe = A
-            B_safe = B
+            A_safe = A_float
+            B_safe = B_float
         
         term_A = self.wA * (A_safe ** self.rho) if A_safe > 0 else 0.0
         term_B = self.wB * (B_safe ** self.rho) if B_safe > 0 else 0.0
@@ -70,7 +75,7 @@ class UCES(Utility):
         
         return total ** (1.0 / self.rho)
     
-    def mu(self, A: int, B: int, eps: float = 1e-12) -> tuple[float, float]:
+    def mu(self, A: Decimal, B: Decimal, eps: float = 1e-12) -> tuple[float, float]:
         """
         Compute marginal utilities for CES.
         
@@ -78,30 +83,34 @@ class UCES(Utility):
         MU_B = U^(1-ρ) * wB * B^(ρ-1)
         
         Args:
-            A: Amount of good A
-            B: Amount of good B
+            A: Amount of good A (Decimal)
+            B: Amount of good B (Decimal)
             eps: Small value for zero-safe calculations
             
         Returns:
             Tuple of (MU_A, MU_B)
         """
+        # Convert to float for math operations
+        A_float = float(A)
+        B_float = float(B)
+        
         # Handle zero cases
-        if A == 0 and B == 0:
+        if A_float == 0 and B_float == 0:
             # At origin, marginal utilities are indeterminate; use weights
             return (self.wA, self.wB)
         
         # For negative rho, zero in either good makes utility 0
-        if self.rho < 0 and (A == 0 or B == 0):
+        if self.rho < 0 and (A_float == 0 or B_float == 0):
             # At boundary with rho < 0, MU is infinite for the zero good
             # Use safe epsilon-shifted values
-            A_safe = max(A, eps)
-            B_safe = max(B, eps)
+            A_safe = max(A_float, eps)
+            B_safe = max(B_float, eps)
         else:
-            A_safe = max(A, eps)
-            B_safe = max(B, eps)
+            A_safe = max(A_float, eps)
+            B_safe = max(B_float, eps)
         
         # Compute utility at current point
-        U = self.u(int(A_safe), int(B_safe))
+        U = self.u(Decimal(str(A_safe)), Decimal(str(B_safe)))
         
         if U == 0:
             return (0.0, 0.0)
@@ -114,25 +123,29 @@ class UCES(Utility):
         
         return (mu_A, mu_B)
     
-    def mrs_A_in_B(self, A: int, B: int, eps: float = 1e-12) -> float:
+    def mrs_A_in_B(self, A: Decimal, B: Decimal, eps: float = 1e-12) -> float:
         """
         Compute MRS for CES: (wA/wB) * (A/B)^(ρ-1)
         Apply zero-safe shift to the ratio only when A==0 or B==0.
         """
+        # Convert to float for math operations
+        A_float = float(A)
+        B_float = float(B)
+        
         # Only apply epsilon shift if either A or B is zero
-        if A == 0 or B == 0:
-            A_safe = A + eps
-            B_safe = B + eps
+        if A_float == 0 or B_float == 0:
+            A_safe = A_float + eps
+            B_safe = B_float + eps
         else:
-            A_safe = float(A)
-            B_safe = float(B)
+            A_safe = A_float
+            B_safe = B_float
         
         ratio = A_safe / B_safe
         mrs = (self.wA / self.wB) * (ratio ** (self.rho - 1))
         
         return mrs
     
-    def reservation_bounds_A_in_B(self, A: int, B: int, eps: float = 1e-12) -> tuple[float, float]:
+    def reservation_bounds_A_in_B(self, A: Decimal, B: Decimal, eps: float = 1e-12) -> tuple[float, float]:
         """For CES utility with analytic MRS, reservation bounds are (mrs, mrs)."""
         mrs = self.mrs_A_in_B(A, B, eps)
         return (mrs, mrs)
@@ -155,11 +168,11 @@ class ULinear(Utility):
         self.vA = vA
         self.vB = vB
     
-    def u(self, A: int, B: int) -> float:
+    def u(self, A: Decimal, B: Decimal) -> float:
         """Compute linear utility."""
-        return self.vA * A + self.vB * B
+        return self.vA * float(A) + self.vB * float(B)
     
-    def mu(self, A: int, B: int) -> tuple[float, float]:
+    def mu(self, A: Decimal, B: Decimal) -> tuple[float, float]:
         """
         Compute marginal utilities for linear utility.
         
@@ -175,11 +188,11 @@ class ULinear(Utility):
         """
         return (self.vA, self.vB)
     
-    def mrs_A_in_B(self, A: int, B: int) -> float:
+    def mrs_A_in_B(self, A: Decimal, B: Decimal) -> float:
         """MRS for linear utility is constant: vA / vB"""
         return self.vA / self.vB
     
-    def reservation_bounds_A_in_B(self, A: int, B: int, eps: float = 1e-12) -> tuple[float, float]:
+    def reservation_bounds_A_in_B(self, A: Decimal, B: Decimal, eps: float = 1e-12) -> tuple[float, float]:
         """For linear utility, reservation bounds are constant (mrs, mrs)."""
         mrs = self.vA / self.vB
         return (mrs, mrs)
@@ -216,21 +229,27 @@ class UQuadratic(Utility):
         self.sigma_B = sigma_B
         self.gamma = gamma
     
-    def u(self, A: int, B: int) -> float:
+    def u(self, A: Decimal, B: Decimal) -> float:
         """Compute quadratic utility with bliss points."""
-        dA = A - self.A_star
-        dB = B - self.B_star
+        A_float = float(A)
+        B_float = float(B)
+        dA = A_float - self.A_star
+        dB = B_float - self.B_star
         return -(dA**2 / self.sigma_A**2) - (dB**2 / self.sigma_B**2) - self.gamma * dA * dB
     
-    def mu_A(self, A: int, B: int) -> float:
+    def mu_A(self, A: Decimal, B: Decimal) -> float:
         """Marginal utility of A (can be negative beyond bliss point)."""
-        return -2 * (A - self.A_star) / (self.sigma_A**2) - self.gamma * (B - self.B_star)
+        A_float = float(A)
+        B_float = float(B)
+        return -2 * (A_float - self.A_star) / (self.sigma_A**2) - self.gamma * (B_float - self.B_star)
     
-    def mu_B(self, A: int, B: int) -> float:
+    def mu_B(self, A: Decimal, B: Decimal) -> float:
         """Marginal utility of B (can be negative beyond bliss point)."""
-        return -2 * (B - self.B_star) / (self.sigma_B**2) - self.gamma * (A - self.A_star)
+        A_float = float(A)
+        B_float = float(B)
+        return -2 * (B_float - self.B_star) / (self.sigma_B**2) - self.gamma * (A_float - self.A_star)
     
-    def mrs_A_in_B(self, A: int, B: int, eps: float = 1e-12) -> float | None:
+    def mrs_A_in_B(self, A: Decimal, B: Decimal, eps: float = 1e-12) -> float | None:
         """
         Compute MRS for quadratic utility.
         Returns None if denominator is near zero (at bliss point for B).
@@ -243,7 +262,7 @@ class UQuadratic(Utility):
         
         return mu_A / mu_B
     
-    def reservation_bounds_A_in_B(self, A: int, B: int, eps: float = 1e-12) -> tuple[float, float]:
+    def reservation_bounds_A_in_B(self, A: Decimal, B: Decimal, eps: float = 1e-12) -> tuple[float, float]:
         """
         Compute reservation bounds for quadratic utility.
         
@@ -309,14 +328,16 @@ class UTranslog(Utility):
         self.beta_BB = beta_BB
         self.beta_AB = beta_AB
     
-    def _ln_u(self, A: int, B: int, eps: float = 1e-12) -> float:
+    def _ln_u(self, A: Decimal, B: Decimal, eps: float = 1e-12) -> float:
         """
         Compute ln(U) instead of U to avoid numerical overflow.
         This is the canonical representation for translog.
         """
+        A_float = float(A)
+        B_float = float(B)
         # Zero-safe logarithms
-        ln_A = math.log(max(A, eps))
-        ln_B = math.log(max(B, eps))
+        ln_A = math.log(max(A_float, eps))
+        ln_B = math.log(max(B_float, eps))
         
         return (self.alpha_0 
                 + self.alpha_A * ln_A 
@@ -325,7 +346,7 @@ class UTranslog(Utility):
                 + 0.5 * self.beta_BB * ln_B**2
                 + self.beta_AB * ln_A * ln_B)
     
-    def u(self, A: int, B: int) -> float:
+    def u(self, A: Decimal, B: Decimal) -> float:
         """
         Compute utility (exponential of ln U).
         
@@ -341,25 +362,29 @@ class UTranslog(Utility):
         
         return math.exp(ln_u)
     
-    def _d_ln_u_dA(self, A: int, B: int, eps: float = 1e-12) -> float:
+    def _d_ln_u_dA(self, A: Decimal, B: Decimal, eps: float = 1e-12) -> float:
         """Compute ∂[ln U]/∂A = (α_A + β_AA·ln(A) + β_AB·ln(B)) / A"""
-        A_safe = max(A, eps)
-        B_safe = max(B, eps)
+        A_float = float(A)
+        B_float = float(B)
+        A_safe = max(A_float, eps)
+        B_safe = max(B_float, eps)
         ln_A = math.log(A_safe)
         ln_B = math.log(B_safe)
         
         return (self.alpha_A + self.beta_AA * ln_A + self.beta_AB * ln_B) / A_safe
     
-    def _d_ln_u_dB(self, A: int, B: int, eps: float = 1e-12) -> float:
+    def _d_ln_u_dB(self, A: Decimal, B: Decimal, eps: float = 1e-12) -> float:
         """Compute ∂[ln U]/∂B = (α_B + β_BB·ln(B) + β_AB·ln(A)) / B"""
-        A_safe = max(A, eps)
-        B_safe = max(B, eps)
+        A_float = float(A)
+        B_float = float(B)
+        A_safe = max(A_float, eps)
+        B_safe = max(B_float, eps)
         ln_A = math.log(A_safe)
         ln_B = math.log(B_safe)
         
         return (self.alpha_B + self.beta_BB * ln_B + self.beta_AB * ln_A) / B_safe
     
-    def mu_A(self, A: int, B: int) -> float:
+    def mu_A(self, A: Decimal, B: Decimal) -> float:
         """
         Marginal utility of A.
         MU_A = U · ∂[ln U]/∂A
@@ -371,13 +396,13 @@ class UTranslog(Utility):
         d_ln_u = self._d_ln_u_dA(A, B)
         return U * d_ln_u
     
-    def mu_B(self, A: int, B: int) -> float:
+    def mu_B(self, A: Decimal, B: Decimal) -> float:
         """Marginal utility of B."""
         U = self.u(A, B)
         d_ln_u = self._d_ln_u_dB(A, B)
         return U * d_ln_u
     
-    def mrs_A_in_B(self, A: int, B: int, eps: float = 1e-12) -> float:
+    def mrs_A_in_B(self, A: Decimal, B: Decimal, eps: float = 1e-12) -> float:
         """
         Compute MRS = MU_A / MU_B.
         
@@ -395,7 +420,7 @@ class UTranslog(Utility):
         
         return d_ln_u_A / d_ln_u_B
     
-    def reservation_bounds_A_in_B(self, A: int, B: int, eps: float = 1e-12) -> tuple[float, float]:
+    def reservation_bounds_A_in_B(self, A: Decimal, B: Decimal, eps: float = 1e-12) -> tuple[float, float]:
         """
         For translog with positive first-order coefficients, MRS is always well-defined and positive.
         Reservation bounds are (mrs, mrs).
@@ -434,37 +459,41 @@ class UStoneGeary(Utility):
         # Store epsilon for consistent zero-handling
         self.epsilon = 1e-12
     
-    def u(self, A: int, B: int) -> float:
+    def u(self, A: Decimal, B: Decimal) -> float:
         """
         Compute Stone-Geary utility.
         
         Uses epsilon-shift to handle A ≤ γ_A or B ≤ γ_B cases gracefully.
         Returns very negative (but finite) utility when below subsistence.
         """
-        A_above = max(A - self.gamma_A, self.epsilon)
-        B_above = max(B - self.gamma_B, self.epsilon)
+        A_float = float(A)
+        B_float = float(B)
+        A_above = max(A_float - self.gamma_A, self.epsilon)
+        B_above = max(B_float - self.gamma_B, self.epsilon)
         
         return self.alpha_A * math.log(A_above) + self.alpha_B * math.log(B_above)
     
-    def mu_A(self, A: int, B: int) -> float:
+    def mu_A(self, A: Decimal, B: Decimal) -> float:
         """
         Marginal utility of A: MU_A = α_A / (A - γ_A)
         
         Uses epsilon-shift for safety when A ≤ γ_A.
         """
-        A_above = max(A - self.gamma_A, self.epsilon)
+        A_float = float(A)
+        A_above = max(A_float - self.gamma_A, self.epsilon)
         return self.alpha_A / A_above
     
-    def mu_B(self, A: int, B: int) -> float:
+    def mu_B(self, A: Decimal, B: Decimal) -> float:
         """
         Marginal utility of B: MU_B = α_B / (B - γ_B)
         
         Uses epsilon-shift for safety when B ≤ γ_B.
         """
-        B_above = max(B - self.gamma_B, self.epsilon)
+        B_float = float(B)
+        B_above = max(B_float - self.gamma_B, self.epsilon)
         return self.alpha_B / B_above
     
-    def mrs_A_in_B(self, A: int, B: int, eps: float = 1e-12) -> float:
+    def mrs_A_in_B(self, A: Decimal, B: Decimal, eps: float = 1e-12) -> float:
         """
         Compute MRS for Stone-Geary utility.
         
@@ -472,12 +501,14 @@ class UStoneGeary(Utility):
         
         Uses epsilon-shift to handle subsistence boundaries.
         """
-        A_above = max(A - self.gamma_A, eps)
-        B_above = max(B - self.gamma_B, eps)
+        A_float = float(A)
+        B_float = float(B)
+        A_above = max(A_float - self.gamma_A, eps)
+        B_above = max(B_float - self.gamma_B, eps)
         
         return (self.alpha_A * B_above) / (self.alpha_B * A_above)
     
-    def reservation_bounds_A_in_B(self, A: int, B: int, eps: float = 1e-12) -> tuple[float, float]:
+    def reservation_bounds_A_in_B(self, A: Decimal, B: Decimal, eps: float = 1e-12) -> tuple[float, float]:
         """
         Compute reservation bounds for Stone-Geary utility.
         
@@ -486,9 +517,11 @@ class UStoneGeary(Utility):
         - If B ≤ γ_B: Agent cannot spare B, demands very high price for A
         - Otherwise: Standard MRS-based bounds
         """
+        A_float = float(A)
+        B_float = float(B)
         # Check if below subsistence (with small tolerance for numerical safety)
-        below_A = (A - self.gamma_A) < eps
-        below_B = (B - self.gamma_B) < eps
+        below_A = (A_float - self.gamma_A) < eps
+        below_B = (B_float - self.gamma_B) < eps
         
         if below_A and below_B:
             # Below subsistence in both: indeterminate, use neutral default
@@ -505,13 +538,15 @@ class UStoneGeary(Utility):
         mrs = self.mrs_A_in_B(A, B, eps)
         return (mrs, mrs)
     
-    def is_above_subsistence(self, A: int, B: int, eps: float = 1e-12) -> bool:
+    def is_above_subsistence(self, A: Decimal, B: Decimal, eps: float = 1e-12) -> bool:
         """
         Helper method to check if agent is above subsistence in both goods.
         
         Useful for decision logic or telemetry.
         """
-        return (A - self.gamma_A) > eps and (B - self.gamma_B) > eps
+        A_float = float(A)
+        B_float = float(B)
+        return (A_float - self.gamma_A) > eps and (B_float - self.gamma_B) > eps
 
 
 def create_utility(config: dict) -> Utility:

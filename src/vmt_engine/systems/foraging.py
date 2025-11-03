@@ -75,25 +75,29 @@ def forage(
         Tuple (did_harvest, resource_type, amount)
         - did_harvest: True if any resources were harvested
         - resource_type: "A" or "B" when harvested, otherwise None
-        - amount: Quantity gathered (0 when did_harvest is False)
+        - amount: Quantity gathered as int (0 when did_harvest is False)
     """
+    from decimal import Decimal
+    from ..core.decimal_config import quantize_quantity
+    
     cell = grid.get_cell(agent.pos[0], agent.pos[1])
     
     if cell.resource.amount == 0 or cell.resource.type is None:
         return (False, None, 0)
     
-    # Determine harvest amount
-    harvest = min(cell.resource.amount, forage_rate)
+    # Determine harvest amount - ensure both operands are Decimal for min()
+    forage_rate_decimal = Decimal(str(forage_rate))
+    harvest_decimal = min(cell.resource.amount, forage_rate_decimal)
     good_type = cell.resource.type
     
     # Update agent inventory
     if good_type == "A":
-        agent.inventory.A += harvest
+        agent.inventory.A += harvest_decimal
     else:  # "B"
-        agent.inventory.B += harvest
+        agent.inventory.B += harvest_decimal
     
     # Update cell resource
-    cell.resource.amount -= harvest
+    cell.resource.amount -= harvest_decimal
     
     # Track when resource was last harvested (for regeneration cooldown)
     # ANY harvest resets the cooldown timer
@@ -113,7 +117,8 @@ def forage(
         # Clear trade cooldowns (productive foraging clears frustration)
         agent.trade_cooldowns.clear()
     
-    return (True, good_type, harvest)
+    # Return amount as int for backward compatibility
+    return (True, good_type, int(harvest_decimal))
 
 
 def regenerate_resources(grid: 'Grid', growth_rate: int, max_amount: int,
@@ -186,12 +191,16 @@ def regenerate_resources(grid: 'Grid', growth_rate: int, max_amount: int,
         
         if ticks_since_harvest >= cooldown_ticks:
             # Cooldown complete, regenerate
+            from decimal import Decimal
+            from ..core.decimal_config import quantize_quantity
+            
             old_amount = cell.resource.amount
-            new_amount = min(old_amount + growth_rate, cell.resource.original_amount)
+            growth_rate_decimal = Decimal(str(growth_rate))
+            new_amount = min(old_amount + growth_rate_decimal, cell.resource.original_amount)
             regenerated = new_amount - old_amount
             
             cell.resource.amount = new_amount
-            total_regenerated += regenerated
+            total_regenerated += int(regenerated)
             
             # If fully regenerated, remove from active set
             if cell.resource.amount >= cell.resource.original_amount:

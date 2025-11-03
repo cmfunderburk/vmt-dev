@@ -284,7 +284,7 @@ class TestEpsilonHandling:
         u = UTranslog(alpha_0=0.0, alpha_A=0.5, alpha_B=0.5,
                       beta_AA=0.0, beta_BB=0.0, beta_AB=0.0)
         
-        agent = Agent(id=0, pos=(0, 0), inventory=Inventory(A=0, B=10, M=0), utility=u)
+        agent = Agent(id=0, pos=(0, 0), inventory=Inventory(A=0, B=10), utility=u)
         
         # Should handle A=0 with epsilon-shift
         quotes = compute_quotes(agent, spread=0.0, epsilon=1e-12)
@@ -302,7 +302,7 @@ class TestEpsilonHandling:
         u = UStoneGeary(alpha_A=0.6, alpha_B=0.4, gamma_A=5.0, gamma_B=3.0)
         
         # Agent exactly at subsistence
-        agent = Agent(id=0, pos=(0, 0), inventory=Inventory(A=5, B=3, M=0), utility=u)
+        agent = Agent(id=0, pos=(0, 0), inventory=Inventory(A=5, B=3), utility=u)
         
         # Should handle epsilon-shift gracefully
         quotes = compute_quotes(agent, spread=0.0, epsilon=1e-12)
@@ -320,7 +320,7 @@ class TestEpsilonHandling:
         u = UQuadratic(A_star=10.0, B_star=10.0, sigma_A=5.0, sigma_B=5.0)
         
         # Agent at bliss point
-        agent = Agent(id=0, pos=(0, 0), inventory=Inventory(A=10, B=10, M=0), utility=u)
+        agent = Agent(id=0, pos=(0, 0), inventory=Inventory(A=10, B=10), utility=u)
         
         # MRS is undefined, but quotes should still be computed
         quotes = compute_quotes(agent, spread=0.0, epsilon=1e-12)
