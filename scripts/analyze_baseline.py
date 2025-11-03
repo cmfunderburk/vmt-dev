@@ -64,7 +64,7 @@ class AggregatedMetrics:
     runtime_mean: float
 
 
-def run_scenario_batch(scenario_path: str, n_seeds: int = 10, max_ticks: int = 200) -> List[Tuple[int, Path]]:
+def run_scenario_batch(scenario_path: str, n_seeds: int = 10, max_ticks: int = 200) -> List[Tuple[int, Path, float]]:
     """
     Run a scenario multiple times with different seeds.
     
@@ -74,7 +74,7 @@ def run_scenario_batch(scenario_path: str, n_seeds: int = 10, max_ticks: int = 2
         max_ticks: Maximum ticks per simulation
         
     Returns:
-        List of (run_id, db_path) tuples
+        List of (run_id, db_path, runtime_seconds) tuples
     """
     print(f"\n{'='*60}")
     print(f"Running {scenario_path}")
@@ -116,12 +116,13 @@ def run_scenario_batch(scenario_path: str, n_seeds: int = 10, max_ticks: int = 2
         sim.run(max_ticks=max_ticks)
         runtime = time.time() - start_time
         
-        # Get run_id from telemetry
+        # Capture state before closing
         run_id = sim.telemetry.run_id
+        final_tick = sim.tick
         sim.close()
         
         results.append((run_id, db_path, runtime))
-        print(f"✓ (tick={sim.tick}, runtime={runtime:.2f}s)")
+        print(f"✓ (tick={final_tick}, runtime={runtime:.2f}s)")
     
     return results
 
@@ -177,7 +178,11 @@ def extract_metrics(db_path: Path, run_id: int, runtime: float) -> RunMetrics:
             mean_p = sum(prices) / len(prices)
             price_variance = sum((p - mean_p) ** 2 for p in prices) / len(prices)
     
-    # Find convergence tick (window of 20 trades with variance < 0.05)
+    # Find convergence tick: identifies when prices stabilize
+    # Algorithm: sliding window of 20 trades, checks if price variance < 0.05
+    # Threshold 0.05 means prices vary by < 0.05^0.5 ≈ 0.22 units from mean
+    # This indicates price convergence in markets (e.g., price ≈ 1.0 ± 0.22)
+    # Only applies to scenarios with ≥20 trades (too few trades = no convergence detection)
     convergence_tick = None
     if total_trades >= 20:
         cursor = conn.execute("""
@@ -191,7 +196,7 @@ def extract_metrics(db_path: Path, run_id: int, runtime: float) -> RunMetrics:
             mean_p = sum(window_prices) / len(window_prices)
             var = sum((p - mean_p) ** 2 for p in window_prices) / len(window_prices)
             
-            if var < 0.05:
+            if var < 0.05:  # Price variance threshold: prices have stabilized
                 convergence_tick = window[0]['tick']
                 break
     
