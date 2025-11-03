@@ -1,4 +1,5 @@
 from typing import Union
+from decimal import Decimal
 from scenarios.schema import (
     ScenarioConfig,
     ScenarioParams,
@@ -7,6 +8,8 @@ from scenarios.schema import (
     ResourceSeed,
 )
 from vmt_engine.simulation import Simulation
+from vmt_engine.core import Agent, Inventory
+from vmt_engine.econ.utility import UCES, ULinear
 from scenarios.protocol_factory import (
     get_search_protocol,
     get_matching_protocol,
@@ -98,6 +101,65 @@ def make_sim(
         search_protocol=search_obj,
         matching_protocol=matching_obj,
         bargaining_protocol=bargaining_obj,
+    )
+
+
+def build_agent(
+    id: int,
+    inv_A: Union[int, Decimal] = 10,
+    inv_B: Union[int, Decimal] = 10,
+    quotes: dict = None,
+    utility_type: str = "ces",
+    utility_params: dict = None,
+    pos: tuple = (0, 0),
+) -> Agent:
+    """
+    Build a test agent with specified parameters.
+    
+    Args:
+        id: Agent ID
+        inv_A: Initial inventory of good A
+        inv_B: Initial inventory of good B
+        quotes: Quote dictionary (if None, creates simple quotes)
+        utility_type: Type of utility function ("ces" or "linear")
+        utility_params: Parameters for utility function (if None, uses defaults)
+        pos: Position tuple
+        
+    Returns:
+        Configured Agent object
+    """
+    # Convert to Decimal if needed
+    if not isinstance(inv_A, Decimal):
+        inv_A = Decimal(str(inv_A))
+    if not isinstance(inv_B, Decimal):
+        inv_B = Decimal(str(inv_B))
+    
+    # Create inventory
+    inventory = Inventory(A=inv_A, B=inv_B)
+    
+    # Create utility function
+    if utility_type == "linear":
+        params = utility_params or {"vA": 2.0, "vB": 1.0}
+        utility = ULinear(**params)
+    else:  # default to CES
+        params = utility_params or {"rho": -0.5, "wA": 1.0, "wB": 1.0}
+        utility = UCES(**params)
+    
+    # Create default quotes if not provided
+    if quotes is None:
+        quotes = {
+            'bid_A_in_B': 1.0,
+            'ask_A_in_B': 1.0,
+            'p_min_A_in_B': 1.0,
+            'p_max_A_in_B': 1.0,
+        }
+    
+    return Agent(
+        id=id,
+        pos=pos,
+        inventory=inventory,
+        utility=utility,
+        quotes=quotes,
     )
 
 

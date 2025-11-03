@@ -12,32 +12,24 @@ Version: 2025.11.03 (Decoupling Refactor)
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 from decimal import Decimal
 
 if TYPE_CHECKING:
     from ..core import Agent
 
 
-@dataclass
-class TradePotential:
+class TradePotential(NamedTuple):
     """
     Lightweight evaluation of trade potential between two agents.
     
-    Used by matching protocols for pairing decisions. This is a heuristic
-    evaluation that does not perform full utility calculations.
-    
-    Attributes:
-        is_feasible: Can these agents potentially trade?
-        estimated_surplus: Estimated total surplus (heuristic, not exact)
-        preferred_direction: Trade direction hint ("i_gives_A", "i_gives_B", or None)
-        confidence: Confidence in estimate (0.0 to 1.0)
+    Used by matching protocols for pairing decisions.
+    NamedTuple for zero-overhead performance.
     """
-    is_feasible: bool
-    estimated_surplus: float
-    preferred_direction: str | None
-    confidence: float
+    is_feasible: bool                  # Can these agents trade?
+    estimated_surplus: float           # Estimated total surplus (heuristic)
+    preferred_direction: str | None    # "i_gives_A" or "i_gives_B" or None
+    confidence: float                  # 0.0 to 1.0, heuristic confidence
 
 
 class TradePotentialEvaluator(ABC):
@@ -136,38 +128,21 @@ class QuoteBasedTradeEvaluator(TradePotentialEvaluator):
         )
 
 
-@dataclass
-class TradeTuple:
+class TradeTuple(NamedTuple):
     """
     Complete trade specification.
     
-    Used by bargaining protocols for negotiation. Contains full
-    details of a mutually beneficial trade including quantities,
-    surpluses, and price.
-    
-    Attributes:
-        dA_i: Change in good A for agent_i (Decimal, can be negative)
-        dB_i: Change in good B for agent_i (Decimal, can be negative)
-        dA_j: Change in good A for agent_j (Decimal, can be negative)
-        dB_j: Change in good B for agent_j (Decimal, can be negative)
-        surplus_i: Utility gain for agent_i (positive)
-        surplus_j: Utility gain for agent_j (positive)
-        price: Price of A in terms of B
-        pair_name: Exchange pair identifier (e.g., "A<->B")
-    
-    Invariants:
-        - dA_i + dA_j = 0 (conservation of good A)
-        - dB_i + dB_j = 0 (conservation of good B)
-        - surplus_i > 0 and surplus_j > 0 (mutual benefit)
+    Used by bargaining protocols for negotiation.
+    NamedTuple for performance (tuple overhead, named access).
     """
-    dA_i: Decimal
-    dB_i: Decimal
-    dA_j: Decimal
-    dB_j: Decimal
-    surplus_i: float
-    surplus_j: float
-    price: float
-    pair_name: str
+    dA_i: Decimal      # Change in A for agent_i
+    dB_i: Decimal      # Change in B for agent_i
+    dA_j: Decimal      # Change in A for agent_j
+    dB_j: Decimal      # Change in B for agent_j
+    surplus_i: float   # Utility gain for agent_i
+    surplus_j: float   # Utility gain for agent_j
+    price: float       # Price of A in terms of B
+    pair_name: str     # Exchange pair name (e.g., "A<->B")
 
 
 class TradeDiscoverer(ABC):
