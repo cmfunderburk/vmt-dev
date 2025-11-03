@@ -17,10 +17,11 @@ Version: 2025.10.28 (Phase 2a - Baseline Protocol)
 """
 
 from typing import Any
-from ..registry import register_protocol
+from ...protocols.registry import register_protocol
 
-from ..base import SearchProtocol, SetTarget
-from ..context import WorldView
+from .base import SearchProtocol
+from ...protocols.base import SetTarget
+from ...protocols.context import WorldView
 
 
 @register_protocol(

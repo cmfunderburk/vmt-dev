@@ -1,99 +1,97 @@
 """
-Legacy Search Protocol
+Myopic Search Protocol
 
-Implements the original VMT search and target selection algorithm using
-distance-discounted surplus for trade partners and distance-discounted
-utility gain for foraging targets.
+Constrained search strategy with limited vision radius.
+Demonstrates information constraints and search costs.
 
-This protocol is bit-compatible with the pre-protocol DecisionSystem implementation.
+Economic Properties:
+- Limited information (vision radius = 1)
+- Slower convergence to efficient outcomes
+- Demonstrates value of information
+- Shows network effects in markets
 
-Version: 2025.10.26 (Phase 1 - Legacy Adapter)
+Teaching Points:
+- Search costs reduce market efficiency
+- Information is valuable in markets
+- Market "thickness" depends on search range
+- Network effects in economic interactions
+
+References:
+- Stigler (1961) "The Economics of Information"
+- Search models in labor economics
+- Network effects in markets
+
+Version: 2025.10.28 (Phase 2b - Pedagogical Protocol)
 """
 
-from typing import Optional
-from ..registry import register_protocol
-from ..base import SearchProtocol, Effect, SetTarget, ClaimResource
-from ..context import WorldView, AgentView, ResourceView
+from typing import Any
+from ...protocols.registry import register_protocol
+from .base import SearchProtocol
+from ...protocols.base import Effect, SetTarget, ClaimResource
+from ...protocols.context import WorldView
 from ...systems.matching import compute_surplus, estimate_money_aware_surplus
-from ...systems.movement import choose_forage_target
-from ...core.state import Position
-
-# Type alias for preference tuples
-# (target_id, surplus, discounted_surplus, distance, pair_type)
-Preference = tuple[int, float, float, int, str]
 
 
 @register_protocol(
     category="search",
-    name="legacy_distance_discounted",
-    description="Legacy distance-discounted search",
-    properties=["deterministic", "legacy"],
-    complexity="O(V log V)",
-    references=[],
-    phase="1",
+    name="myopic",
+    description="Limited vision search (radius=1)",
+    properties=["information_constrained", "pedagogical"],
+    complexity="O(1)",
+    references=[
+        "Stigler (1961) Economics of Information",
+        "Search models in labor economics"
+    ],
+    phase="2b",
 )
-class LegacySearchProtocol(SearchProtocol):
+class MyopicSearch(SearchProtocol):
     """
-    Legacy distance-discounted search protocol.
+    Constrained search with limited vision radius.
     
-    For trade:
-    - Evaluates all visible neighbors
-    - Calculates surplus (regime-aware)
-    - Discounts by β^distance
-    - Ranks by discounted surplus
-    
-    For forage:
-    - Evaluates all visible resources
-    - Calculates utility gain from harvesting
-    - Discounts by β^distance
-    - Filters claimed resources
-    
-    For mixed mode:
-    - Evaluates both trade and forage
-    - Chooses activity with higher discounted score
+    Teaching Points:
+        - Information constraints reduce efficiency
+        - Search costs matter in markets
+        - Network effects and market thickness
+        - Value of information in economic decisions
     """
     
     @property
     def name(self) -> str:
-        return "legacy_distance_discounted"
+        return "myopic"
     
     @property
     def version(self) -> str:
-        return "2025.10.26"
+        return "2025.10.28"
     
-    # Class-level for registry (no instantiation required)
-    VERSION = "2025.10.26"
+    # Class-level for registry
+    VERSION = "2025.10.28"
     
-    def build_preferences(self, world: WorldView) -> list[tuple[int | Position, float, dict]]:
+    def build_preferences(self, world: WorldView) -> list[tuple[Any, float, dict]]:
         """
-        Build ranked preference list for visible opportunities.
-        
-        For trade mode: Returns list of (agent_id, score, metadata)
-        For forage mode: Returns list of (position, score, metadata)
-        For both mode: Returns both, caller will compare and select
+        Build preferences using limited vision (radius=1).
         
         Args:
-            world: Agent's perception snapshot
-        
+            world: Agent's immutable perception snapshot
+            
         Returns:
-            List of (target, discounted_score, metadata) tuples sorted by score descending
+            List of (target, score, metadata) tuples
+            Only includes targets within Manhattan distance 1
         """
         mode = world.mode
+        vision_radius = 1  # Myopic: only distance 1
         
-        # Always build trade preferences if mode allows
+        # Build trade preferences if mode allows
         trade_prefs = []
         if mode in ("trade", "both"):
-            trade_prefs = self._build_trade_preferences(world)
+            trade_prefs = self._build_trade_preferences(world, vision_radius)
         
-        # Always build forage preferences if mode allows
+        # Build forage preferences if mode allows
         forage_prefs = []
         if mode in ("forage", "both"):
-            forage_prefs = self._build_forage_preferences(world)
+            forage_prefs = self._build_forage_preferences(world, vision_radius)
         
-        # For "both" mode, caller needs both lists to compare
-        # For single mode, return the applicable list
+        # Combine for "both" mode, return single list for other modes
         if mode == "both":
-            # Return combined list with type tag in metadata
             combined = []
             for agent_id, score, meta in trade_prefs:
                 combined.append((agent_id, score, {**meta, "target_type": "trade"}))
@@ -107,14 +105,18 @@ class LegacySearchProtocol(SearchProtocol):
     
     def select_target(self, world: WorldView) -> list[Effect]:
         """
-        Select best target and emit effects.
+        Select target from myopic preferences.
         
+        Args:
+            world: Agent's immutable perception snapshot
+            
         Returns:
-            List of effects:
-            - [SetTarget(...)] if target selected
-            - [ClaimResource(...)] if foraging target selected
-            - [] if no suitable target (idle)
+            List of SetTarget effects
         """
+        # Skip if already paired (honor commitments)
+        if world.paired_with_id is not None:
+            return []
+        
         mode = world.mode
         
         if mode == "trade":
@@ -124,36 +126,42 @@ class LegacySearchProtocol(SearchProtocol):
         else:  # "both"
             return self._select_mixed_target(world)
     
-    def _build_trade_preferences(self, world: WorldView) -> list[tuple[int, float, dict]]:
+    def _build_trade_preferences(
+        self, 
+        world: WorldView, 
+        vision_radius: int
+    ) -> list[tuple[int, float, dict]]:
         """
-        Build ranked list of trade partners.
+        Build ranked list of trade partners within vision radius.
         
+        Args:
+            world: Agent's perception snapshot
+            vision_radius: Maximum distance to consider (1 for myopic)
+            
         Returns:
-            List of (agent_id, discounted_surplus, metadata) sorted descending by score
+            List of (agent_id, discounted_surplus, metadata) sorted descending
         """
         beta = world.params.get("beta", 0.95)
         
-        candidates: list[tuple[int, float, float, int, str]] = []
+        candidates = []
         
         for neighbor in world.visible_agents:
-            # Skip foraging-committed neighbors (not available for trade)
-            # Note: We infer this from metadata, or could add to AgentView
-            # For now, we'll check if they're targeting a resource
-            # Actually, we don't have this info in AgentView - will need to add
+            # Check distance - myopic only considers distance 1
+            distance = abs(world.pos[0] - neighbor.pos[0]) + abs(world.pos[1] - neighbor.pos[1])
+            
+            if distance > vision_radius:
+                continue  # Skip agents beyond vision radius
             
             # Check trade cooldown
             if neighbor.agent_id in world.trade_cooldowns:
                 if world.tick < world.trade_cooldowns[neighbor.agent_id]:
-                    continue  # Still in cooldown
+                    continue
             
             # Calculate surplus (barter-only)
             surplus = self._compute_barter_surplus_from_views(world, neighbor)
             pair_type = "A<->B"
             
             if surplus > 0:
-                # Compute distance
-                distance = abs(world.pos[0] - neighbor.pos[0]) + abs(world.pos[1] - neighbor.pos[1])
-                
                 # Beta-discounted surplus
                 discounted_surplus = surplus * (beta ** distance)
                 
@@ -175,25 +183,35 @@ class LegacySearchProtocol(SearchProtocol):
         
         return preferences
     
-    def _build_forage_preferences(self, world: WorldView) -> list[tuple[Position, float, dict]]:
+    def _build_forage_preferences(
+        self,
+        world: WorldView,
+        vision_radius: int
+    ) -> list[tuple[tuple[int, int], float, dict]]:
         """
-        Build ranked list of forage targets.
+        Build ranked list of forage targets within vision radius.
         
+        Args:
+            world: Agent's perception snapshot
+            vision_radius: Maximum distance to consider (1 for myopic)
+            
         Returns:
             List of (position, discounted_utility_gain, metadata) sorted descending
         """
         beta = world.params.get("beta", 0.95)
         forage_rate = world.params.get("forage_rate", 1)
         
-        # Filter claimed resources (exclude those claimed by others)
-        available_resources = self._filter_claimed_resources(world)
+        # Filter to resources within vision radius
+        available_resources = []
+        for resource in world.visible_resources:
+            distance = abs(resource.pos[0] - world.pos[0]) + abs(resource.pos[1] - world.pos[1])
+            if distance <= vision_radius:
+                # Check if claimed by other agents
+                if resource.claimed_by_id is None or resource.claimed_by_id == world.agent_id:
+                    available_resources.append(resource)
         
         if not available_resources:
             return []
-        
-        # Use existing choose_forage_target helper
-        # But we need to adapt it or reimplement for WorldView
-        # For now, let's reimplement the logic here
         
         candidates = []
         current_u = world.utility.u(world.inventory["A"], world.inventory["B"])
@@ -241,28 +259,15 @@ class LegacySearchProtocol(SearchProtocol):
         return preferences
     
     def _select_trade_target(self, world: WorldView) -> list[Effect]:
-        """Select best trade target."""
-        trade_prefs = self._build_trade_preferences(world)
+        """Select best trade target within vision radius."""
+        trade_prefs = self._build_trade_preferences(world, vision_radius=1)
         
         if not trade_prefs:
-            # No trade targets, agent goes idle
-            # No effect needed - orchestrator will handle idle state
+            # No targets within radius 1 - stay in place
             return []
         
         # Select top preference
         best_target_id, score, meta = trade_prefs[0]
-        
-        # Return SetTarget effect pointing to the partner's position
-        # We need the partner's position - find it in visible_agents
-        partner_pos = None
-        for neighbor in world.visible_agents:
-            if neighbor.agent_id == best_target_id:
-                partner_pos = neighbor.pos
-                break
-        
-        if partner_pos is None:
-            # Shouldn't happen, but defensive
-            return []
         
         return [SetTarget(
             protocol_name=self.name,
@@ -272,26 +277,17 @@ class LegacySearchProtocol(SearchProtocol):
         )]
     
     def _select_forage_target(self, world: WorldView) -> list[Effect]:
-        """Select best forage target."""
-        forage_prefs = self._build_forage_preferences(world)
+        """Select best forage target within vision radius."""
+        forage_prefs = self._build_forage_preferences(world, vision_radius=1)
         
         if not forage_prefs:
-            # No forage targets available
-            # Idle fallback - return to home
-            if world.params.get("home_pos") is not None:
-                return [SetTarget(
-                    protocol_name=self.name,
-                    tick=world.tick,
-                    agent_id=world.agent_id,
-                    target=world.params["home_pos"]
-                )]
+            # No targets within radius 1 - stay in place
             return []
         
         # Select top preference
         best_pos, score, meta = forage_prefs[0]
         
-        # Return both SetTarget and ClaimResource effects
-        return [
+        effects = [
             SetTarget(
                 protocol_name=self.name,
                 tick=world.tick,
@@ -305,13 +301,13 @@ class LegacySearchProtocol(SearchProtocol):
                 pos=best_pos
             )
         ]
+        
+        return effects
     
     def _select_mixed_target(self, world: WorldView) -> list[Effect]:
-        """
-        Compare best trade vs best forage and select higher-scoring option.
-        """
-        trade_prefs = self._build_trade_preferences(world)
-        forage_prefs = self._build_forage_preferences(world)
+        """Compare best trade vs best forage within vision radius."""
+        trade_prefs = self._build_trade_preferences(world, vision_radius=1)
+        forage_prefs = self._build_forage_preferences(world, vision_radius=1)
         
         # Get best scores
         best_trade_score = trade_prefs[0][1] if trade_prefs else 0.0
@@ -323,44 +319,13 @@ class LegacySearchProtocol(SearchProtocol):
         elif forage_prefs:
             return self._select_forage_target(world)
         else:
-            # Both options exhausted - idle
-            if world.params.get("home_pos") is not None:
-                return [SetTarget(
-                    protocol_name=self.name,
-                    tick=world.tick,
-                    agent_id=world.agent_id,
-                    target=world.params["home_pos"]
-                )]
+            # No targets within radius 1 - stay in place
             return []
     
-    def _filter_claimed_resources(self, world: WorldView) -> list[ResourceView]:
-        """Filter out resources claimed by OTHER agents."""
-        if not world.params.get("enable_resource_claiming", False):
-            return world.visible_resources  # Feature disabled, return all
-        
-        # Get resource claims from world context
-        resource_claims = world.params.get("resource_claims", {})
-        
-        available = []
-        for resource in world.visible_resources:
-            claiming_agent = resource_claims.get(resource.pos)
-            
-            # Include if: unclaimed OR claimed by current agent
-            if claiming_agent is None or claiming_agent == world.agent_id:
-                available.append(resource)
-        
-        return available
-    
     def _compute_barter_surplus_from_views(
-        self, world: WorldView, neighbor: AgentView
+        self, world: WorldView, neighbor
     ) -> float:
-        """
-        Compute barter surplus between agent and neighbor using quotes.
-        
-        This is a lightweight approximation used during search.
-        Full compensating block search happens during bargaining.
-        """
-        # Get quotes
+        """Compute barter surplus using quotes."""
         my_bid = world.quotes.get("bid_A_in_B", 0.0)
         my_ask = world.quotes.get("ask_A_in_B", 0.0)
         their_bid = neighbor.quotes.get("bid_A_in_B", 0.0)
@@ -370,9 +335,9 @@ class LegacySearchProtocol(SearchProtocol):
         overlap_dir1 = my_bid - their_ask  # I buy A from them
         overlap_dir2 = their_bid - my_ask  # They buy A from me
         
-        # Check inventory feasibility (simplified - just check we have ANY inventory)
-        dir1_feasible = (world.inventory.get("B", 0) >= 1)  # I need B to buy
-        dir2_feasible = (world.inventory.get("A", 0) >= 1)  # I need A to sell
+        # Check inventory feasibility
+        dir1_feasible = (world.inventory.get("B", 0) >= 1)
+        dir2_feasible = (world.inventory.get("A", 0) >= 1)
         
         # Return max feasible overlap
         feasible_overlaps = []

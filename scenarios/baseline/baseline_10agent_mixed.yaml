@@ -1,0 +1,63 @@
+schema_version: 1
+name: baseline_10agent_mixed
+N: 12
+agents: 10
+
+# Heterogeneous preferences with mixed utility functions
+# Random but fixed endowments for reproducibility
+initial_inventories:
+  A: [7, 12, 5, 14, 8, 11, 6, 13, 9, 10]
+  B: [13, 6, 15, 5, 11, 7, 14, 8, 10, 9]
+
+# Mixed utilities: 50% CES, 30% Linear, 20% Quadratic
+utilities:
+  mix:
+    - weight: 0.5
+      type: "ces"
+      params:
+        rho: 0.5
+        wA: 0.5
+        wB: 0.5
+    - weight: 0.3
+      type: "linear"
+      params:
+        vA: 0.6
+        vB: 0.4
+    - weight: 0.2
+      type: "quadratic"
+      params:
+        A_star: 12.0
+        B_star: 12.0
+        sigma_A: 5.0
+        sigma_B: 5.0
+        gamma: 0.0
+
+params:
+  # Spatial
+  vision_radius: 12         # Can see entire grid
+  interaction_radius: 0     # Must be co-located to trade
+  move_budget_per_tick: 1   # Can move 1 cell per tick
+  spread: 0.0               # No bid-ask spread
+  
+  # Trading
+  trade_cooldown_ticks: 0   # No cooldown
+  
+  # Foraging (minimal)
+  forage_rate: 1
+  enable_resource_claiming: true
+  enforce_single_harvester: true
+  resource_growth_rate: 1
+  resource_max_amount: 2
+  resource_regen_cooldown: 10
+  
+  # Economic
+  epsilon: 0.000000000001
+  beta: 0.95
+
+resource_seed:
+  density: 0.05
+  amount: 2
+
+# Purpose: Heterogeneous preferences, emergent price discovery
+# Expected: Trade volume distribution, spatial patterns
+

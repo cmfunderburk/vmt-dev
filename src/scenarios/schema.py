@@ -263,9 +263,9 @@ class ScenarioConfig:
             self.mode_schedule.validate()
         # Validate protocol names if specified (lazy import to ensure registry is populated)
         # Force protocol modules to import so decorators run and register entries
-        import vmt_engine.protocols.search as _protocols_search  # noqa: F401
-        import vmt_engine.protocols.matching as _protocols_matching  # noqa: F401
-        import vmt_engine.protocols.bargaining as _protocols_bargaining  # noqa: F401
+        from vmt_engine.agent_based import search as _agent_based_search  # noqa: F401
+        from vmt_engine.game_theory import matching as _game_theory_matching  # noqa: F401
+        from vmt_engine.game_theory import bargaining as _game_theory_bargaining  # noqa: F401
 
         from vmt_engine.protocols.registry import ProtocolRegistry
         registered = ProtocolRegistry.list_protocols()

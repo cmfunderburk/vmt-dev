@@ -15,8 +15,8 @@ Version: 2025.10.26 (Phase 1 - Refactored for Protocol System)
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
+from ..game_theory.bargaining import BargainingProtocol
 from ..protocols import (
-    BargainingProtocol,
     Trade,
     Unpair,
     build_trade_world_view,

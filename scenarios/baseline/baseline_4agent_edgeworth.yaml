@@ -1,0 +1,51 @@
+schema_version: 1
+name: baseline_4agent_edgeworth
+N: 8
+agents: 4
+
+# Classic Edgeworth box: 2 agent types with complementary endowments
+# Type A (agents 0,1): A-rich → want B
+# Type B (agents 2,3): B-rich → want A
+initial_inventories:
+  A: [8, 8, 3, 3]   # Type A: lots of A, Type B: little A
+  B: [3, 3, 8, 8]   # Type A: little B, Type B: lots of B
+
+# All agents have identical CES utility (complementary goods)
+utilities:
+  mix:
+    - weight: 1.0
+      type: "ces"
+      params:
+        rho: 0.5
+        wA: 0.5
+        wB: 0.5
+
+params:
+  # Spatial
+  vision_radius: 8          # Can see entire grid
+  interaction_radius: 0     # Must be co-located to trade
+  move_budget_per_tick: 1   # Can move 1 cell per tick
+  spread: 0.0               # No bid-ask spread
+  
+  # Trading
+  trade_cooldown_ticks: 0   # No cooldown
+  
+  # Foraging (minimal)
+  forage_rate: 1
+  enable_resource_claiming: true
+  enforce_single_harvester: true
+  resource_growth_rate: 1
+  resource_max_amount: 2
+  resource_regen_cooldown: 10
+  
+  # Economic
+  epsilon: 0.000000000001
+  beta: 0.95
+
+resource_seed:
+  density: 0.05
+  amount: 2
+
+# Purpose: Classic Edgeworth box dynamics with spatial friction
+# Expected: Multiple trades, type-based clustering
+

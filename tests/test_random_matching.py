@@ -16,8 +16,7 @@ import numpy as np
 from tests.helpers import builders, run as run_helpers
 from scenarios.loader import load_scenario
 from vmt_engine.simulation import Simulation
-from vmt_engine.protocols.matching import RandomMatching
-from vmt_engine.protocols.matching import RandomMatching, LegacyMatchingProtocol
+from vmt_engine.game_theory.matching import RandomMatching, LegacyMatchingProtocol
 from vmt_engine.protocols.context import ProtocolContext
 
 

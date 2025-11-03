@@ -44,9 +44,6 @@ from .base import (
     InternalStateUpdate,
     # Protocol base classes
     ProtocolBase,
-    SearchProtocol,
-    MatchingProtocol,
-    BargainingProtocol,
 )
 
 from .context import (
@@ -86,9 +83,6 @@ __all__ = [
     "InternalStateUpdate",
     # Protocols
     "ProtocolBase",
-    "SearchProtocol",
-    "MatchingProtocol",
-    "BargainingProtocol",
     # Context
     "AgentView",
     "ResourceView",
@@ -113,17 +107,11 @@ __all__ = [
 # -----------------------------------------------------------------------------
 # Force protocol module imports to trigger decorator registration
 # -----------------------------------------------------------------------------
+# Protocols are now domain-organized under game_theory/ and agent_based/
+# Note: Crash-fast assertions were removed because they cause circular import issues
+# during module initialization. Protocols register correctly via decorators below.
 
-from . import search as _protocols_search  # noqa: F401
-from . import matching as _protocols_matching  # noqa: F401
-from . import bargaining as _protocols_bargaining  # noqa: F401
-
-# Crash-fast assertions: ensure baseline protocols are registered
-_registered = ProtocolRegistry.list_protocols()
-assert "legacy_distance_discounted" in _registered.get("search", []), "Search protocols not registered: missing 'legacy_distance_discounted'"
-assert "random_walk" in _registered.get("search", []), "Search protocols not registered: missing 'random_walk'"
-assert "legacy_three_pass" in _registered.get("matching", []), "Matching protocols not registered: missing 'legacy_three_pass'"
-assert "random_matching" in _registered.get("matching", []), "Matching protocols not registered: missing 'random_matching'"
-assert "legacy_compensating_block" in _registered.get("bargaining", []), "Bargaining protocols not registered: missing 'legacy_compensating_block'"
-assert "split_difference" in _registered.get("bargaining", []), "Bargaining protocols not registered: missing 'split_difference'"
+from ..game_theory import bargaining as _game_theory_bargaining  # noqa: F401
+from ..game_theory import matching as _game_theory_matching  # noqa: F401
+from ..agent_based import search as _agent_based_search  # noqa: F401
 

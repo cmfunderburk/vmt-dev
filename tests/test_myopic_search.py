@@ -16,7 +16,7 @@ import numpy as np
 from tests.helpers import builders, run as run_helpers
 from scenarios.loader import load_scenario
 from vmt_engine.simulation import Simulation
-from vmt_engine.protocols.search import MyopicSearch, LegacySearchProtocol
+from vmt_engine.agent_based.search import MyopicSearch, LegacySearchProtocol
 from vmt_engine.protocols.context import WorldView, AgentView, ResourceView
 
 

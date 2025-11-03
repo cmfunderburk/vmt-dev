@@ -14,9 +14,9 @@ Version: 2025.10.26 (Phase 1 - Refactored for Protocol System)
 
 from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
+from ..agent_based.search import SearchProtocol
+from ..game_theory.matching import MatchingProtocol
 from ..protocols import (
-    SearchProtocol,
-    MatchingProtocol,
     SetTarget,
     ClaimResource,
     ReleaseClaim,
