@@ -4,6 +4,7 @@ Main simulation loop and orchestration.
 
 import numpy as np
 from typing import Optional
+from decimal import Decimal
 from .core import Grid, Agent, Inventory, SpatialIndex
 from scenarios.schema import ScenarioConfig
 from .econ.utility import create_utility

@@ -151,6 +151,8 @@ def regenerate_resources(grid: 'Grid', growth_rate: int, max_amount: int,
     Returns:
         Total units regenerated this tick (Decimal)
     """
+    from ..core.decimal_config import quantize_quantity
+    
     if growth_rate <= 0:
         return Decimal('0')
     
@@ -191,8 +193,6 @@ def regenerate_resources(grid: 'Grid', growth_rate: int, max_amount: int,
         
         if ticks_since_harvest >= cooldown_ticks:
             # Cooldown complete, regenerate
-            from decimal import Decimal
-            from ..core.decimal_config import quantize_quantity
             
             old_amount = cell.resource.amount
             growth_rate_decimal = Decimal(str(growth_rate))

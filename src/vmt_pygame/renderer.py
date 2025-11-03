@@ -11,6 +11,7 @@ import os
 import platform
 import pygame
 from typing import TYPE_CHECKING, Optional
+from decimal import Decimal
 
 if TYPE_CHECKING:
     from vmt_engine.simulation import Simulation
@@ -19,6 +20,49 @@ if TYPE_CHECKING:
 
 class VMTRenderer:
     """Renders VMT simulation using Pygame."""
+    
+    @staticmethod
+    def format_decimal(value: Decimal | int | float) -> str:
+        """
+        Format a numeric value for display, removing trailing zeros and preventing scientific notation.
+        
+        Examples:
+            5.0000 -> "5"
+            5.1234 -> "5.1234"
+            5.1000 -> "5.1"
+            0.0000 -> "0"
+            0.1234 -> "0.1234"
+            10000.0 -> "10000" (not "1E4")
+        
+        Args:
+            value: Decimal, int, or float value to format
+            
+        Returns:
+            String representation without trailing zeros or scientific notation
+        """
+        # Convert to Decimal if not already
+        if not isinstance(value, Decimal):
+            # Convert via string to avoid floating-point artifacts
+            # For floats, use format to prevent scientific notation
+            if isinstance(value, float):
+                # Format float without scientific notation, with enough precision
+                formatted = f"{value:.10f}".rstrip('0').rstrip('.')
+                dec = Decimal(formatted) if formatted else Decimal('0')
+            else:
+                dec = Decimal(value)
+        else:
+            dec = value
+        
+        # Use fixed-point format to prevent scientific notation
+        # This ensures we never get exponential notation (e.g., "1E+2")
+        # Format with enough decimal places, then remove trailing zeros
+        s = f"{dec:.10f}"
+        
+        # Remove trailing zeros and trailing decimal point
+        if '.' in s:
+            s = s.rstrip('0').rstrip('.')
+        
+        return s
     
     def __init__(self, simulation: 'Simulation', cell_size: Optional[int] = None):
         """
@@ -346,7 +390,7 @@ class VMTRenderer:
                 # Draw amount label if cell size permits
                 if self.show_resource_labels:
                     label = self.small_font.render(
-                        f"{cell.resource.type}:{cell.resource.amount}",
+                        f"{cell.resource.type}:{self.format_decimal(cell.resource.amount)}",
                         True, self.COLOR_TEXT
                     )
                     self.screen.blit(label, (screen_x + 2, screen_y + 2))
@@ -602,7 +646,7 @@ class VMTRenderer:
         if agent_count == 1:
             # Single agent - draw inventory below (current behavior)
             agent = agents[0]
-            inv_text = f"A:{agent.inventory.A} B:{agent.inventory.B}"
+            inv_text = f"A:{self.format_decimal(agent.inventory.A)} B:{self.format_decimal(agent.inventory.B)}"
             
             inv_label = self.small_font.render(inv_text, True, self.COLOR_TEXT)
             inv_width = inv_label.get_width()
@@ -611,7 +655,7 @@ class VMTRenderer:
         elif agent_count <= 3:
             # 2-3 agents - stack labels vertically
             for idx, agent in enumerate(agents):
-                inv_text = f"[{agent.id}] A:{agent.inventory.A} B:{agent.inventory.B}"
+                inv_text = f"[{agent.id}] A:{self.format_decimal(agent.inventory.A)} B:{self.format_decimal(agent.inventory.B)}"
                 
                 inv_label = self.small_font.render(inv_text, True, self.COLOR_TEXT)
                 inv_width = inv_label.get_width()
@@ -918,7 +962,7 @@ class VMTRenderer:
         total_B = sum(a.inventory.B for a in self.sim.agents)
         
         # Money system removed - show only goods inventory
-        inv_text = f"Total Inventory - A: {total_A}  B: {total_B}"
+        inv_text = f"Total Inventory - A: {self.format_decimal(total_A)}  B: {self.format_decimal(total_B)}"
         
         inv_label = self.font.render(inv_text, True, self.COLOR_TEXT)
         self.screen.blit(inv_label, (10, hud_y + 60))
@@ -970,7 +1014,11 @@ class VMTRenderer:
             price = trade['price']
             
             # Format barter trade (A<->B only)
-            trade_text = f"T{tick}: {buyer} buys {dA}A from {seller} for {dB}B @ {price:.2f}"
+            # Convert dA and dB to Decimal if needed, then format
+            dA_formatted = self.format_decimal(Decimal(str(dA)) if not isinstance(dA, Decimal) else dA)
+            dB_formatted = self.format_decimal(Decimal(str(dB)) if not isinstance(dB, Decimal) else dB)
+            price_formatted = self.format_decimal(Decimal(str(price)) if not isinstance(price, Decimal) else price)
+            trade_text = f"T{tick}: {buyer} buys {dA_formatted}A from {seller} for {dB_formatted}B @ {price_formatted}"
             
             trade_label = self.small_font.render(trade_text, True, self.COLOR_TEXT)
             trade_label_width = trade_label.get_width()
@@ -1106,7 +1154,9 @@ class VMTRenderer:
             
             for window_label, avg in windows:
                 if avg is not None:
-                    text = f"  {window_label}: {avg:.4f}"
+                    # Format average rate without trailing zeros
+                    avg_formatted = self.format_decimal(Decimal(str(avg)) if not isinstance(avg, Decimal) else avg)
+                    text = f"  {window_label}: {avg_formatted}"
                 else:
                     text = f"  {window_label}: --"
                 
@@ -1136,7 +1186,7 @@ class VMTRenderer:
                 y_offset += 18
                 
                 # Inventory values
-                inventory_text = f"  A: {agent.inventory.A}, B: {agent.inventory.B}"
+                inventory_text = f"  A: {self.format_decimal(agent.inventory.A)}, B: {self.format_decimal(agent.inventory.B)}"
                 inventory_label = self.small_font.render(inventory_text, True, self.COLOR_TEXT)
                 self.screen.blit(inventory_label, (15, y_offset))
                 y_offset += 18

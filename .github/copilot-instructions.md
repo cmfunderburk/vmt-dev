@@ -45,6 +45,9 @@ Refer to `src/vmt_engine/systems/` to see how each phase is implemented. Do not 
 
   # Activate for each session
   source venv/bin/activate
+  
+  # NOTE: On some systems, you may need to use bash explicitly:
+  bash -c "source venv/bin/activate && <your_command>"
   ```
 - **Run GUI**: `python launcher.py`
 - **Run Headless**: `python main.py scenarios/demos/minimal_2agent.yaml`
