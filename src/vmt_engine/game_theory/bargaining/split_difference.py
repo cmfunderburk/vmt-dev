@@ -16,13 +16,16 @@ References:
 Version: 2025.10.28 (Phase 2a - Baseline Protocol)
 """
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from ...protocols.registry import register_protocol
 from .base import BargainingProtocol
 from ...protocols.base import Effect, Trade, Unpair
 from ...protocols.context import WorldView
 from .discovery import CompensatingBlockDiscoverer
 from ...systems.trade_evaluation import TradeDiscoverer
+
+if TYPE_CHECKING:
+    from ...core import Agent
 
 
 @register_protocol(
@@ -76,29 +79,30 @@ class SplitDifference(BargainingProtocol):
         """
         self.discoverer = discoverer or CompensatingBlockDiscoverer()
     
-    def negotiate(self, pair: tuple[int, int], world: WorldView) -> list[Effect]:
+    def negotiate(
+        self,
+        pair: tuple[int, int],
+        agents: tuple["Agent", "Agent"],
+        world: WorldView
+    ) -> list[Effect]:
         """
         Find trade that splits surplus equally.
         
         Args:
             pair: (agent_a_id, agent_b_id) tuple
-            world: Context with both agents' states
+            agents: (agent_a, agent_b) - direct access to agent states
+            world: Context (tick, params, rng)
         
         Returns:
             [Trade(...)] if mutually beneficial trade with equal split found
             [Unpair(...)] if no feasible trade exists
         """
-        agent_a_id, agent_b_id = pair
-        
-        # Build pseudo-agent objects from WorldView
-        agent_i = self._build_agent_from_world(world, agent_a_id)
-        agent_j = self._build_agent_from_world(world, agent_b_id)
-        
-        # Discover trade using injected discovery algorithm
+        agent_a, agent_b = agents
         epsilon = world.params.get("epsilon", 1e-9)
         
+        # Discover trade using injected discovery algorithm
         trade_tuple_obj = self.discoverer.discover_trade(
-            agent_i, agent_j, world.params, epsilon
+            agent_a, agent_b, world.params, epsilon
         )
         
         if trade_tuple_obj is None:
@@ -106,8 +110,8 @@ class SplitDifference(BargainingProtocol):
             return [Unpair(
                 protocol_name=self.name,
                 tick=world.tick,
-                agent_a=agent_a_id,
-                agent_b=agent_b_id,
+                agent_a=pair[0],
+                agent_b=pair[1],
                 reason="no_feasible_trade"
             )]
         
@@ -130,54 +134,16 @@ class SplitDifference(BargainingProtocol):
             return [Unpair(
                 protocol_name=self.name,
                 tick=world.tick,
-                agent_a=agent_a_id,
-                agent_b=agent_b_id,
+                agent_a=pair[0],
+                agent_b=pair[1],
                 reason="no_positive_surplus"
             )]
         
         # Convert to Trade effect
         # Note: evenness is 0.0 since we no longer optimize for equal split with single trade discovery
         return [self._create_trade_effect(
-            agent_a_id, agent_b_id, best_pair_name, best_trade, 0.0, world
+            pair[0], pair[1], best_pair_name, best_trade, 0.0, world
         )]
-    
-    def _build_agent_from_world(self, world: WorldView, agent_id: int):
-        """Build pseudo-agent object from WorldView for matching functions."""
-        from ...core.agent import Agent
-        from ...core.state import Inventory
-        
-        # If this is the current agent
-        if agent_id == world.agent_id:
-            inventory = Inventory(
-                A=world.inventory.get("A", 0),
-                B=world.inventory.get("B", 0)
-            )
-            quotes = world.quotes
-            utility = world.utility
-        else:
-            # Partner - extract from params (populated by context builder)
-            inventory = Inventory(
-                A=world.params.get(f"partner_{agent_id}_inv_A", 0),
-                B=world.params.get(f"partner_{agent_id}_inv_B", 0)
-            )
-            quotes = {}
-            # Find partner in visible agents for quotes
-            for neighbor in world.visible_agents:
-                if neighbor.agent_id == agent_id:
-                    quotes = neighbor.quotes
-                    break
-            utility = world.params.get(f"partner_{agent_id}_utility", None)
-        
-        # Create minimal agent
-        agent = Agent(
-            id=agent_id,
-            pos=(0, 0),  # Not used in matching
-            inventory=inventory,
-            utility=utility,
-            quotes=quotes,
-        )
-        
-        return agent
     
     def _create_trade_effect(
         self,

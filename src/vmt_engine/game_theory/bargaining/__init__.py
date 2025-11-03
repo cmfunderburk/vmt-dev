@@ -22,20 +22,10 @@ from .compensating_block import CompensatingBlockBargaining
 from .split_difference import SplitDifference
 from .take_it_or_leave_it import TakeItOrLeaveIt
 
-# Keep legacy import for backward compatibility during transition
-try:
-    from .legacy import LegacyBargainingProtocol
-except ImportError:
-    LegacyBargainingProtocol = None
-
 __all__ = [
     "BargainingProtocol",
     "CompensatingBlockBargaining",
     "SplitDifference",
     "TakeItOrLeaveIt",
 ]
-
-# Add legacy if available
-if LegacyBargainingProtocol is not None:
-    __all__.append("LegacyBargainingProtocol")
 

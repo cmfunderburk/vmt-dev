@@ -64,7 +64,6 @@ from .registry import (
 from .context_builders import (
     build_world_view_for_agent,
     build_protocol_context,
-    build_trade_world_view,
 )
 
 __all__ = [
@@ -95,7 +94,6 @@ __all__ = [
     # Context builders
     "build_world_view_for_agent",
     "build_protocol_context",
-    "build_trade_world_view",
     # Registry exports
     "ProtocolRegistry",
     "register_protocol",
