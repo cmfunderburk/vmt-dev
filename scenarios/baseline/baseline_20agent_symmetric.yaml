@@ -1,0 +1,50 @@
+schema_version: 1
+name: baseline_20agent_symmetric
+N: 15
+agents: 20
+
+# Edge case: All agents identical (no gains from trade)
+# This validates surplus detection and null hypothesis
+initial_inventories:
+  A: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+  B: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+
+# All agents have identical CES utility
+utilities:
+  mix:
+    - weight: 1.0
+      type: "ces"
+      params:
+        rho: 0.5
+        wA: 0.5
+        wB: 0.5
+
+params:
+  # Spatial
+  vision_radius: 15         # Can see entire grid
+  interaction_radius: 0     # Must be co-located to trade
+  move_budget_per_tick: 1   # Can move 1 cell per tick
+  spread: 0.0               # No bid-ask spread
+  
+  # Trading
+  trade_cooldown_ticks: 0   # No cooldown
+  
+  # Foraging (minimal)
+  forage_rate: 1
+  enable_resource_claiming: true
+  enforce_single_harvester: true
+  resource_growth_rate: 1
+  resource_max_amount: 2
+  resource_regen_cooldown: 10
+  
+  # Economic
+  epsilon: 0.000000000001
+  beta: 0.95
+
+resource_seed:
+  density: 0.05
+  amount: 2
+
+# Purpose: Edge case - no gains from trade (null hypothesis)
+# Expected: Zero trades (validates surplus detection)
+
