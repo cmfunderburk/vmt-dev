@@ -10,6 +10,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Matching-Bargaining Decoupling Refactor** (2025-11-03): Separated matching from bargaining concerns
+  - Decoupled matching protocols from bargaining implementations via abstraction interfaces
+  - `BargainingProtocol.negotiate()` now receives agents directly (breaking change)
+  - Eliminated params hack for passing partner state in bargaining
+  - Renamed `legacy_compensating_block` protocol to `compensating_block` (reflects actual purpose)
+  - Matching protocols now use lightweight heuristics; bargaining protocols use full discovery
+  - Benefits: Independent protocol development, cleaner architecture, correct semantic separation
+
+### Added
+- `TradePotentialEvaluator` interface for lightweight matching phase evaluation
+- `TradeDiscoverer` interface for full trade discovery in bargaining phase
+- `QuoteBasedTradeEvaluator`: Default evaluator using quote overlaps (fast heuristic)
+- `CompensatingBlockDiscoverer`: Default discoverer implementing VMT's core algorithm
+- `TradePotential` and `TradeTuple` NamedTuples for zero-overhead data passing
+- Debug immutability assertions in `TradeSystem` (activated via `debug_immutability` param)
+- Comprehensive test suite for trade evaluation abstractions
+
+### Removed
+- `build_trade_world_view()` function (params hack eliminated)
+- `legacy.py` bargaining protocol (replaced by `compensating_block.py`)
+- `find_compensating_block_generic()` from `matching.py` (moved to `CompensatingBlockDiscoverer`)
+- `find_all_feasible_trades()` from `matching.py` (no longer needed)
+- `find_best_trade()` from `matching.py` (no longer needed)
+- All `_build_agent_from_world()` adapter methods from bargaining protocols
+
+### Technical Debt
+- Matching protocols still use params hack for agent state (`f"agent_{id}_inv_A"` pattern)
+- Deferred to future work as it's lower priority than bargaining separation
+
 - **Protocol Architecture Restructure** (2025-11-02): Moved protocols to domain-specific modules
   - Search protocols moved from `vmt_engine.protocols.search` to `vmt_engine.agent_based.search`
   - Matching protocols moved from `vmt_engine.protocols.matching` to `vmt_engine.game_theory.matching`

@@ -39,8 +39,7 @@ class CompensatingBlockDiscoverer(TradeDiscoverer):
           - Return first feasible trade found
     3. Return None if no feasible trade exists
     
-    This is refactored from find_compensating_block_generic() in matching.py
-    (lines 516-615), preserving the exact same behavior.
+    This implements the foundational VMT compensating block algorithm.
     
     Economic Properties:
     - First feasible trade (not optimizing)

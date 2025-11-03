@@ -260,7 +260,7 @@ class TakeItOrLeaveIt(BargainingProtocol):
             agent_j_id: Agent ID corresponding to 'j' in trade_tuple (higher ID)
             proposer_is_i: True if proposer is agent_i (lower ID), False if proposer is agent_j
             pair_name: Exchange pair type
-            trade_tuple: Trade tuple from find_all_feasible_trades
+            trade_tuple: Trade tuple from discovery algorithm
             world: WorldView context
         """
         dA_i, dB_i, dA_j, dB_j, surplus_i, surplus_j = trade_tuple
