@@ -229,18 +229,18 @@ def improves(agent: 'Agent', dA: int | Decimal, dB: int | Decimal, eps: float = 
     return u1 > u0 + eps
 
 
-def generate_price_candidates(ask: float, bid: float, dA: int) -> list[float]:
+def generate_price_candidates(ask: float, bid: float, dA: Decimal) -> list[float]:
     """
     Generate candidate prices to try within [ask, bid] range.
     
-    Strategy: Prefer prices that yield integer ΔB at this ΔA, plus a small
+    Strategy: Prefer prices that yield quantized ΔB at this ΔA, plus a small
     evenly-spaced cover across [ask, bid] to avoid missing feasible blocks
     when midpoint rounding fails.
     
     Args:
         ask: Seller's minimum acceptable price
         bid: Buyer's maximum acceptable price
-        dA: Trade size in units of A
+        dA: Trade size in units of A (Decimal)
         
     Returns:
         List of candidate prices, sorted from low to high
@@ -250,11 +250,15 @@ def generate_price_candidates(ask: float, bid: float, dA: int) -> list[float]:
     
     candidates = set()
     
-    # Add prices that give specific integer ΔB values
-    # This is key for finding mutually beneficial discrete trades
-    max_dB = int(bid * dA + 1)
-    for target_dB in range(1, min(max_dB + 1, 20)):  # Cap at 20 to avoid excessive candidates
-        price = target_dB / dA
+    # Add prices that give specific quantized ΔB values
+    # Convert dA to float for calculation, then quantize results
+    dA_float = float(dA)
+    max_dB_float = bid * dA_float + 1
+    # Generate candidate prices that yield quantized dB values
+    # Step by reasonable increments (use 10 candidates up to max)
+    for i in range(1, min(21, int(max_dB_float) + 1)):  # Cap at 20 to avoid excessive candidates
+        target_dB = Decimal(str(i))
+        price = float(target_dB / dA)
         if ask <= price <= bid:
             candidates.add(price)
     
@@ -304,11 +308,17 @@ def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
     if max_dA <= 0:
         return None  # Seller has nothing to sell
     
-    # Convert to int for range iteration
-    max_dA_int = int(max_dA)
+    # Get quantization step size for fractional trade search
+    from ..core.decimal_config import QUANTITY_QUANTIZER
+    step_size = QUANTITY_QUANTIZER
     
-    # Iterate over trade sizes
-    for dA in range(1, max_dA_int + 1):
+    # Iterate over trade sizes from minimum to maximum
+    # Start from one step (smallest non-zero trade)
+    current_dA = step_size
+    while current_dA <= max_dA:
+        # Quantize current_dA to ensure precision
+        dA = quantize_quantity(current_dA)
+        
         # Generate candidate prices for this trade size
         price_candidates = generate_price_candidates(ask, bid, dA)
         
@@ -351,14 +361,13 @@ def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
             
             if buyer_improves_flag and seller_improves_flag:
                 # Success! Found a mutually beneficial trade
-                # Convert dA to Decimal for consistency
-                dA_decimal = quantize_quantity(Decimal(str(dA)))
+                # dA is already Decimal and quantized
                 if telemetry:
                     log_trade_attempt(
                         telemetry, tick, buyer, seller, direction, test_price, surplus,
                         dA, dB, True, True, True, True, "success", "utility_improves_both"
                     )
-                return (dA_decimal, dB, test_price)  # Return the price that worked
+                return (dA, dB, test_price)  # Return the price that worked
             else:
                 if telemetry:
                     reason = "utility_no_improvement"
@@ -375,6 +384,9 @@ def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
                         True, True, "fail", reason
                     )
                 # Continue trying other prices for this dA
+        
+        # Move to next trade size
+        current_dA += step_size
     
     return None
 

@@ -217,7 +217,7 @@ class SplitDifference(BargainingProtocol):
                 pair_type=pair_name,
                 dA=dA,
                 dB=dB,
-                price=round(price, 2),
+                price=float(round(price, 2)),
                 metadata={
                     "surplus_buyer": surplus_i if buyer_id == agent_a_id else surplus_j,
                     "surplus_seller": surplus_j if buyer_id == agent_a_id else surplus_i,

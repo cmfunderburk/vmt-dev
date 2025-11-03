@@ -196,7 +196,7 @@ class LegacyBargainingProtocol(BargainingProtocol):
             pair_type="A<->B",
             dA=abs(dA),
             dB=abs(dB),
-            price=abs(price),
+            price=float(abs(price)),
             metadata={
                 "surplus_buyer": surplus_i if buyer_id == agent_a_id else surplus_j,
                 "surplus_seller": surplus_j if seller_id == agent_b_id else surplus_i,

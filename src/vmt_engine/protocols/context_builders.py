@@ -9,6 +9,7 @@ Version: 2025.10.26 (Phase 1 - Legacy Adapter)
 """
 
 from typing import TYPE_CHECKING
+from decimal import Decimal
 from .context import WorldView, ProtocolContext, AgentView, ResourceView
 from ..core.state import Position
 
@@ -50,8 +51,8 @@ def build_world_view_for_agent(agent: "Agent", sim: "Simulation") -> WorldView:
     for cell in view.get("resource_cells", []):
         visible_resources.append(ResourceView(
             pos=cell.position,
-            A=cell.resource.amount if cell.resource.type == "A" else 0,
-            B=cell.resource.amount if cell.resource.type == "B" else 0,
+            A=cell.resource.amount if cell.resource.type == "A" else Decimal('0'),
+            B=cell.resource.amount if cell.resource.type == "B" else Decimal('0'),
             claimed_by_id=sim.resource_claims.get(cell.position)
         ))
     
@@ -126,8 +127,8 @@ def build_protocol_context(sim: "Simulation") -> ProtocolContext:
             if cell.resource.type is not None and cell.resource.amount > 0:
                 all_resource_views.append(ResourceView(
                     pos=(x, y),
-                    A=cell.resource.amount if cell.resource.type == "A" else 0,
-                    B=cell.resource.amount if cell.resource.type == "B" else 0,
+                    A=cell.resource.amount if cell.resource.type == "A" else Decimal('0'),
+                    B=cell.resource.amount if cell.resource.type == "B" else Decimal('0'),
                     claimed_by_id=sim.resource_claims.get((x, y))
                 ))
     

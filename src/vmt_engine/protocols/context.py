@@ -15,13 +15,14 @@ Version: 2025.10.26 (Phase 0 - Infrastructure)
 
 from dataclasses import dataclass
 from typing import Any, Optional
+from decimal import Decimal
 import numpy as np
 
 from ..econ.base import Utility
 
 # Type aliases
 Position = tuple[int, int]
-Inventory = dict[str, int]
+Inventory = dict[str, Decimal]
 
 
 # =============================================================================
@@ -63,8 +64,8 @@ class ResourceView:
     """
     
     pos: Position
-    A: int  # Available A resources
-    B: int  # Available B resources
+    A: Decimal  # Available A resources
+    B: Decimal  # Available B resources
     claimed_by_id: Optional[int]  # None if unclaimed
 
 
@@ -102,7 +103,7 @@ class WorldView:
     
     agent_id: int
     pos: Position
-    inventory: Inventory  # {"A": int, "B": int}
+    inventory: Inventory  # {"A": Decimal, "B": Decimal}
     utility: Utility  # Agent's utility function
     quotes: dict[str, float]  # Own reservation prices
     paired_with_id: Optional[int]  # None if unpaired

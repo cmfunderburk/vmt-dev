@@ -23,6 +23,7 @@ Post-restructure: 2025.11.02
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Optional, Union
+from decimal import Decimal
 
 # Type aliases for clarity
 Position = tuple[int, int]
@@ -175,8 +176,8 @@ class Trade(Effect):
     buyer_id: int
     seller_id: int
     pair_type: str  # Always "A<->B" for barter-only economy
-    dA: int  # Change in good A (negative for seller, positive for buyer)
-    dB: int  # Change in good B
+    dA: Decimal  # Change in good A (negative for seller, positive for buyer)
+    dB: Decimal  # Change in good B
     price: float  # Price of the transaction
     metadata: dict[str, Any]  # Additional info (e.g., surplus, rounds)
 
@@ -199,7 +200,7 @@ class Harvest(Effect):
     
     agent_id: int
     pos: Position
-    amount: int
+    amount: Decimal
 
 
 # -----------------------------------------------------------------------------

@@ -142,9 +142,10 @@ class Simulation:
         self.agents.sort(key=lambda a: a.id)
         
         # Track initial state for post-run summaries
+        from decimal import Decimal
         self._start_inventory: dict[int, dict[str, int]] = {}
         self._start_utility: dict[int, Optional[float]] = {}
-        self._gathered_resources: dict[int, dict[str, int]] = {}
+        self._gathered_resources: dict[int, dict[str, Decimal]] = {}
         self._trades_made: dict[int, int] = {}
         self._summary_printed = False
 
@@ -159,7 +160,7 @@ class Simulation:
             else:
                 self._start_utility[agent.id] = None
 
-            self._gathered_resources[agent.id] = {"A": 0, "B": 0}
+            self._gathered_resources[agent.id] = {"A": Decimal('0'), "B": Decimal('0')}
             self._trades_made[agent.id] = 0
         
         # Initialize spatial index for efficient proximity queries
@@ -408,7 +409,7 @@ class Simulation:
             else:
                 util_segment = "U n/a"
 
-            gathered = self._gathered_resources.get(agent.id, {"A": 0, "B": 0})
+            gathered = self._gathered_resources.get(agent.id, {"A": Decimal('0'), "B": Decimal('0')})
             trades = self._trades_made.get(agent.id, 0)
 
             inventory_segment = (
@@ -416,7 +417,7 @@ class Simulation:
                 f"B {start_inv['B']}->{end_inv['B']} (d {fmt_signed_int(delta_b)})"
             )
 
-            gathered_segment = f"gathered A:{gathered.get('A', 0)} B:{gathered.get('B', 0)}"
+            gathered_segment = f"gathered A:{gathered.get('A', Decimal('0'))} B:{gathered.get('B', Decimal('0'))}"
 
             if agent.utility is not None:
                 utility_label = agent.utility.__class__.__name__

@@ -337,7 +337,7 @@ class TakeItOrLeaveIt(BargainingProtocol):
                 pair_type=pair_name,
                 dA=dA,
                 dB=dB,
-                price=round(price, 2),
+                price=float(round(price, 2)),
                 metadata={
                     "proposer_id": proposer_id,
                     "responder_id": responder_id,

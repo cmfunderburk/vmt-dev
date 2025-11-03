@@ -3,6 +3,7 @@ Foraging system for resource harvesting.
 """
 
 from typing import TYPE_CHECKING, Optional
+from decimal import Decimal
 
 if TYPE_CHECKING:
     from ..core import Agent, Grid
@@ -61,7 +62,7 @@ def forage(
     grid: 'Grid',
     forage_rate: int,
     current_tick: int = 0
-) -> tuple[bool, Optional[str], int]:
+) -> tuple[bool, Optional[str], Decimal]:
     """
     Harvest resources from agent's current cell.
     
@@ -75,15 +76,14 @@ def forage(
         Tuple (did_harvest, resource_type, amount)
         - did_harvest: True if any resources were harvested
         - resource_type: "A" or "B" when harvested, otherwise None
-        - amount: Quantity gathered as int (0 when did_harvest is False)
+        - amount: Quantity gathered as Decimal (0 when did_harvest is False)
     """
-    from decimal import Decimal
     from ..core.decimal_config import quantize_quantity
     
     cell = grid.get_cell(agent.pos[0], agent.pos[1])
     
     if cell.resource.amount == 0 or cell.resource.type is None:
-        return (False, None, 0)
+        return (False, None, Decimal('0'))
     
     # Determine harvest amount - ensure both operands are Decimal for min()
     forage_rate_decimal = Decimal(str(forage_rate))
@@ -117,12 +117,12 @@ def forage(
         # Clear trade cooldowns (productive foraging clears frustration)
         agent.trade_cooldowns.clear()
     
-    # Return amount as int for backward compatibility
-    return (True, good_type, int(harvest_decimal))
+    # Quantize and return Decimal amount
+    return (True, good_type, quantize_quantity(harvest_decimal))
 
 
 def regenerate_resources(grid: 'Grid', growth_rate: int, max_amount: int,
-                        cooldown_ticks: int, current_tick: int) -> int:
+                        cooldown_ticks: int, current_tick: int) -> Decimal:
     """
     Regenerate resources on the grid at a fixed rate after cooldown period.
     
@@ -149,10 +149,10 @@ def regenerate_resources(grid: 'Grid', growth_rate: int, max_amount: int,
         current_tick: Current simulation tick
         
     Returns:
-        Total units regenerated this tick
+        Total units regenerated this tick (Decimal)
     """
     if growth_rate <= 0:
-        return 0
+        return Decimal('0')
     
     # Bootstrap: If harvested_cells is empty but there are depleted cells,
     # scan once to build the active set (for backward compatibility with tests)
@@ -163,7 +163,7 @@ def regenerate_resources(grid: 'Grid', growth_rate: int, max_amount: int,
                 cell.resource.amount < cell.resource.original_amount):
                 grid.harvested_cells.add(pos)
     
-    total_regenerated = 0
+    total_regenerated = Decimal('0')
     cells_to_remove = []
     
     # Only iterate over harvested cells (O(harvested) instead of O(N²))
@@ -197,10 +197,10 @@ def regenerate_resources(grid: 'Grid', growth_rate: int, max_amount: int,
             old_amount = cell.resource.amount
             growth_rate_decimal = Decimal(str(growth_rate))
             new_amount = min(old_amount + growth_rate_decimal, cell.resource.original_amount)
-            regenerated = new_amount - old_amount
+            regenerated = quantize_quantity(new_amount - old_amount)
             
-            cell.resource.amount = new_amount
-            total_regenerated += int(regenerated)
+            cell.resource.amount = quantize_quantity(new_amount)
+            total_regenerated += regenerated
             
             # If fully regenerated, remove from active set
             if cell.resource.amount >= cell.resource.original_amount:
