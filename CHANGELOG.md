@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Protocol Architecture Restructure** (2025-11-02): Moved protocols to domain-specific modules
+  - Search protocols moved from `vmt_engine.protocols.search` to `vmt_engine.agent_based.search`
+  - Matching protocols moved from `vmt_engine.protocols.matching` to `vmt_engine.game_theory.matching`
+  - Bargaining protocols moved from `vmt_engine.protocols.bargaining` to `vmt_engine.game_theory.bargaining`
+  - Effect types remain in `vmt_engine.protocols.base` (unchanged)
+  - Registry system remains in `vmt_engine.protocols.registry` (unchanged)
+  - YAML scenario files work identically (backward compatible via registry)
+  - Import paths now reflect theoretical paradigms (Agent-Based vs Game Theory)
+  - Benefits: clearer architecture, better extensibility for future domain-specific modules
+
 - **GUI Framework Migration** (2025-10-22): Migrated from PyQt5 to PyQt6
   - Updated all imports from `PyQt5` to `PyQt6`
   - Updated Qt enum references to use proper namespaces (e.g., `Qt.UserRole` → `Qt.ItemDataRole.UserRole`)
