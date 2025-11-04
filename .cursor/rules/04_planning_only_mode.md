@@ -1,0 +1,39 @@
+---
+alwaysApply: false
+---
+# VMT Planning-Only Mode for Complex Features
+
+## Critical Rule: No Implementation During Planning Phase
+
+**ABSOLUTE RULE**: When working on market implementation or any complex feature planning, DO NOT make any code changes until explicitly told by the user to start implementation.
+
+## Planning Phase Requirements
+
+During planning discussions:
+1. **Focus on conceptual clarity** - Understand the economic/theoretical goals first
+2. **Design before coding** - Create comprehensive plans before any implementation
+3. **Document decisions** - Write down design choices and rationale
+4. **Validate approach** - Confirm understanding with user before proceeding
+
+## Implementation Phase
+
+Only begin implementation when the user explicitly states:
+- "Start implementing"
+- "Begin coding"
+- "Make the changes"
+- Or similar clear implementation directives
+
+## Why This Matters
+
+The market implementation project demonstrated the cost of implementing the wrong solution:
+- Built a global market information system instead of a protocol-specific solution
+- Wasted significant development time on technically correct but functionally wrong approach
+- Required complete reimplementation after requirements were clarified
+
+## Enforcement
+
+When in planning mode:
+- ❌ DO NOT: Write to existing src/ files.
+- ✅ DO use: read_file, grep, codebase_search, list_dir, web_search
+- ✅ DO: Create planning documents, discuss architecture, clarify requirements
+- ✅ DO: Ask clarifying questions before making assumptions
