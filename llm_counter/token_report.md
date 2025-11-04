@@ -1,24 +1,24 @@
 # vmt-dev - Token Analysis Report
 
-*Generated on 2025-11-04 15:11:28*
+*Generated on 2025-11-04 16:06:27*
 
 ## 📊 Executive Summary
 
 | Metric | Value |
 |--------|--------|
-| **Total Tokens** | 235.9K tokens |
-| **Total Files** | 127 files |
-| **Repository Size** | 1.0 MB |
-| **Average Tokens/File** | 1858 tokens |
+| **Total Tokens** | 193.3K tokens |
+| **Total Files** | 120 files |
+| **Repository Size** | 0.8 MB |
+| **Average Tokens/File** | 1611 tokens |
 
 ## 📄 File Type Breakdown
 
 | File Type | Token Count | Percentage | Files |
 |-----------|-------------|------------|-------|
-| Markdown | 116.2K | 49.2% | 24 |
-| Python | 105.1K | 44.5% | 78 |
-| YAML | 13.8K | 5.9% | 20 |
-| Other | 556 | 0.2% | 1 |
+| Python | 105.1K | 54.4% | 78 |
+| Markdown | 73.5K | 38.0% | 17 |
+| YAML | 13.8K | 7.1% | 20 |
+| Other | 556 | 0.3% | 1 |
 | Build/Meta | 222 | 0.1% | 1 |
 | Text | 41 | 0.0% | 1 |
 | JSON | 37 | 0.0% | 1 |
@@ -28,26 +28,26 @@
 
 | File | Tokens | Size |
 |------|--------|------|
-| `...etc/BIGGEST_PICTURE/Knowledge Base for Economic Models.md` | 22.1K | 0.1 MB |
-| `...nking_etc/CURRENT/implementation/stage_1-2_PR_followup.md` | 12.1K | 0.1 MB |
+| `.../planning/reference/Knowledge Base for Economic Models.md` | 22.1K | 0.1 MB |
 | `src/vmt_pygame/renderer.py` | 10.5K | 0.0 MB |
-| `...mplementation/stage0_protocol_architecture_restructure.md` | 7.8K | 0.0 MB |
-| `...RRENT/implementation/COMPREHENSIVE_IMPLEMENTATION_PLAN.md` | 7.4K | 0.0 MB |
 | `docs/2_typing_overview.md` | 6.6K | 0.0 MB |
-| `...RRENT/implementation/stage3_game_theory_implementation.md` | 6.6K | 0.0 MB |
+| `docs/planning/1_Implementation_Stage3_GameTheory.md` | 6.6K | 0.0 MB |
 | `docs/1_technical_manual.md` | 6.4K | 0.0 MB |
-| `...RENT/implementation/stage6_neoclassical_implementation.md` | 6.3K | 0.0 MB |
-| `.../CURRENT/implementation/stage4_launcher_implementation.md` | 5.8K | 0.0 MB |
-| `...mplementation/stage5_market_information_implementation.md` | 5.7K | 0.0 MB |
+| `docs/planning/4_Implementation_Stage6_Neoclassical.md` | 6.3K | 0.0 MB |
+| `docs/planning/2_Implementation_Stage4_Launcher.md` | 5.8K | 0.0 MB |
+| `docs/planning/3_Implementation_Stage5_MarketInfo.md` | 5.7K | 0.0 MB |
 | `src/vmt_engine/econ/utility.py` | 5.6K | 0.0 MB |
 | `src/vmt_engine/systems/matching.py` | 5.1K | 0.0 MB |
 | `src/telemetry/db_loggers.py` | 5.0K | 0.0 MB |
 | `CHANGELOG.md` | 4.6K | 0.0 MB |
 | `scripts/analyze_baseline.py` | 4.4K | 0.0 MB |
-| `...GEST_PICTURE/opus_plan/unified_implementation_overview.md` | 4.3K | 0.0 MB |
 | `docs/structures/comprehensive_scenario_template.yaml` | 4.2K | 0.0 MB |
 | `src/vmt_log_viewer/viewer.py` | 4.1K | 0.0 MB |
 | `src/vmt_engine/simulation.py` | 3.8K | 0.0 MB |
+| `src/scenarios/schema.py` | 3.3K | 0.0 MB |
+| `docs/3_enhancement_backlog.md` | 3.0K | 0.0 MB |
+| `src/vmt_engine/agent_based/search/legacy.py` | 3.0K | 0.0 MB |
+| `src/vmt_engine/agent_based/search/myopic.py` | 2.6K | 0.0 MB |
 
 
 ## 🤖 LLM Context Analysis
@@ -56,24 +56,24 @@
 
 | Model | Context Window | Repo Coverage |
 |-------|---------------|---------------|
-| GPT-4 | ~128K tokens | 54.3% |
-| Claude 3 | ~200K tokens | 84.8% |
-| Claude 3.5 Sonnet | ~200K tokens | 84.8% |
-| Gemini 1.5 Pro | ~1M tokens | 423.9% |
+| GPT-4 | ~128K tokens | 66.2% |
+| Claude 3 | ~200K tokens | 103.5% |
+| Claude 3.5 Sonnet | ~200K tokens | 103.5% |
+| Gemini 1.5 Pro | ~1M tokens | 517.4% |
 
 ### Recommendations
 
-- **Full Repository**: 235.9K tokens fits in: Gemini 1.5 Pro (~1.0M)
+- **Full Repository**: 193.3K tokens fits in: Gemini 1.5 Pro (~1.0M)
 - **Targeted Analysis**: Consider focusing on 40-60% of files for detailed reviews
 - **Code Reviews**: Use token counts to prioritize which files/modules to include
-- **Documentation**: 49.2% of tokens are documentation (substantial docs available)
+- **Documentation**: 38.0% of tokens are documentation (substantial docs available)
 
 
 ## 📈 Analysis Metadata
 
 - **Analysis Tool**: Repository Token Counter (full version with repotokens)
 - **Tokenization**: Accurate repotokens library
-- **Files Processed**: 127 code files
+- **Files Processed**: 120 code files
 - **Excluded**: Binary files, caches, logs, virtual environments
 - **Repository**: vmt-dev
 
