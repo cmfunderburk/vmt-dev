@@ -16,7 +16,7 @@ from scenarios.loader import load_scenario
 from vmt_engine.simulation import Simulation
 from vmt_engine.agent_based.search import RandomWalkSearch, LegacySearchProtocol
 from vmt_engine.game_theory.matching import RandomMatching, LegacyMatchingProtocol
-from vmt_engine.game_theory.bargaining import SplitDifference, LegacyBargainingProtocol
+from vmt_engine.game_theory.bargaining import SplitDifference, CompensatingBlockBargaining
 
 
 class TestProtocolYAMLConfiguration:

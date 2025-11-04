@@ -13,7 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Matching-Bargaining Decoupling Refactor** (2025-11-03): Separated matching from bargaining concerns
   - Decoupled matching protocols from bargaining implementations via abstraction interfaces
   - `BargainingProtocol.negotiate()` now receives agents directly (breaking change)
-  - Eliminated params hack for passing partner state in bargaining
+  - `ProtocolContext` now includes agents dict for matching protocols (breaking change)
+  - Eliminated ALL params hacks (both bargaining and matching)
   - Renamed `legacy_compensating_block` protocol to `compensating_block` (reflects actual purpose)
   - Matching protocols now use lightweight heuristics; bargaining protocols use full discovery
   - Benefits: Independent protocol development, cleaner architecture, correct semantic separation
@@ -34,10 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `find_all_feasible_trades()` from `matching.py` (no longer needed)
 - `find_best_trade()` from `matching.py` (no longer needed)
 - All `_build_agent_from_world()` adapter methods from bargaining protocols
-
-### Technical Debt
-- Matching protocols still use params hack for agent state (`f"agent_{id}_inv_A"` pattern)
-- Deferred to future work as it's lower priority than bargaining separation
+- All `_build_agent_from_context()` adapter methods from matching protocols
 
 - **Protocol Architecture Restructure** (2025-11-02): Moved protocols to domain-specific modules
   - Search protocols moved from `vmt_engine.protocols.search` to `vmt_engine.agent_based.search`
