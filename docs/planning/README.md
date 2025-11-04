@@ -10,4 +10,6 @@ This directory contains the strategic vision, roadmap, and detailed implementati
 
 - **`1_Implementation_Stage*.md`**: These files contain the detailed, pseudocode-level implementation plans for each upcoming stage of the project. They are the tactical blueprints for developers.
 
-- **`archive/`**: Contains all previous planning documents, including the original `opus_plan` and `CURRENT` implementation details for completed stages. This serves as a historical record of the project's evolution.
+- **`reference/`**: Contains foundational theoretical documents and knowledge bases that inform the project's design but are not tied to a specific implementation stage.
+
+- **`archive/`**: (deleted from repo -- can find in git history if needed) Contains all previous planning documents, including the original `opus_plan` and `CURRENT` implementation details for completed stages. This serves as a historical record of the project's evolution.
