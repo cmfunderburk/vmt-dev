@@ -1,5 +1,5 @@
 """
-Legacy Matching Protocol
+Three-Pass Matching Protocol
 
 Implements the original VMT three-pass pairing algorithm:
 - Pass 2: Mutual consent (both agents rank each other #1)
@@ -16,21 +16,21 @@ from ...protocols.registry import register_protocol
 from .base import MatchingProtocol
 from ...protocols.base import Effect, Pair, Unpair, SetTarget
 from ...protocols.context import ProtocolContext, AgentView
-from ...systems.matching import compute_surplus, estimate_money_aware_surplus
+from ...systems.matching import compute_surplus, estimate_barter_surplus
 
 
 @register_protocol(
     category="matching",
-    name="legacy_three_pass",
-    description="Legacy three-pass matching (mutual consent + greedy fallback)",
-    properties=["deterministic", "legacy"],
+    name="three_pass_matching",
+    description="Three-pass matching (mutual consent + greedy fallback)",
+    properties=["deterministic"],
     complexity="O(n^2)",
     references=[],
     phase="1",
 )
-class LegacyMatchingProtocol(MatchingProtocol):
+class ThreePassMatching(MatchingProtocol):
     """
-    Legacy three-pass matching algorithm.
+    Three-pass matching algorithm.
     
     Pass 2 (Mutual Consent):
     - Pairs agents who mutually rank each other as #1 choice
@@ -49,7 +49,7 @@ class LegacyMatchingProtocol(MatchingProtocol):
     
     @property
     def name(self) -> str:
-        return "legacy_three_pass"
+        return "three_pass_matching"
     
     @property
     def version(self) -> str:

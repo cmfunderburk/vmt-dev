@@ -19,7 +19,7 @@ from .systems.housekeeping import HousekeepingSystem
 # Database-backed telemetry
 from telemetry import TelemetryManager, LogConfig
 
-# Protocol system (Phase 0 - Infrastructure only, not yet wired)
+# Protocol system - fully implemented and configurable via scenario_config
 # from .protocols import SearchProtocol, MatchingProtocol, BargainingProtocol
 
 

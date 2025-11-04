@@ -26,8 +26,8 @@ def create_mode_test_scenario(forage_ticks=10, trade_ticks=5):
             trade_ticks=trade_ticks, start_mode="forage"
         ),
         # Set protocol fields explicitly to avoid test failures
-        search_protocol="legacy_distance_discounted",
-        matching_protocol="legacy_three_pass", 
+        search_protocol="distance_discounted_search",
+        matching_protocol="three_pass_matching", 
         bargaining_protocol="compensating_block",
     )
 

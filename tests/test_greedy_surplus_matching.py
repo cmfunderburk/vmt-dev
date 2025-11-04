@@ -17,7 +17,7 @@ import numpy as np
 from tests.helpers import builders, run as run_helpers
 from scenarios.loader import load_scenario
 from vmt_engine.simulation import Simulation
-from vmt_engine.game_theory.matching import GreedySurplusMatching, LegacyMatchingProtocol
+from vmt_engine.game_theory.matching import GreedySurplusMatching, ThreePassMatching
 from vmt_engine.protocols.context import ProtocolContext, AgentView
 from vmt_engine.protocols.base import Pair
 
@@ -136,12 +136,12 @@ class TestGreedySurplusMatchingBehavior:
         sim_greedy = builders.make_sim(scenario, seed=42, matching="greedy_surplus")
         run_helpers.run_ticks(sim_greedy, 30)
         
-        # Run with legacy matching
-        sim_legacy = builders.make_sim(scenario, seed=42, matching="legacy_three_pass")
+        # Run with three-pass matching
+        sim_legacy = builders.make_sim(scenario, seed=42, matching="three_pass_matching")
         run_helpers.run_ticks(sim_legacy, 30)
         
         # Compare total surplus from trades
-        # Greedy should achieve at least as much total surplus as legacy
+        # Greedy should achieve at least as much total surplus as three-pass
         # (In practice, greedy may achieve more, but allow for some variation)
         greedy_trades = len(sim_greedy.telemetry.recent_trades_for_renderer)
         legacy_trades = len(sim_legacy.telemetry.recent_trades_for_renderer)
@@ -193,8 +193,8 @@ class TestGreedySurplusMatchingComparison:
         sim_greedy = builders.make_sim(scenario, seed=42, matching="greedy_surplus")
         run_helpers.run_ticks(sim_greedy, 30)
         
-        # Run with legacy matching
-        sim_legacy = builders.make_sim(scenario, seed=42, matching="legacy_three_pass")
+        # Run with three-pass matching
+        sim_legacy = builders.make_sim(scenario, seed=42, matching="three_pass_matching")
         run_helpers.run_ticks(sim_legacy, 30)
         
         # Both should produce trades
@@ -202,7 +202,7 @@ class TestGreedySurplusMatchingComparison:
         legacy_trades = len(sim_legacy.telemetry.recent_trades_for_renderer)
         
         assert greedy_trades > 0, "Greedy matching should produce trades"
-        assert legacy_trades > 0, "Legacy matching should produce trades"
+        assert legacy_trades > 0, "Three-pass matching should produce trades"
     
     def test_greedy_vs_random_matching(self):
         """Compare greedy with random matching."""

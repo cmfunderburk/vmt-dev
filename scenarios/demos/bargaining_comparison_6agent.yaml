@@ -48,11 +48,11 @@ resource_seed:
 # Protocol configuration
 protocol_config:
   search:
-    protocol: "legacy_distance_discounted"
+    protocol: "distance_discounted_search"
     params: {}
   
   matching:
-    protocol: "legacy_three_pass"
+    protocol: "three_pass_matching"
     params:
       beta: 0.95
   

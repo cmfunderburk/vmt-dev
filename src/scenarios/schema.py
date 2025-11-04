@@ -134,10 +134,10 @@ class ScenarioConfig:
     resource_seed: ResourceSeed
     mode_schedule: Optional[ModeSchedule] = None
     
-    # Protocol configuration (optional - defaults to legacy protocols)
+    # Protocol configuration (optional - defaults to standard protocols)
     # Can be string (protocol name) or dict with "name" and optional "params"
-    search_protocol: Optional[Union[str, dict[str, Any]]] = None  # e.g., "legacy_distance_discounted" or {"name": "myopic", "params": {}}
-    matching_protocol: Optional[Union[str, dict[str, Any]]] = None  # e.g., "legacy_three_pass" or {"name": "greedy_surplus", "params": {}}
+    search_protocol: Optional[Union[str, dict[str, Any]]] = None  # e.g., "distance_discounted_search" or {"name": "myopic", "params": {}}
+    matching_protocol: Optional[Union[str, dict[str, Any]]] = None  # e.g., "three_pass_matching" or {"name": "greedy_surplus", "params": {}}
     bargaining_protocol: Optional[Union[str, dict[str, Any]]] = None  # e.g., "compensating_block" or {"name": "take_it_or_leave_it", "params": {"proposer_power": 0.9}}
     
     def validate(self) -> None:

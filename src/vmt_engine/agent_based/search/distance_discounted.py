@@ -1,5 +1,5 @@
 """
-Legacy Search Protocol
+Distance-Discounted Search Protocol
 
 Implements the original VMT search and target selection algorithm using
 distance-discounted surplus for trade partners and distance-discounted
@@ -15,7 +15,7 @@ from ...protocols.registry import register_protocol
 from .base import SearchProtocol
 from ...protocols.base import Effect, SetTarget, ClaimResource
 from ...protocols.context import WorldView, AgentView, ResourceView
-from ...systems.matching import compute_surplus, estimate_money_aware_surplus
+from ...systems.matching import compute_surplus, estimate_barter_surplus
 from ...systems.movement import choose_forage_target
 from ...core.state import Position
 
@@ -26,16 +26,16 @@ Preference = tuple[int, float, float, int, str]
 
 @register_protocol(
     category="search",
-    name="legacy_distance_discounted",
-    description="Legacy distance-discounted search",
-    properties=["deterministic", "legacy"],
+    name="distance_discounted_search",
+    description="Distance-discounted search",
+    properties=["deterministic"],
     complexity="O(V log V)",
     references=[],
     phase="1",
 )
-class LegacySearchProtocol(SearchProtocol):
+class DistanceDiscountedSearch(SearchProtocol):
     """
-    Legacy distance-discounted search protocol.
+    Distance-discounted search protocol.
     
     For trade:
     - Evaluates all visible neighbors
@@ -56,7 +56,7 @@ class LegacySearchProtocol(SearchProtocol):
     
     @property
     def name(self) -> str:
-        return "legacy_distance_discounted"
+        return "distance_discounted_search"
     
     @property
     def version(self) -> str:
@@ -383,5 +383,4 @@ class LegacySearchProtocol(SearchProtocol):
             feasible_overlaps.append(overlap_dir2)
         
         return max(feasible_overlaps) if feasible_overlaps else 0.0
-    
 

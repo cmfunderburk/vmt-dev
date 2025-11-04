@@ -16,7 +16,7 @@ import numpy as np
 from tests.helpers import builders, run as run_helpers
 from scenarios.loader import load_scenario
 from vmt_engine.simulation import Simulation
-from vmt_engine.agent_based.search import MyopicSearch, LegacySearchProtocol
+from vmt_engine.agent_based.search import MyopicSearch, DistanceDiscountedSearch
 from vmt_engine.protocols.context import WorldView, AgentView, ResourceView
 
 
@@ -131,7 +131,7 @@ class TestMyopicSearchComparison:
         run_helpers.run_ticks(sim_myopic, 30)
         
         # Run with legacy search
-        sim_legacy = builders.make_sim(scenario, seed=42, search="legacy_distance_discounted")
+        sim_legacy = builders.make_sim(scenario, seed=42, search="distance_discounted_search")
         run_helpers.run_ticks(sim_legacy, 30)
         
         # Both should produce trades, but legacy may produce more
@@ -154,7 +154,7 @@ class TestMyopicSearchComparison:
         sim_myopic = builders.make_sim(scenario, seed=42, search="myopic")
         run_helpers.run_ticks(sim_myopic, 20)
         
-        sim_legacy = builders.make_sim(scenario, seed=42, search="legacy_distance_discounted")
+        sim_legacy = builders.make_sim(scenario, seed=42, search="distance_discounted_search")
         run_helpers.run_ticks(sim_legacy, 20)
         
         # Myopic should still work, just slower

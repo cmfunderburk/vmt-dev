@@ -18,7 +18,7 @@ PROTOCOL_RUNS_TABLE = """
 CREATE TABLE IF NOT EXISTS protocol_runs (
     run_id TEXT NOT NULL,
     protocol_type TEXT NOT NULL,  -- 'search' | 'matching' | 'bargaining'
-    protocol_name TEXT NOT NULL,  -- e.g., 'legacy_three_pass'
+    protocol_name TEXT NOT NULL,  -- e.g., 'three_pass_matching'
     protocol_version TEXT NOT NULL,  -- e.g., '2025.10.26'
     
     PRIMARY KEY (run_id, protocol_type),
@@ -106,7 +106,7 @@ Columns:
 Example row:
     run_id='2025-10-26_12-34-56'
     protocol_type='matching'
-    protocol_name='legacy_three_pass'
+    protocol_name='three_pass_matching'
     protocol_version='2025.10.26'
 
 
@@ -127,7 +127,7 @@ Example row (Pair effect):
     run_id='2025-10-26_12-34-56'
     tick=10
     effect_type='Pair'
-    protocol_name='legacy_three_pass'
+    protocol_name='three_pass_matching'
     agent_a=0
     agent_b=1
     effect_data='{"reason": "mutual_consent"}'
@@ -139,7 +139,7 @@ Example row (Trade effect):
     protocol_name='compensating_block'
     agent_a=0
     agent_b=1
-    effect_data='{"pair_type": "A_for_B", "dA": -5, "dB": 3, "dM": 0, "price": 1.67, ...}'
+    effect_data='{"pair_type": "A_for_B", "dA": -5, "dB": 3, "price": 1.67, ...}'
 
 
 ## protocol_state table

@@ -48,11 +48,11 @@ resource_seed:
 # Protocol configuration (can be overridden via CLI)
 protocol_config:
   search:
-    protocol: "legacy_distance_discounted"
+    protocol: "distance_discounted_search"
     params: {}
   
   matching:
-    protocol: "legacy_three_pass"  # Change to test different matching
+    protocol: "three_pass_matching"  # Change to test different matching
     params:
       beta: 0.95
   
@@ -69,9 +69,9 @@ protocol_config:
 #     --override "protocol_config.matching.protocol=greedy_surplus"
 #   Expected: Maximum welfare, most trades, no consent requirement
 #
-# Test 2: Decentralized (Legacy Three-Pass)
+# Test 2: Decentralized (Three-Pass Matching)
 #   python main.py scenarios/demos/protocol_comparison_4agent.yaml \
-#     --override "protocol_config.matching.protocol=legacy_three_pass"
+#     --override "protocol_config.matching.protocol=three_pass_matching"
 #   Expected: Moderate welfare, mutual consent required
 #
 # Test 3: Random Baseline

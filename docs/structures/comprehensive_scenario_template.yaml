@@ -207,14 +207,14 @@ mode_schedule:
 # =============================================================================
 
 # Search protocol - determines how agents select movement/interaction targets
-search_protocol: "legacy_distance_discounted"           # Options: "legacy_distance_discounted", "random_walk"
-                                   # Default: "legacy_distance_discounted" (distance-discounted utility-based search)
-                                   # If omitted, uses legacy_distance_discounted protocol
+search_protocol: "distance_discounted_search"           # Options: "distance_discounted_search", "random_walk"
+                                   # Default: "distance_discounted_search" (distance-discounted utility-based search)
+                                   # If omitted, uses distance_discounted_search protocol
 
 # Matching protocol - determines how agents form bilateral pairs
-matching_protocol: "legacy_three_pass"  # Options: "legacy_three_pass", "random_matching"
-                                   # Default: "legacy_three_pass" (mutual consent + greedy surplus)
-                                   # If omitted, uses legacy protocol
+matching_protocol: "three_pass_matching"  # Options: "three_pass_matching", "random_matching"
+                                   # Default: "three_pass_matching" (mutual consent + greedy surplus)
+                                   # If omitted, uses three_pass_matching protocol
 
 # Bargaining protocol - determines how paired agents negotiate trades
 bargaining_protocol: "compensating_block"  # Options: "compensating_block", "split_difference"

@@ -6,7 +6,7 @@ environments. These protocols implement bounded rationality and local informatio
 processing, leading to emergent market patterns.
 
 Available Protocols:
-- legacy_distance_discounted: Original VMT distance-weighted search
+- distance_discounted_search: Original VMT distance-weighted search
 - random_walk: Stochastic exploration (pedagogical baseline)
 - myopic: Limited-vision search (radius=1, pedagogical)
 
@@ -19,13 +19,13 @@ Version: Post-Restructure (Part 0)
 """
 
 from .base import SearchProtocol
-from .legacy import LegacySearchProtocol
+from .distance_discounted import DistanceDiscountedSearch
 from .random_walk import RandomWalkSearch
 from .myopic import MyopicSearch
 
 __all__ = [
     "SearchProtocol",
-    "LegacySearchProtocol",
+    "DistanceDiscountedSearch",
     "RandomWalkSearch",
     "MyopicSearch",
 ]

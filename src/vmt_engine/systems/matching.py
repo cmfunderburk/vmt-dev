@@ -1,5 +1,16 @@
 """
-Matching and trading helpers.
+Matching helpers for protocols.
+
+Contains utility functions used by search and matching protocols. These functions
+provide surplus calculation, price candidate generation, and trade execution for
+the protocol system.
+
+Functions:
+- compute_surplus(): Calculate surplus between two agents (used by multiple protocols)
+- estimate_barter_surplus(): Fast heuristic for pairing decisions (used by search protocols)
+- generate_price_candidates(): Generate price candidates for trade negotiation (used by CompensatingBlockBargaining)
+- execute_trade_generic(): Execute trades with generic trade tuple format (used by TradeSystem)
+- improves(): Check if trade improves agent utility (used by bargaining protocols)
 
 Determinism and discrete search principles:
 - Partner choice uses surplus with tie-breaker by lowest id; pair attempts
@@ -13,7 +24,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Optional
 from math import floor
 from decimal import Decimal
-from ._trade_attempt_logger import log_trade_attempt
 
 if TYPE_CHECKING:
     from ..core import Agent
@@ -71,7 +81,7 @@ def compute_surplus(agent_i: 'Agent', agent_j: 'Agent') -> float:
     return max(feasible_overlaps) if feasible_overlaps else 0.0
 
 
-def estimate_money_aware_surplus(agent_i: 'Agent', agent_j: 'Agent') -> tuple[float, str]:
+def estimate_barter_surplus(agent_i: 'Agent', agent_j: 'Agent') -> tuple[float, str]:
     """
     Estimate best feasible surplus using quotes for barter (lightweight, O(1)).
     
@@ -81,10 +91,6 @@ def estimate_money_aware_surplus(agent_i: 'Agent', agent_j: 'Agent') -> tuple[fl
     INVENTORY FEASIBILITY: Returns 0 if neither direction is inventory-feasible.
     This prevents futile pairings when inventory constraints make theoretical 
     surplus unrealizable.
-    
-    Note: This function is named "estimate_money_aware_surplus" for historical
-    reasons but now only handles barter trades. The name is retained for backward
-    compatibility with existing code that imports this function.
     
     IMPORTANT LIMITATION - Heuristic Approximation:
     ================================================
@@ -270,243 +276,6 @@ def generate_price_candidates(ask: float, bid: float, dA: Decimal) -> list[float
     
     # Sort from low to high (prefer lower prices for fairness)
     return sorted(candidates)
-
-
-def find_compensating_block(buyer: 'Agent', seller: 'Agent', price: float,
-                           epsilon: float, tick: int = 0,
-                           direction: str = "", surplus: float = 0.0,
-                           telemetry: Optional['TelemetryManager'] = None) -> Optional[tuple[Decimal, Decimal, float]]:
-    """
-    Find minimal ΔA ∈ [1..seller.inventory.A] and a price where both agents improve utility.
-    
-    Searches multiple candidate prices within [seller.ask, buyer.bid] range
-    to find mutually beneficial terms of trade. This handles the case where
-    the midpoint price doesn't work due to decimal rounding effects.
-    
-    Args:
-        buyer: Agent buying good A
-        seller: Agent selling good A
-        price: Midpoint price hint (kept for backward compatibility)
-        epsilon: Epsilon for utility improvement check
-        tick: Current simulation tick (for logging)
-        direction: Trade direction string (for logging)
-        surplus: Computed surplus (for logging)
-        telemetry: TelemetryManager instance (optional)
-        
-    Returns:
-        (dA, dB, actual_price) tuple or None if no feasible block found
-        dA and dB are Decimal values quantized to the configured precision
-    """
-    from ..core.decimal_config import quantize_quantity
-    
-    # Get the valid price range
-    ask = seller.quotes.get('ask_A_in_B', 1.0)
-    bid = buyer.quotes.get('bid_A_in_B', 1.0)
-    
-    # Determine maximum trade size from seller's inventory
-    max_dA = seller.inventory.A
-    if max_dA <= 0:
-        return None  # Seller has nothing to sell
-    
-    # Get quantization step size for fractional trade search
-    from ..core.decimal_config import QUANTITY_QUANTIZER
-    step_size = QUANTITY_QUANTIZER
-    
-    # Iterate over trade sizes from minimum to maximum
-    # Start from one step (smallest non-zero trade)
-    current_dA = step_size
-    while current_dA <= max_dA:
-        # Quantize current_dA to ensure precision
-        dA = quantize_quantity(current_dA)
-        
-        # Generate candidate prices for this trade size
-        price_candidates = generate_price_candidates(ask, bid, dA)
-        
-        # Try each price candidate
-        for test_price in price_candidates:
-            # Calculate dB and quantize to configured precision
-            dB_raw = Decimal(str(test_price)) * Decimal(str(dA))
-            dB = quantize_quantity(dB_raw)
-            
-            # Check if dB is valid
-            if dB <= 0:
-                if telemetry:
-                    log_trade_attempt(
-                        telemetry, tick, buyer, seller, direction, test_price, surplus,
-                        dA, dB, False, False, True, True, "fail", "dB_nonpositive"
-                    )
-                continue
-            
-            # Check feasibility (inventory constraints)
-            buyer_feasible = buyer.inventory.B >= dB
-            seller_feasible = seller.inventory.A >= dA
-            
-            if not seller_feasible or not buyer_feasible:
-                if telemetry:
-                    reason = "inventory_infeasible"
-                    if not seller_feasible:
-                        reason = "seller_insufficient_A"
-                    if not buyer_feasible:
-                        reason = "buyer_insufficient_B"
-                    
-                    log_trade_attempt(
-                        telemetry, tick, buyer, seller, direction, test_price, surplus,
-                        dA, dB, False, False, buyer_feasible, seller_feasible, "fail", reason
-                    )
-                continue
-            
-            # Check utility improvement for both agents
-            buyer_improves_flag = improves(buyer, +dA, -dB, epsilon)
-            seller_improves_flag = improves(seller, -dA, +dB, epsilon)
-            
-            if buyer_improves_flag and seller_improves_flag:
-                # Success! Found a mutually beneficial trade
-                # dA is already Decimal and quantized
-                if telemetry:
-                    log_trade_attempt(
-                        telemetry, tick, buyer, seller, direction, test_price, surplus,
-                        dA, dB, True, True, True, True, "success", "utility_improves_both"
-                    )
-                return (dA, dB, test_price)  # Return the price that worked
-            else:
-                if telemetry:
-                    reason = "utility_no_improvement"
-                    if not buyer_improves_flag and not seller_improves_flag:
-                        reason = "both_utility_no_improvement"
-                    elif not buyer_improves_flag:
-                        reason = "buyer_utility_no_improvement"
-                    elif not seller_improves_flag:
-                        reason = "seller_utility_no_improvement"
-
-                    log_trade_attempt(
-                        telemetry, tick, buyer, seller, direction, test_price, surplus,
-                        dA, dB, buyer_improves_flag, seller_improves_flag,
-                        True, True, "fail", reason
-                    )
-                # Continue trying other prices for this dA
-        
-        # Move to next trade size
-        current_dA += step_size
-    
-    return None
-
-
-def execute_trade(buyer: 'Agent', seller: 'Agent', dA: int | Decimal, dB: int | Decimal):
-    """
-    Execute trade block, updating inventories.
-    
-    Args:
-        buyer: Agent buying good A
-        seller: Agent selling good A
-        dA: Amount of good A to trade (int or Decimal)
-        dB: Amount of good B to trade (int or Decimal)
-    """
-    # Validate inventories
-    assert seller.inventory.A >= dA, f"Seller {seller.id} has insufficient A: {seller.inventory.A} < {dA}"
-    assert buyer.inventory.B >= dB, f"Buyer {buyer.id} has insufficient B: {buyer.inventory.B} < {dB}"
-    
-    # Transfer goods
-    buyer.inventory.A += dA
-    buyer.inventory.B -= dB
-    seller.inventory.A -= dA
-    seller.inventory.B += dB
-    
-    # Mark inventories as changed
-    buyer.inventory_changed = True
-    seller.inventory_changed = True
-
-
-def trade_pair(agent_i: 'Agent', agent_j: 'Agent', params: dict[str, Any],
-               telemetry: 'TelemetryManager', tick: int) -> bool:
-    """
-    Attempt ONE trade between a pair of agents this tick.
-    
-    If a trade occurs, quotes will be recalculated at the end of the tick
-    (in housekeeping phase), and agents can trade again on the next tick.
-    This continues until no mutually beneficial trades remain, at which
-    point agents will unpair and seek other opportunities.
-    
-    Args:
-        agent_i: First agent
-        agent_j: Second agent
-        params: Simulation parameters (epsilon, spread)
-        telemetry: TelemetryManager for logging
-        tick: Current tick
-        
-    Returns:
-        True if a trade occurred this tick
-    """
-    # Compute surplus in both directions
-    bid_i = agent_i.quotes.get('bid_A_in_B', 0.0)
-    ask_i = agent_i.quotes.get('ask_A_in_B', 0.0)
-    bid_j = agent_j.quotes.get('bid_A_in_B', 0.0)
-    ask_j = agent_j.quotes.get('ask_A_in_B', 0.0)
-    
-    overlap_dir1 = bid_i - ask_j  # i buys from j
-    overlap_dir2 = bid_j - ask_i  # j buys from i
-    
-    if overlap_dir1 <= 0 and overlap_dir2 <= 0:
-        return False  # No positive surplus
-    
-    # Pick direction with larger surplus
-    if overlap_dir1 > overlap_dir2:
-        buyer, seller = agent_i, agent_j
-        direction = "i_buys_A"
-        surplus = overlap_dir1
-    else:
-        buyer, seller = agent_j, agent_i
-        direction = "j_buys_A"
-        surplus = overlap_dir2
-    
-    # Midpoint price hint
-    ask = seller.quotes.get('ask_A_in_B', 1.0)
-    bid = buyer.quotes.get('bid_A_in_B', 1.0)
-    price = 0.5 * (ask + bid)
-    
-    # Find compensating block (with price search)
-    block = find_compensating_block(
-        buyer, seller, price, 
-        params['epsilon'],
-        tick, direction, surplus, telemetry
-    )
-    
-    if block is None:
-        # Trade failed - UNPAIR and set cooldown
-        # This means trade opportunities are exhausted
-        agent_i.paired_with_id = None
-        agent_j.paired_with_id = None
-        
-        cooldown_until = tick + params['trade_cooldown_ticks']
-        agent_i.trade_cooldowns[agent_j.id] = cooldown_until
-        agent_j.trade_cooldowns[agent_i.id] = cooldown_until
-        
-        # Log unpair event
-        telemetry.log_pairing_event(
-            tick, agent_i.id, agent_j.id, "unpair", "trade_failed"
-        )
-        
-        return False  # No feasible block
-    
-    dA, dB, actual_price = block  # Returns the price that worked
-    
-    # Execute trade
-    execute_trade(buyer, seller, dA, dB)
-    
-    # Log trade with actual price used
-    telemetry.log_trade(
-        tick, buyer.pos[0], buyer.pos[1],
-        buyer.id, seller.id,
-        dA, dB, actual_price, direction
-    )
-    
-    # Mark that inventories changed (quotes will be refreshed in housekeeping)
-    agent_i.inventory_changed = True
-    agent_j.inventory_changed = True
-    
-    # REMAIN PAIRED - agents will attempt another trade next tick
-    # This is critical for O(N) performance
-    
-    return True
 
 
 # ============================================================================

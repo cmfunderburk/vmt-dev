@@ -44,7 +44,7 @@ The simulation proceeds in discrete time steps called "ticks." Each tick, the en
         - **Resource Claiming**: Forage targets are claimed to prevent clustering (if `enable_resource_claiming=True`)
     *   **Sub-phase 2-3: Matching (Pairing Formation)** — A matching protocol processes all agent preferences using `ProtocolContext` (global perspective):
         - Matching protocols have omniscient access via `context.agents[id]` for evaluation
-        - Default: `legacy_three_pass` implements mutual consent + greedy fallback
+        - Default: `three_pass_matching` implements mutual consent + greedy fallback
         - Alternative: `greedy_surplus` (welfare maximization), `random_matching` (baseline)
         - **Lightweight Evaluation**: Matching uses `TradePotentialEvaluator` (heuristic, fast)
         - **Pairing Commitment**: Once paired, both agents commit exclusively to each other until trade fails or mode changes
@@ -94,7 +94,7 @@ VMT uses a modular protocol system that allows swapping economic mechanisms via 
 
 **Matching Protocols** (`game_theory.matching`) - Phase 2, Sub-phase 2-3
 - Determine how agents are paired for trading
-- Examples: `greedy_surplus`, `random_matching`, `legacy_three_pass`
+- Examples: `greedy_surplus`, `random_matching`, `three_pass_matching`
 - Input: `ProtocolContext` (global matchmaker perspective)
 - Output: `Pair`/`Unpair` effects
 

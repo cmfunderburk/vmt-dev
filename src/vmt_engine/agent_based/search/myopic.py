@@ -29,7 +29,7 @@ from ...protocols.registry import register_protocol
 from .base import SearchProtocol
 from ...protocols.base import Effect, SetTarget, ClaimResource
 from ...protocols.context import WorldView
-from ...systems.matching import compute_surplus, estimate_money_aware_surplus
+from ...systems.matching import compute_surplus, estimate_barter_surplus
 
 
 @register_protocol(

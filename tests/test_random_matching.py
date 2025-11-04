@@ -16,7 +16,7 @@ import numpy as np
 from tests.helpers import builders, run as run_helpers
 from scenarios.loader import load_scenario
 from vmt_engine.simulation import Simulation
-from vmt_engine.game_theory.matching import RandomMatching, LegacyMatchingProtocol
+from vmt_engine.game_theory.matching import RandomMatching, ThreePassMatching
 from vmt_engine.protocols.context import ProtocolContext
 
 
@@ -151,8 +151,8 @@ class TestRandomMatchingComparison:
         sim_random = Simulation(scenario, seed=42, matching_protocol=RandomMatching())
         run_helpers.run_ticks(sim_random, 30)
         
-        # Run with legacy matching
-        sim_legacy = Simulation(scenario, seed=42)  # legacy by default
+        # Run with three-pass matching (default)
+        sim_legacy = Simulation(scenario, seed=42)  # three_pass_matching by default
         run_helpers.run_ticks(sim_legacy, 30)
         
         # Count trades (simple proxy for surplus)
@@ -161,10 +161,10 @@ class TestRandomMatchingComparison:
         
         # Both should produce trades (agents have complementary endowments)
         assert trade_count_random > 0, "Random matching should produce trades"
-        assert trade_count_legacy > 0, "Legacy matching should produce trades"
+        assert trade_count_legacy > 0, "Three-pass matching should produce trades"
         
-        # Generally expect legacy to produce more/better trades, but allow for variation
-        print(f"Random trades: {trade_count_random}, Legacy trades: {trade_count_legacy}")
+        # Generally expect three-pass to produce more/better trades, but allow for variation
+        print(f"Random trades: {trade_count_random}, Three-pass trades: {trade_count_legacy}")
     
     def test_random_creates_pairs(self):
         """Random matching actually creates pairs and leads to trades."""

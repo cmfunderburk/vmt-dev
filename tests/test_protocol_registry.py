@@ -20,10 +20,10 @@ def test_all_protocols_registered():
 
     protocols = ProtocolRegistry.list_protocols()
 
-    assert "legacy_distance_discounted" in protocols["search"]
+    assert "distance_discounted_search" in protocols["search"]
     assert "random_walk" in protocols["search"]
 
-    assert "legacy_three_pass" in protocols["matching"]
+    assert "three_pass_matching" in protocols["matching"]
     assert "random_matching" in protocols["matching"]
 
     assert "compensating_block" in protocols["bargaining"]
@@ -76,8 +76,8 @@ def test_factory_uses_registry_for_defaults_and_explicit():
     )
 
     # Defaults
-    assert get_search_protocol(None).__class__.__name__ == "LegacySearchProtocol"
-    assert get_matching_protocol(None).__class__.__name__ == "LegacyMatchingProtocol"
+    assert get_search_protocol(None).__class__.__name__ == "DistanceDiscountedSearch"
+    assert get_matching_protocol(None).__class__.__name__ == "ThreePassMatching"
     assert get_bargaining_protocol(None).__class__.__name__ == "CompensatingBlockBargaining"
 
     # Explicit

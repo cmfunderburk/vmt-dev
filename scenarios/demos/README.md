@@ -93,7 +93,7 @@ python main.py scenarios/demos/protocol_comparison_4agent.yaml \
 
 ### Batch run for comparison:
 ```bash
-for protocol in greedy_surplus legacy_three_pass random_matching; do
+for protocol in greedy_surplus three_pass_matching random_matching; do
   python main.py scenarios/demos/protocol_comparison_4agent.yaml \
     --override "protocol_config.matching.protocol=$protocol" \
     --output "results_${protocol}.db"

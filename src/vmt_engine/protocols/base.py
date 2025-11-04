@@ -267,7 +267,7 @@ class ProtocolBase(ABC):
     Abstract base class for all protocols.
     
     All protocols must provide:
-    - name: Unique identifier (e.g., "legacy_three_pass")
+    - name: Unique identifier (e.g., "three_pass_matching")
     - version: Date-based version (YYYY.MM.DD format)
     
     Protocols are pure functions: same WorldView → same Effects.

@@ -12,7 +12,7 @@ def get_search_protocol(protocol_config: Optional[Union[str, dict[str, Any]]]):
     Args:
         protocol_config: Either a string (protocol name) or dict with 'name' and optional 'params'
             Examples:
-                "legacy_distance_discounted"
+                "distance_discounted_search"
                 {"name": "myopic"}
                 {"name": "myopic", "params": {}}
     
@@ -22,13 +22,13 @@ def get_search_protocol(protocol_config: Optional[Union[str, dict[str, Any]]]):
     from vmt_engine.protocols.registry import ProtocolRegistry
     
     if protocol_config is None:
-        name = "legacy_distance_discounted"
+        name = "distance_discounted_search"
         params = {}
     elif isinstance(protocol_config, str):
         name = protocol_config
         params = {}
     elif isinstance(protocol_config, dict):
-        name = protocol_config.get('name', "legacy_distance_discounted")
+        name = protocol_config.get('name', "distance_discounted_search")
         params = protocol_config.get('params', {})
     else:
         raise ValueError(f"protocol_config must be str or dict, got {type(protocol_config)}")
@@ -44,7 +44,7 @@ def get_matching_protocol(protocol_config: Optional[Union[str, dict[str, Any]]])
     Args:
         protocol_config: Either a string (protocol name) or dict with 'name' and optional 'params'
             Examples:
-                "legacy_three_pass"
+                "three_pass_matching"
                 {"name": "greedy_surplus"}
                 {"name": "greedy_surplus", "params": {}}
     
@@ -54,13 +54,13 @@ def get_matching_protocol(protocol_config: Optional[Union[str, dict[str, Any]]])
     from vmt_engine.protocols.registry import ProtocolRegistry
     
     if protocol_config is None:
-        name = "legacy_three_pass"
+        name = "three_pass_matching"
         params = {}
     elif isinstance(protocol_config, str):
         name = protocol_config
         params = {}
     elif isinstance(protocol_config, dict):
-        name = protocol_config.get('name', "legacy_three_pass")
+        name = protocol_config.get('name', "three_pass_matching")
         params = protocol_config.get('params', {})
     else:
         raise ValueError(f"protocol_config must be str or dict, got {type(protocol_config)}")
