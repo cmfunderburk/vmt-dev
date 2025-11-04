@@ -141,7 +141,7 @@ def build_protocol_context(sim: "Simulation") -> ProtocolContext:
     # Protocol-specific state (empty for now - will be populated by InternalStateUpdate effects)
     protocol_state = {}
     
-    # Build params dict with full agent state for matching protocols
+    # Build params dict (no longer includes agent state - use agents dict instead)
     params = {
         "beta": sim.params.get("beta", 0.95),
         "vision_radius": sim.params.get("vision_radius", 5),
@@ -149,17 +149,15 @@ def build_protocol_context(sim: "Simulation") -> ProtocolContext:
         "epsilon": sim.params.get("epsilon", 1e-9),
     }
     
-    # Add full agent state for matching protocols (inventory, utility)
-    for agent in sim.agents:
-        params[f"agent_{agent.id}_inv_A"] = agent.inventory.A
-        params[f"agent_{agent.id}_inv_B"] = agent.inventory.B
-        params[f"agent_{agent.id}_utility"] = agent.utility
+    # Build agents dict for direct access (eliminates params hack)
+    agents = {agent.id: agent for agent in sim.agents}
     
     return ProtocolContext(
         tick=sim.tick,
         mode=sim.current_mode,
         all_agent_views=all_agent_views,
         all_resource_views=all_resource_views,
+        agents=agents,
         current_pairings=current_pairings,
         protocol_state=protocol_state,
         params=params,

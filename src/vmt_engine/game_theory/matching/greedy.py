@@ -32,7 +32,6 @@ from .base import MatchingProtocol
 from ...protocols.base import Effect, Pair
 from ...protocols.context import ProtocolContext
 from ...systems.trade_evaluation import TradePotentialEvaluator, QuoteBasedTradeEvaluator
-from ...core.agent import Agent
 
 
 @register_protocol(
@@ -187,9 +186,9 @@ class GreedySurplusMatching(MatchingProtocol):
         Returns:
             Tuple of (total_surplus, discounted_surplus, distance)
         """
-        # Build agent objects from ProtocolContext
-        agent_a = self._build_agent_from_context(world, agent_a_id)
-        agent_b = self._build_agent_from_context(world, agent_b_id)
+        # Direct access to agents from ProtocolContext (no params hack)
+        agent_a = world.agents[agent_a_id]
+        agent_b = world.agents[agent_b_id]
         
         # Use lightweight evaluation instead of full trade discovery
         potential = self.evaluator.evaluate_pair_potential(agent_a, agent_b, {})
@@ -209,28 +208,4 @@ class GreedySurplusMatching(MatchingProtocol):
         discounted_surplus = best_total_surplus * (beta ** distance)
         
         return (best_total_surplus, discounted_surplus, distance)
-    
-    def _build_agent_from_context(self, world: ProtocolContext, agent_id: int) -> Agent:
-        """Build pseudo-agent object from ProtocolContext for matching functions."""
-        from ...core.state import Inventory
-        
-        view = world.all_agent_views[agent_id]
-        
-        # Extract full agent state from params (added by build_protocol_context)
-        inventory = Inventory(
-            A=world.params.get(f"agent_{agent_id}_inv_A", 0),
-            B=world.params.get(f"agent_{agent_id}_inv_B", 0)
-        )
-        utility = world.params.get(f"agent_{agent_id}_utility")
-        
-        # Create minimal agent with required state
-        agent = Agent(
-            id=agent_id,
-            pos=view.pos,
-            inventory=inventory,
-            utility=utility,
-            quotes=view.quotes.copy(),
-        )
-        
-        return agent
 

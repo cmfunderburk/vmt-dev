@@ -48,6 +48,7 @@ class TestRandomMatchingInterface:
             mode="both",
             all_agent_views={},
             all_resource_views=[],
+            agents={},  # Empty agents dict for minimal test
             current_pairings={},
             protocol_state={},
             params={},

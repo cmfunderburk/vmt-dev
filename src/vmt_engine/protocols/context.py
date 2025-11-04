@@ -14,11 +14,14 @@ Version: 2025.10.26 (Phase 0 - Infrastructure)
 """
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Optional, TYPE_CHECKING
 from decimal import Decimal
 import numpy as np
 
 from ..econ.base import Utility
+
+if TYPE_CHECKING:
+    from ..core.agent import Agent
 
 # Type aliases
 Position = tuple[int, int]
@@ -151,14 +154,22 @@ class ProtocolContext:
     - All agent states (for matching algorithms)
     - Grid state (for resource-aware decisions)
     - Protocol history (for multi-tick protocols)
+    
+    Note: `agents` provides direct access to full agent state for matching
+    protocols. This is appropriate for central matchmaker perspective, where
+    full information is available. Information hiding applies to agent-to-agent
+    interactions (WorldView), not protocol coordination (ProtocolContext).
     """
     
     tick: int
     mode: str
     
     # Global state
-    all_agent_views: dict[int, AgentView]  # All agents in simulation
+    all_agent_views: dict[int, AgentView]  # All agents in simulation (public info only)
     all_resource_views: list[ResourceView]  # All resources on grid
+    
+    # Direct agent access for matching protocols
+    agents: dict[int, "Agent"]  # Full agent state for matching algorithms
     
     # Pairing state
     current_pairings: dict[int, int]  # {agent_id: partner_id}
@@ -225,20 +236,28 @@ def create_protocol_context(
     current_pairings: dict[int, int],
     protocol_state: dict[str, dict[int, dict[str, Any]]],
     params: dict[str, Any],
+    agents: dict[int, "Agent"],
+    rng: np.random.Generator,
 ) -> ProtocolContext:
     """
     Factory function for creating ProtocolContext instances.
     
     This function will be called by the simulation core during phases
     that require global state (e.g., matching phase).
+    
+    Args:
+        agents: Full agent state dict for matching protocols
+        rng: Deterministic random number generator
     """
     return ProtocolContext(
         tick=tick,
         mode=mode,
         all_agent_views=all_agent_views,
         all_resource_views=all_resource_views,
+        agents=agents,
         current_pairings=current_pairings,
         protocol_state=protocol_state,
         params=params,
+        rng=rng,
     )
 
