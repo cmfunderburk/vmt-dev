@@ -294,7 +294,7 @@ def execute_trade_generic(
         agent_i: First agent
         agent_j: Second agent
         trade: Trade tuple (dA_i, dB_i, dA_j, dB_j, surplus_i, surplus_j)
-               from find_compensating_block_generic
+               from bargaining protocols (e.g., CompensatingBlockBargaining)
         
     Invariants maintained:
     - Non-negativity: All inventories remain ≥ 0

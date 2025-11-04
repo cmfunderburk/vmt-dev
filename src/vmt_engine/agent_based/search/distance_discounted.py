@@ -7,7 +7,7 @@ utility gain for foraging targets.
 
 This protocol is bit-compatible with the pre-protocol DecisionSystem implementation.
 
-Version: 2025.10.26 (Phase 1 - Legacy Adapter)
+Version: 2025.10.26 (Phase 1 - Distance-Discounted Search Protocol)
 """
 
 from typing import Optional
