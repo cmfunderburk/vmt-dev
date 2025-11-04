@@ -19,7 +19,7 @@ vmt-dev/
 │   │   ├── systems/        # Phase-specific execution logic
 │   │   ├── core/           # Agents, grid, core data structures
 │   │   └── econ/           # Utility functions
-│   ├── vmt_launcher/       # GUI Launcher and Scenario Builder
+│   ├── vmt_launcher/       # GUI Launcher for running scenarios
 │   └── vmt_log_viewer/     # Interactive telemetry database viewer
 ├── scenarios/              # YAML configuration files for simulations
 ├── docs/                   # Documentation, plans, and specifications

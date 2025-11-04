@@ -31,7 +31,6 @@ The simulation is built on a few key ideas:
 - **Rich Visualization**: A Pygame-based renderer with smart agent co-location, target arrows for visualizing agent intent, and data overlays.
 - **Comprehensive Telemetry**: All simulation data is logged to a SQLite database for deep analysis.
 - **Interactive Log Viewer**: A powerful GUI tool to scrub through simulation history, inspect agent states, and export data.
-- **GUI Scenario Builder**: A user-friendly interface for creating complex scenarios without writing YAML by hand.
 - **Deterministic & Reproducible**: Simulations are fully deterministic for reproducible research.
 
 ## Installation
@@ -79,7 +78,7 @@ vmt-dev/
 │   │   ├── systems/        # Phase-specific execution logic
 │   │   ├── core/           # Agents, grid, core data structures
 │   │   └── econ/           # Utility functions
-│   ├── vmt_launcher/       # GUI Launcher and Scenario Builder
+│   ├── vmt_launcher/       # GUI Launcher for running scenarios
 │   └── vmt_log_viewer/     # Interactive telemetry database viewer
 ├── scenarios/              # YAML configuration files for simulations
 ├── docs/                   # Documentation, plans, and specifications
