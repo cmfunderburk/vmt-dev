@@ -167,8 +167,6 @@ class QueryBuilder:
                 COUNT(*) as total_trades,
                 AVG(dA) as avg_dA,
                 AVG(dB) as avg_dB,
-                SUM(dM) as total_dM,
-                AVG(dM) as avg_dM,
                 AVG(price) as avg_price,
                 MIN(tick) as first_trade_tick,
                 MAX(tick) as last_trade_tick
@@ -204,56 +202,11 @@ class QueryBuilder:
         """
         return query, (run_id, tick)
     
-    # Money-specific queries (WP3 Part 3B)
-    
-    @staticmethod
-    def get_money_trades(run_id: int, start_tick: Optional[int] = None,
-                        end_tick: Optional[int] = None) -> tuple[str, tuple]:
-        """Get all trades involving money (dM != 0)."""
-        query = """
-            SELECT *
-            FROM trades
-            WHERE run_id = ? AND dM != 0
-        """
-        params = [run_id]
-        
-        if start_tick is not None:
-            query += " AND tick >= ?"
-            params.append(start_tick)
-        if end_tick is not None:
-            query += " AND tick <= ?"
-            params.append(end_tick)
-        
-        query += " ORDER BY tick"
-        return query, tuple(params)
-    
-    @staticmethod
-    def get_lambda_trajectory(run_id: int, agent_id: int,
-                             start_tick: Optional[int] = None,
-                             end_tick: Optional[int] = None) -> tuple[str, tuple]:
-        """Get lambda_money values over time for an agent."""
-        query = """
-            SELECT tick, lambda_money
-            FROM agent_snapshots
-            WHERE run_id = ? AND agent_id = ? AND lambda_money IS NOT NULL
-        """
-        params = [run_id, agent_id]
-        
-        if start_tick is not None:
-            query += " AND tick >= ?"
-            params.append(start_tick)
-        if end_tick is not None:
-            query += " AND tick <= ?"
-            params.append(end_tick)
-        
-        query += " ORDER BY tick"
-        return query, tuple(params)
-    
     @staticmethod
     def get_mode_timeline(run_id: int) -> tuple[str, tuple]:
         """Get mode transitions over time."""
         query = """
-            SELECT tick, current_mode, exchange_regime
+            SELECT tick, current_mode
             FROM tick_states
             WHERE run_id = ?
             ORDER BY tick
@@ -272,19 +225,4 @@ class QueryBuilder:
         """
         return query, (run_id,)
     
-    @staticmethod
-    def get_money_statistics(run_id: int) -> tuple[str, tuple]:
-        """Get money-specific statistics for a run."""
-        query = """
-            SELECT 
-                COUNT(*) as money_trades,
-                AVG(dM) as avg_dM,
-                AVG(buyer_lambda) as avg_buyer_lambda,
-                AVG(seller_lambda) as avg_seller_lambda,
-                MIN(dM) as min_dM,
-                MAX(dM) as max_dM
-            FROM trades
-            WHERE run_id = ? AND dM != 0
-        """
-        return query, (run_id,)
 

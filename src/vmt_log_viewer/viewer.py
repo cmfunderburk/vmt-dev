@@ -78,10 +78,6 @@ class LogViewerWindow(QMainWindow):
         self.resources_table = QTableWidget()
         self.tabs.addTab(self.resources_table, "Resources")
         
-        # Money tab (WP3 Part 3B)
-        self.money_tab = self._create_money_tab()
-        self.tabs.addTab(self.money_tab, "Money")
-        
         layout.addWidget(self.tabs, stretch=1)
         
         # Status bar
@@ -163,46 +159,6 @@ class LogViewerWindow(QMainWindow):
         
         return widget
     
-    def _create_money_tab(self) -> QWidget:
-        """Create money analysis tab (WP3 Part 3B)."""
-        widget = QWidget()
-        layout = QVBoxLayout()
-        widget.setLayout(layout)
-        
-        # Money statistics group
-        money_stats_group = QGroupBox("Money Statistics")
-        money_stats_layout = QVBoxLayout()
-        money_stats_group.setLayout(money_stats_layout)
-        
-        self.money_stats_label = QLabel("No data loaded")
-        money_stats_layout.addWidget(self.money_stats_label)
-        
-        layout.addWidget(money_stats_group)
-        
-        # Trade distribution by type
-        trade_dist_group = QGroupBox("Trade Distribution by Exchange Pair Type")
-        trade_dist_layout = QVBoxLayout()
-        trade_dist_group.setLayout(trade_dist_layout)
-        
-        self.trade_dist_table = QTableWidget()
-        self.trade_dist_table.setColumnCount(3)
-        self.trade_dist_table.setHorizontalHeaderLabels(["Exchange Pair", "Count", "Percentage"])
-        trade_dist_layout.addWidget(self.trade_dist_table)
-        
-        layout.addWidget(trade_dist_group)
-        
-        # Money trades table
-        money_trades_group = QGroupBox("Money Trades (dM != 0)")
-        money_trades_layout = QVBoxLayout()
-        money_trades_group.setLayout(money_trades_layout)
-        
-        self.money_trades_table = QTableWidget()
-        money_trades_layout.addWidget(self.money_trades_table)
-        
-        layout.addWidget(money_trades_group)
-        
-        return widget
-    
     def open_database(self):
         """Open a telemetry database file."""
         file_path, _ = QFileDialog.getOpenFileName(
@@ -277,9 +233,6 @@ class LogViewerWindow(QMainWindow):
         # Load overview statistics
         self.load_overview()
         
-        # Load money tab data
-        self.load_money_tab()
-        
         # Initialize agent view
         self.agent_view.load_run(self.db, self.current_run_id)
     
@@ -308,22 +261,16 @@ class LogViewerWindow(QMainWindow):
         if result and result['total_trades']:
             avg_dA = result['avg_dA']
             avg_dB = result['avg_dB']
-            total_dM = result['total_dM']
-            avg_dM = result['avg_dM']
             avg_price = result['avg_price']
 
             avg_dA_text = f"{avg_dA:.2f}" if avg_dA is not None else "N/A"
             avg_dB_text = f"{avg_dB:.2f}" if avg_dB is not None else "N/A"
-            total_dM_text = f"{total_dM}" if total_dM is not None else "N/A"
-            avg_dM_text = f"{avg_dM:.2f}" if avg_dM is not None else "N/A"
             avg_price_text = f"{avg_price:.4f}" if avg_price is not None else "N/A"
 
             trade_stats = f"""
 <b>Total Trades:</b> {result['total_trades']}<br>
 <b>Average dA:</b> {avg_dA_text}<br>
 <b>Average dB:</b> {avg_dB_text}<br>
-<b>Total dM:</b> {total_dM_text}<br>
-<b>Average dM:</b> {avg_dM_text}<br>
 <b>Average Price:</b> {avg_price_text}<br>
 <b>First Trade:</b> Tick {result['first_trade_tick']}<br>
 <b>Last Trade:</b> Tick {result['last_trade_tick']}
@@ -342,78 +289,6 @@ class LogViewerWindow(QMainWindow):
             self.agent_trades_table.setItem(i, 1, QTableWidgetItem(str(row['trade_count'])))
         
         self.agent_trades_table.resizeColumnsToContents()
-    
-    def load_money_tab(self):
-        """Load money tab data (WP3 Part 3B)."""
-        if not self.db or self.current_run_id is None:
-            return
-        
-        # Get money statistics
-        query, params = QueryBuilder.get_money_statistics(self.current_run_id)
-        result = self.db.execute(query, params).fetchone()
-        
-        if result and result['money_trades'] and result['money_trades'] > 0:
-            avg_buyer_lambda = result['avg_buyer_lambda']
-            avg_seller_lambda = result['avg_seller_lambda']
-
-            avg_buyer_lambda_text = (
-                f"{avg_buyer_lambda:.4f}" if avg_buyer_lambda is not None else "N/A"
-            )
-            avg_seller_lambda_text = (
-                f"{avg_seller_lambda:.4f}" if avg_seller_lambda is not None else "N/A"
-            )
-
-            money_stats = f"""
-<b>Monetary Trades:</b> {result['money_trades']}<br>
-<b>Average dM:</b> {result['avg_dM']:.2f}<br>
-<b>Min dM:</b> {result['min_dM']}<br>
-<b>Max dM:</b> {result['max_dM']}<br>
-<b>Average Buyer λ:</b> {avg_buyer_lambda_text}<br>
-<b>Average Seller λ:</b> {avg_seller_lambda_text}
-"""
-            self.money_stats_label.setText(money_stats)
-        else:
-            self.money_stats_label.setText("No monetary trades recorded")
-        
-        # Get trade distribution by type
-        query, params = QueryBuilder.get_trade_distribution_by_type(self.current_run_id)
-        results = self.db.execute(query, params).fetchall()
-        
-        total_trades = sum(row['count'] for row in results)
-        
-        self.trade_dist_table.setRowCount(len(results))
-        for i, row in enumerate(results):
-            pair_type = row['exchange_pair_type']
-            count = row['count']
-            percentage = (count / total_trades * 100) if total_trades > 0 else 0
-            
-            self.trade_dist_table.setItem(i, 0, QTableWidgetItem(pair_type))
-            self.trade_dist_table.setItem(i, 1, QTableWidgetItem(str(count)))
-            self.trade_dist_table.setItem(i, 2, QTableWidgetItem(f"{percentage:.1f}%"))
-        
-        self.trade_dist_table.resizeColumnsToContents()
-        
-        # Get money trades
-        query, params = QueryBuilder.get_money_trades(self.current_run_id)
-        results = self.db.execute(query, params).fetchall()
-        
-        columns = ['tick', 'buyer_id', 'seller_id', 'dA', 'dB', 'dM', 'price', 
-                   'buyer_lambda', 'seller_lambda', 'exchange_pair_type']
-        
-        self.money_trades_table.setColumnCount(len(columns))
-        self.money_trades_table.setHorizontalHeaderLabels(columns)
-        self.money_trades_table.setRowCount(len(results))
-        
-        for i, row in enumerate(results):
-            for j, col in enumerate(columns):
-                value = row[col]
-                if value is None:
-                    value = ""
-                elif isinstance(value, float):
-                    value = f"{value:.4f}"
-                self.money_trades_table.setItem(i, j, QTableWidgetItem(str(value)))
-        
-        self.money_trades_table.resizeColumnsToContents()
     
     def on_tick_changed(self, tick: int):
         """Handle timeline tick change."""
