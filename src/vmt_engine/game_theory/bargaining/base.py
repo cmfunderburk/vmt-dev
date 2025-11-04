@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ...protocols.context import WorldView
+    from ...core import Agent
 
 from ...protocols.base import Effect, ProtocolBase
 
@@ -40,14 +41,22 @@ class BargainingProtocol(ProtocolBase):
     
     @abstractmethod
     def negotiate(
-        self, pair: tuple[int, int], world: "WorldView"
+        self,
+        pair: tuple[int, int],
+        agents: tuple["Agent", "Agent"],
+        world: "WorldView"
     ) -> list[Effect]:
         """
         One negotiation step (may be single-tick or multi-tick).
         
         Args:
-            pair: (agent_a, agent_b) tuple
-            world: Immutable snapshot including both agents' states
+            pair: (agent_a_id, agent_b_id) - agent IDs
+            agents: (agent_a, agent_b) - READ-ONLY access to full agent state
+                    Guaranteed: agents[0].id == pair[0], agents[1].id == pair[1]
+                    WARNING: Agents are mutable but protocols MUST NOT mutate them.
+                             Mutations are only allowed via Trade effects.
+                             Debug assertions verify this in development.
+            world: Immutable context (tick, mode, params, rng)
         
         Returns:
             List of effects:
@@ -60,7 +69,12 @@ class BargainingProtocol(ProtocolBase):
         """
         pass
     
-    def on_timeout(self, pair: tuple[int, int], world: "WorldView") -> list[Effect]:
+    def on_timeout(
+        self,
+        pair: tuple[int, int],
+        agents: tuple["Agent", "Agent"],
+        world: "WorldView"
+    ) -> list[Effect]:
         """
         Called when negotiation exceeds max ticks.
         

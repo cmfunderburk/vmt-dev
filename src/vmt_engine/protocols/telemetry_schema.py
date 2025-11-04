@@ -136,7 +136,7 @@ Example row (Trade effect):
     run_id='2025-10-26_12-34-56'
     tick=11
     effect_type='Trade'
-    protocol_name='legacy_compensating_block'
+    protocol_name='compensating_block'
     agent_a=0
     agent_b=1
     effect_data='{"pair_type": "A_for_B", "dA": -5, "dB": 3, "dM": 0, "price": 1.67, ...}'

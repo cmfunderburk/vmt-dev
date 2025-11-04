@@ -1,27 +1,38 @@
 # VMT - Visualizing Microeconomic Theory
 
-[![Tests](https://img.shields.io/badge/tests-316%2B%20passing-brightgreen)]()
-[![Python](https://img.shields.io/badge/python-3.11-blue)]()
-[![Architecture](https://img.shields.io/badge/architecture-protocol--driven-orange)]()
-
-A spatial agent-based simulation platform for studying microeconomic exchange mechanisms. Agents with heterogeneous preferences forage for resources and trade through configurable institutional rules (search, matching, and bargaining protocols).
+A spatial agent-based simulation platform for studying and comparing microeconomic exchange mechanisms. VMT moves beyond textbook assumptions by simulating how different institutional rules—from simple barter to monetary exchange—produce different market outcomes through discrete agent interactions.
 
 ## Overview
 
-VMT is a research and teaching platform that makes exchange mechanisms explicit and comparable. Instead of assuming equilibrium prices, it simulates how different institutional rules produce different market outcomes through bilateral agent interactions.
+VMT is a research and teaching tool designed to make exchange mechanisms explicit and comparable. Instead of assuming an equilibrium, it models the *process* of exchange. Agents with heterogeneous preferences and utility functions operate in a spatial environment, foraging for resources and trading with one another based on a configurable set of rules (protocols).
 
-**Core Features:**
-- Spatial grid with resource foraging and agent movement
-- Configurable protocols for search, matching, and bargaining
-- Multiple utility functions (CES, Linear, Quadratic, Stone-Geary, Translog)
-- Pure barter economy (A↔B trades only)
-- Deterministic simulation (reproducible with seeds)
-- Comprehensive telemetry and visualization
+The platform is architected to be a modular laboratory for comparative economics, enabling the study of:
+- **Institutional Design**: What is the impact of different search, matching, and bargaining protocols on market outcomes?
+- **Spatial Economics**: How do geography, search costs, and agent mobility influence economic activity?
+- **Foundations of Exchange**: How do market-like outcomes emerge from purely bilateral interactions?
 
-**Use Cases:**
-- Teaching microeconomics through visualization
-- Research on market mechanisms and institutional design
-- Comparing bilateral vs centralized exchange systems
+The project is under active development, with a focus on expanding the library of protocols and economic models available for comparative analysis.
+
+## Core Concepts
+
+The simulation is built on a few key ideas:
+
+- **Protocol-Driven Architecture**: The "rules of the game" are defined by swappable protocols for **Search** (how agents find partners), **Matching** (how pairs form), and **Bargaining** (how they agree on a trade). This architecture is central to the project's goal of enabling systematic comparison of different market structures.
+- **Pure Barter Economy**: The simulation currently models a pure barter economy where agents directly exchange goods. A robust monetary system is a high-priority feature planned for future development.
+- **Agent Coordination**: Agents use sophisticated strategies to coordinate. This includes a **resource claiming** system to avoid inefficient clustering and a **trade pairing** system where agents can form committed partnerships before negotiating.
+- **Data-Rich Simulation**: Every detail of the simulation is captured in a comprehensive **SQLite telemetry database**. An interactive log viewer allows for deep analysis of agent states, decisions, trades, and economic aggregates over time.
+
+## Key Features
+
+- **Pure Barter System**: A foundational barter economy serves as the baseline for all analysis.
+- **Pluggable Protocols**: A modular protocol system for Search, Matching, and Bargaining.
+- **Diverse Utility Functions**: Includes CES, Linear, Quadratic, Stone-Geary, and Translog utility models.
+- **Advanced Agent Coordination**: Features resource claiming and a three-pass trade pairing system.
+- **Rich Visualization**: A Pygame-based renderer with smart agent co-location, target arrows for visualizing agent intent, and data overlays.
+- **Comprehensive Telemetry**: All simulation data is logged to a SQLite database for deep analysis.
+- **Interactive Log Viewer**: A powerful GUI tool to scrub through simulation history, inspect agent states, and export data.
+- **GUI Scenario Builder**: A user-friendly interface for creating complex scenarios without writing YAML by hand.
+- **Deterministic & Reproducible**: Simulations are fully deterministic for reproducible research.
 
 ## Installation
 
@@ -45,51 +56,66 @@ pip install -r requirements.txt
 ```bash
 python launcher.py
 ```
-Select a scenario from `scenarios/demos/` to see different exchange patterns.
+Select a scenario from `scenarios/demos/` to run a simulation. The GUI provides the easiest way to explore VMT's features.
 
 ### Command Line
 ```bash
-python main.py scenarios/demos/demo_01_foundational_barter.yaml
+python main.py scenarios/demos/minimal_2agent.yaml
 ```
 
 ### View Results
 ```bash
-python view_logs.py  # Open telemetry database viewer
+python view_logs.py  # Open the interactive telemetry database viewer
 ```
 
 ## Project Structure
 
 ```
 vmt-dev/
-├── src/vmt_engine/       # Core simulation engine
-│   ├── protocols/        # Swappable institutional rules
-│   ├── systems/          # Phase-specific execution
-│   ├── core/             # Agents, grid, state
-│   └── econ/             # Utility functions
-├── scenarios/            # YAML configuration files
-│   └── demos/            # Example scenarios
-├── docs/                 # Documentation
-│   └── BIGGEST_PICTURE/  # Vision and architecture
-├── tests/                # Test suite
-└── scripts/              # Analysis tools
+├── src/
+│   ├── vmt_engine/         # Core simulation engine
+│   │   ├── agent_based/    # Agent-based protocols (e.g., search)
+│   │   ├── game_theory/    # Game theory protocols (e.g., matching, bargaining)
+│   │   ├── systems/        # Phase-specific execution logic
+│   │   ├── core/           # Agents, grid, core data structures
+│   │   └── econ/           # Utility functions
+│   ├── vmt_launcher/       # GUI Launcher and Scenario Builder
+│   └── vmt_log_viewer/     # Interactive telemetry database viewer
+├── scenarios/              # YAML configuration files for simulations
+├── docs/                   # Documentation, plans, and specifications
+├── tests/                  # Pytest suite (determinism is key!)
+└── scripts/                # Analysis and utility scripts
 ```
 
-## Configuring Simulations
+## How It Works: The Simulation Tick
 
-### Scenario Files (YAML)
+Each tick follows a deterministic 7-phase cycle:
 
-Scenarios define agent preferences, spatial layout, and institutional rules:
+1.  **Perception**: Agents observe the state of the world around them.
+2.  **Decision**: Agents decide on their next action. This is a multi-step process orchestrated by protocols:
+    -   *Search Protocol*: Agents identify potential trade partners or foraging targets.
+    -   *Matching Protocol*: Agents form committed pairs for trading.
+    -   Resource claims are made.
+3.  **Movement**: Agents move towards their chosen targets.
+4.  **Trade**: Paired agents execute the *Bargaining Protocol* to find and execute mutually beneficial trades.
+5.  **Forage**: Unpaired agents at resource locations harvest them.
+6.  **Resource Regeneration**: Resources on the grid regenerate based on scenario rules.
+7.  **Housekeeping**: The system updates agent states, clears expired states (like trade cooldowns), and logs telemetry.
+
+## Configuring Scenarios
+
+Simulations are configured using YAML files. Key parameters include agent endowments, utility functions, and the active protocols.
 
 ```yaml
 # Basic configuration
-grid_size: 10
-num_agents: 20
-max_ticks: 100
+grid_size: 20
+num_agents: 10
+max_ticks: 1000
 
 # Select protocols (institutional rules)
-search_protocol: "legacy_distance_discounted"     # or "random_walk"
-matching_protocol: "legacy_three_pass"            # or "random_matching"
-bargaining_protocol: "legacy_compensating_block"  # or "split_difference"
+search_protocol: "myopic"
+matching_protocol: "greedy_surplus"
+bargaining_protocol: "compensating_block"
 
 # Agent configuration
 agents:
@@ -98,102 +124,52 @@ agents:
     endowment: {A: 10, B: 10}
 ```
 
-See `docs/structures/` for complete templates and `scenarios/demos/` for examples.
-
 ### Available Protocols
 
+The protocol system is a key area of ongoing development. The following protocols are currently available.
+
 **Search** (how agents find partners):
-- `legacy_distance_discounted`: Utility-weighted by distance
-- `random_walk`: Random movement
+- `myopic`: A heuristic-based search where agents pursue the best nearby opportunity. This is the primary implementation.
+- `random_walk`: Agents explore the grid randomly. Useful for baseline comparisons.
 
 **Matching** (how pairs form):
-- `legacy_three_pass`: Mutual consent with fallback
-- `random_matching`: Random pairing
+- `greedy_surplus`: Forms pairs based on the highest potential gains from trade. This is the primary implementation.
+- `random_matching`: Forms pairs randomly for baseline scenarios.
 
 **Bargaining** (how prices are negotiated):
-- `legacy_compensating_block`: Bilateral feasibility search
-- `split_difference`: Equal surplus division
+- `compensating_block`: A sophisticated search for the first mutually beneficial integer block trade. This is the only fully implemented bargaining protocol and serves as the primary model for bilateral exchange.
+- *Note*: Other bargaining protocols like `split_difference` and `take_it_or_leave_it` exist in the codebase as placeholders for future development but are not yet implemented.
 
-Query available protocols programmatically:
-```python
-from src.vmt_engine.protocols import list_all_protocols
-list_all_protocols()
-# Returns dict of available protocols by category
-```
+## Development & Contribution
 
-## Simulation Phases
-
-Each tick follows a deterministic 7-phase cycle:
-
-1. **Perception**: Agents observe local state
-2. **Movement**: Agents move toward targets
-3. **Foraging**: Resource collection from grid
-4. **Trading**: Bilateral exchange through protocols
-5. **Consumption**: Utility calculation
-6. **Regeneration**: Resources respawn
-7. **Housekeeping**: State updates and logging
-
-## Documentation
-
-**Getting Started:**
-- [Project Overview](docs/1_project_overview.md) - Detailed feature documentation
-- [Scenario Configuration](docs/structures/) - How to create scenarios
-- [Tutorial Scenarios](scenarios/demos/) - Example configurations
-
-**Architecture:**
-- [Vision and Architecture](docs/BIGGEST_PICTURE/vision_and_architecture.md) - Research goals and design philosophy
-- [Technical Manual](docs/2_technical_manual.md) - Implementation details
-- [Protocol Development](docs/protocols_10-27/) - Adding new mechanisms
-
-**Development:**
-- [Developer Onboarding](docs/onboarding/README.md) - Setup and architecture guide
-- [Type Specifications](docs/4_typing_overview.md) - Type system documentation
-- [Enhancement Backlog](docs/3_enhancement_backlog.md) - Planned features
-
-## Testing
+We use `pytest` for testing. Determinism is critical: every new feature must have a determinism test that runs the simulation twice with the same seed and asserts identical final states.
 
 ```bash
 # Activate virtual environment first
-source venv/bin/activate  # Linux/macOS
+source venv/bin/activate
 
 # Run all tests
 pytest
-
-# Run specific test categories
-pytest tests/test_foundational_baseline_trades.py
-pytest tests/test_protocol_registry.py
 ```
 
-## Research Applications
+Priority areas for contribution include:
+1.  **Protocol Implementation**: Flesh out planned bargaining protocols or add new search and matching mechanisms.
+2.  **Scenario Development**: Create pedagogical examples that highlight specific economic phenomena.
+3.  **Analysis Tools**: Build new scripts for visualization and statistical analysis.
+4.  **Documentation**: Improve guides and examples.
 
-VMT enables comparative analysis of exchange mechanisms:
+The project's long-term vision and architectural plans are in `docs/planning_thinking_etc/BIGGEST_PICTURE/`.
 
-1. **Price Formation**: When do bilateral negotiations converge to uniform prices?
-2. **Institutional Comparison**: How do different protocols affect efficiency and distribution?
-3. **Spatial Effects**: Role of geography and search costs in market outcomes
-4. **Information Frictions**: Impact of limited visibility and memory
+## Roadmap & Future Work
 
-Future extensions include centralized market mechanisms (Walrasian auctioneer, posted prices, double auctions) to enable direct comparison with bilateral exchange.
+VMT is an active research project. Key areas for future development include:
 
-## Contributing
-
-Priority areas for contribution:
-
-1. **Protocol Implementation**: Add new search, matching, or bargaining mechanisms
-2. **Scenario Development**: Create pedagogical examples
-3. **Analysis Tools**: Build visualization and statistical analysis scripts
-4. **Documentation**: Improve guides and examples
-
-See [Enhancement Backlog](docs/3_enhancement_backlog.md) for specific tasks.
+- **Theoretically Rigorous Monetary System**: Re-implementing a robust model of money is a top priority.
+- **Expanding Bargaining Protocols**: Implementing `split_difference`, `take_it_or_leave_it`, and other classic bargaining models.
+- **Centralized Markets**: Adding protocols for centralized exchange mechanisms like a Walrasian auctioneer or a double auction to allow for direct comparison with bilateral trade.
+- **Intertemporal Choice**: Introducing models where agents can save and make decisions over multiple periods.
+- **Advanced Agent Behavior**: Incorporating learning and strategic adaptation into agent decision-making.
 
 ## License
 
 See [LICENSE](LICENSE) file for details.
-
-## Next Steps
-
-1. Run a demo: `python launcher.py`
-2. Explore scenarios in `scenarios/demos/`
-3. Read [Vision and Architecture](docs/BIGGEST_PICTURE/vision_and_architecture.md) for research context
-4. Create custom scenarios using templates in `docs/structures/`
-5. Analyze results with `python view_logs.py`

@@ -1,79 +1,133 @@
-# VMT Project - AI Agent Instructions
+# VMT Codebase AI Agent Instructions
 
-This document provides essential guidance for contributing to the VMT (Visualizing Microeconomic Theory) codebase. Adhering to these conventions is critical for maintaining the project's integrity, especially its deterministic nature.
+## Core Architecture
 
-## 1. Core Architecture: `Protocol → Effect → State`
+VMT is an agent-based economic simulation platform with a **7-phase deterministic tick cycle**:
+1. **Perception** - Agents observe local environment within `vision_radius`
+2. **Decision** - Protocol-driven target selection (search) and pairing (matching)
+3. **Movement** - Agents move toward targets with `move_budget_per_tick`
+4. **Trade** - Paired agents negotiate via bargaining protocols
+5. **Forage** - Unpaired agents harvest resources
+6. **Resource Regeneration** - Harvested resources regenerate
+7. **Housekeeping** - Quote refresh, pairing checks, telemetry logging
 
-The entire simulation is built on a declarative, functional pattern. Understand this before writing any code.
+## Critical Conventions
 
-- **Protocols**: These are swappable "institutional rules" that define agent behavior (e.g., how to search for partners, how to bargain). They are pure functions that read the world state and decide on actions. You'll find them organized by domain:
-  - `src/vmt_engine/agent_based/search/`
-  - `src/vmt_engine/game_theory/matching/`
-  - `src/vmt_engine/game_theory/bargaining/`
-- **Effects**: Protocols do **not** change the world state directly. Instead, they return a list of `Effect` objects (e.g., `MoveEffect`, `TradeEffect`, `PairEffect`). These are simple data structures that declare an intended change.
-- **State**: Systems in `src/vmt_engine/systems/` are responsible for iterating through agents, executing the appropriate protocol to get `Effects`, and then applying those effects to the simulation state.
+### Determinism is Sacred
+- **ALWAYS** test with determinism checks: run simulation twice with same seed, assert identical outcomes
+- See `tests/test_simulation_init.py` for pattern - use `tests.helpers.assertions.assert_deterministic()`
+- All RNG must use `sim.rng` (seeded numpy Generator), never `random` module
 
-**Example Flow**:
-1. `DecisionSystem` executes the `MyopicSearch` protocol for an agent.
-2. `MyopicSearch` analyzes the `WorldView` and returns `[MoveEffect(agent_id=1, new_pos=(10, 12))]`.
-3. `MovementSystem` later receives this effect and updates the agent's position in the main state.
+### Decimal Goods Representation
+- Goods use `Decimal` type with 4 decimal places precision (not floats!)
+- Always use `decimal_from_numeric()` for conversion, `quantize_quantity()` for rounding
+- Storage in DB uses integers: multiply by 10^4 via `to_storage_int()`
+```python
+from vmt_engine.core.decimal_config import decimal_from_numeric, quantize_quantity
+inventory.A = decimal_from_numeric(10)  # Decimal('10.0000')
+```
 
-**Your Task**: When implementing logic, think in terms of "what decision (Effect) should be produced?" not "how do I change the agent's state?".
+### Protocol System (Effect-based)
+Protocols return declarative **Effects** that the system applies:
+```python
+# Protocols don't modify state directly!
+effects = [
+    SetTarget(agent_id=1, target=(5, 5)),
+    Pair(agent_a=1, agent_b=2, reason="high_surplus")
+]
+```
 
-## 2. The 7-Phase Tick Cycle
+### Agent Coordination
+- **Resource claiming** prevents multiple agents targeting same resource (`sim.resource_claims`)
+- **Trade pairing** creates exclusive bilateral commitments that persist across ticks
+- **Trade cooldowns** prevent immediate re-pairing after failed trades (`agent.trade_cooldowns`)
 
-Every simulation step (`tick`) follows a strict, immutable 7-phase cycle. Logic must operate only within its designated phase to ensure correctness.
+## Development Workflow
 
-1.  **Perception**: Build read-only `WorldView` snapshots for agents.
-2.  **Decision**: Agents use protocols to choose targets and form pairs.
-3.  **Movement**: Apply `MoveEffect`s.
-4.  **Trade**: Paired agents execute bargaining protocols to attempt trades.
-5.  **Foraging**: Unpaired agents gather resources.
-6.  **Regeneration**: Resources on the grid respawn.
-7.  **Housekeeping**: Update agent quotes, log data, and perform cleanup.
+### Environment Setup (MANDATORY)
+```bash
+# ALWAYS activate venv before ANY Python command
+source venv/bin/activate  # Linux/macOS
+bash -c "source venv/bin/activate && python ..."  # If issues
 
-Refer to `src/vmt_engine/systems/` to see how each phase is implemented. Do not introduce logic that violates this phase separation.
+# Run tests with determinism checks
+pytest tests/test_barter_integration.py
 
-## 3. Developer Workflow
+# Launch GUI for interactive testing
+python launcher.py
 
-### Setup & Running
-- **Virtual Environment**: ALWAYS work within the Python virtual environment.
-  ```bash
-  # Set up once
-  python3 -m venv venv
-  pip install -r requirements.txt
+# Debug via telemetry database
+python view_logs.py  # Interactive SQL viewer at logs/telemetry.db
+```
 
-  # Activate for each session
-  source venv/bin/activate
-  
-  # NOTE: On some systems, you may need to use bash explicitly:
-  bash -c "source venv/bin/activate && <your_command>"
-  ```
-- **Run GUI**: `python launcher.py`
-- **Run Headless**: `python main.py scenarios/demos/minimal_2agent.yaml`
+### Testing Patterns
+```python
+# Use scenario builders for tests
+from tests.helpers import builders
+scenario = builders.build_scenario(N=20, agents=10)
+sim = builders.make_sim(scenario, seed=42, matching="greedy_surplus")
 
-### Testing
-- **Framework**: We use `pytest`. Run the suite with the `pytest` command.
-- **Determinism is CRITICAL**: Every new feature or protocol **must** have a determinism test. This involves running the simulation twice with the same seed and asserting that the final states are identical. See `tests/test_simulation_init.py` for examples.
-- **Test Scenarios**: Use `tests.helpers.scenarios.create_minimal_scenario()` to build scenarios for unit tests. For integration tests, use dedicated files in `scenarios/test/`.
+# ALWAYS test determinism for new features
+def test_my_feature_determinism():
+    # Run twice with same seed
+    for _ in range(2):
+        sim = make_sim(scenario, seed=42)
+        sim.run(10)
+    # Assert identical states
+```
 
-### Debugging
-- **Telemetry Database**: The primary debugging tool is the SQLite database at `logs/telemetry.db`. It contains detailed, tick-by-tick logs of agent state, trades, pairings, and more.
-- **Log Viewer**: Use `python view_logs.py` to get a GUI for exploring the telemetry database. This is the fastest way to understand why a simulation behaved unexpectedly.
+## Key Integration Points
 
-## 4. Key Conventions
+### Protocol Configuration
+Protocols are configured in YAML or overridden via CLI:
+```yaml
+# In scenario YAML
+search_protocol: "myopic"  # or {"name": "myopic", "params": {...}}
+matching_protocol: "greedy_surplus"
+bargaining_protocol: "compensating_block"
+```
 
-### Protocol Development
-- **Template**: Follow the template in `docs/planning_thinking_etc/BIGGEST_PICTURE/opus_plan/implementation/COMPREHENSIVE_IMPLEMENTATION_PLAN.md`. Protocols must inherit from a base class, implement the `execute` method, and be stateless.
-- **Registration**: New protocols must be decorated with `@register_protocol` and imported into their module's `__init__.py` to be available in YAML scenarios.
-- **Randomness**: Never use Python's global `random` module. For deterministic results, use the seeded random number generator provided in the `ProtocolContext`, e.g., `context.world_view.random.choice()`.
+### Protocol Registry Pattern
+New protocols auto-register via decorator:
+```python
+from vmt_engine.protocols.registry import register_protocol
 
-### Scenario Configuration
-- Simulations are configured entirely through YAML files in `scenarios/`.
-- Before creating a new scenario, review the existing examples in `scenarios/demos/` and the comprehensive template in `docs/structures/comprehensive_scenario_template.yaml`.
-- You can mix and match protocols to compare how different "institutions" affect market outcomes.
+@register_protocol("my_search", "search")
+class MySearchProtocol(SearchProtocol):
+    def select_targets(self, view: WorldView) -> list[Effect]:
+        # Return SetTarget effects
+```
 
-### Economic Logic
-- The project simulates a **pure barter economy**. Agents have utility functions (CES, Linear, etc.) defined in `src/vmt_engine/econ/`.
-- Before implementing any economic logic, consult `docs/planning_thinking_etc/BIGGEST_PICTURE/opus_plan/implementation/COMPREHENSIVE_IMPLEMENTATION_PLAN.md` to understand concepts like Marginal Rate of Substitution (MRS), reservation prices, and surplus as they are implemented in this codebase.
-- **Core Principle**: Agents act based on maximizing their utility. An agent will never accept a trade that lowers its utility.
+### Scenario Schema
+Scenarios follow strict schema (`src/scenarios/schema.py`):
+- `initial_inventories`: Dict or list format for agent endowments
+- `utilities`: Support for CES, Linear, Quadratic, Stone-Geary, Translog
+- `params`: Spatial, trading, foraging, economic parameters
+- `resource_seed`: Resource distribution configuration
+
+### Telemetry System
+All events logged to SQLite (`logs/telemetry.db`):
+```python
+# In protocols/systems
+sim.telemetry.log_trade(tick, x, y, buyer_id, seller_id, dA, dB, price, direction)
+sim.telemetry.log_decision(tick, agent_id, target_type, target_pos)
+```
+
+## File Organization
+
+- `src/vmt_engine/` - Core simulation engine
+  - `agent_based/` - Search protocols (agent perspective)
+  - `game_theory/` - Matching & bargaining protocols (global perspective)
+  - `systems/` - Phase execution logic
+  - `core/` - Agent, Grid, Inventory data structures
+- `scenarios/` - YAML simulation configurations
+- `tests/` - Pytest suite with determinism focus
+- `src/telemetry/` - Database logging infrastructure
+
+## Common Pitfalls to Avoid
+
+1. **Never use float for goods** - Always Decimal with proper quantization
+2. **Never use random module** - Always sim.rng for determinism
+3. **Never modify agent state in protocols** - Return Effects only
+4. **Always test determinism** - Non-deterministic code breaks research validity
+5. **Always activate venv** - Python commands fail without environment

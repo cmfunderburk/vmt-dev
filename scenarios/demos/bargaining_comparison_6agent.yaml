@@ -71,7 +71,7 @@ protocol_config:
 #
 # Test 2: Legacy Compensating Block (First Acceptable)
 #   python main.py scenarios/demos/bargaining_comparison_6agent.yaml \
-#     --override "protocol_config.bargaining.protocol=legacy_compensating_block"
+#     --override "protocol_config.bargaining.protocol=compensating_block"
 #   Expected: First feasible trade, potentially unequal surplus
 #
 # Analysis Questions:

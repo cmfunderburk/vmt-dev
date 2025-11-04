@@ -19,7 +19,6 @@ from ..game_theory.bargaining import BargainingProtocol
 from ..protocols import (
     Trade,
     Unpair,
-    build_trade_world_view,
 )
 from .matching import execute_trade_generic
 
@@ -110,11 +109,29 @@ class TradeSystem:
             agent_b: Second agent in pair
             sim: Current simulation state
         """
-        # Build WorldView for trade negotiation
-        world = build_trade_world_view(agent_a, agent_b, sim)
+        # Build standard WorldView (no partner state hacking needed)
+        from ..protocols.context_builders import build_world_view_for_agent
+        world = build_world_view_for_agent(agent_a, sim)
         
-        # Call bargaining protocol
-        effects = self.bargaining_protocol.negotiate((agent_a.id, agent_b.id), world)
+        # Add debug assertions if enabled
+        if sim.params.get("debug_immutability", False):
+            # Snapshot agent state before protocol call
+            snapshot_a = (agent_a.inventory.A, agent_a.inventory.B)
+            snapshot_b = (agent_b.inventory.A, agent_b.inventory.B)
+        
+        # Call bargaining protocol with direct agent access
+        effects = self.bargaining_protocol.negotiate(
+            (agent_a.id, agent_b.id),
+            (agent_a, agent_b),  # NEW: Pass agents directly
+            world
+        )
+        
+        # Verify immutability in debug mode
+        if sim.params.get("debug_immutability", False):
+            assert snapshot_a == (agent_a.inventory.A, agent_a.inventory.B), \
+                f"Protocol {self.bargaining_protocol.name} mutated agent {agent_a.id} inventory!"
+            assert snapshot_b == (agent_b.inventory.A, agent_b.inventory.B), \
+                f"Protocol {self.bargaining_protocol.name} mutated agent {agent_b.id} inventory!"
         
         # Apply effects
         for effect in effects:

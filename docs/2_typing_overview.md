@@ -23,7 +23,7 @@ These are the fundamental, language-agnostic data types that form the basis of t
 AgentID     := int (non-negative, unique)
 Tick        := int (simulation time step, ≥ 0)
 Coord       := tuple<int, int>  // (x, y) cartesian coordinates
-Good        := str              // Identifier for a good, e.g., "A", "B", "M" (Money)
+Good        := str              // Identifier for a good, e.g., "A", "B"
 Quantity    := Decimal          // Fixed-precision decimal quantity (≥ 0, 4 decimal places)
 Price       := float            // Exchange rate, typically in terms of a numéraire
 UtilityVal  := float            // A scalar value representing an agent's utility
@@ -34,14 +34,13 @@ UtilityVal  := float            // A scalar value representing an agent's utilit
 These composite types represent the state of entities within the simulation.
 
 #### 2.1 Position & Inventory
-`Position` is an alias for `Coord`. The `Inventory` tracks goods A, B, and money M.
+`Position` is an alias for `Coord`. The `Inventory` tracks goods A and B.
 
 ```text
 Position := Coord
 Inventory := {
   A: Quantity,  // Amount of good A (Decimal, 4 decimal places)
-  B: Quantity,  // Amount of good B (Decimal, 4 decimal places)
-  M: Quantity   // Money holdings in minor units [IMPLEMENTED Phase 1]
+  B: Quantity   // Amount of good B (Decimal, 4 decimal places)
 }
 ```
 *   **Invariant:** All quantities in an inventory must be non-negative (Decimal ≥ 0).
@@ -49,20 +48,10 @@ Inventory := {
 *   **Conversion:** Initialization accepts `int` or `float` and converts via `decimal_from_numeric()` to avoid binary float artifacts.
 *   **Storage:** Database storage converts `Decimal` to integer minor units using `to_storage_int()` (multiplies by 10^4) and recovers via `from_storage_int()`.
 *   **Source of Truth:** `src/vmt_engine/core/state.py:Inventory`, `src/vmt_engine/core/decimal_config.py`
-*   **Note:** The `M` field is retained for future money system implementation but is currently unused in pure barter economy
 
 #### 2.2 Economic State: Quotes `[IMPLEMENTED]`
-An agent's trading posture is represented as a dictionary mapping exchange pair keys to prices.
+An agent's trading posture is represented by their reservation prices and bid/ask quotes for barter exchange.
 
-**Money-Aware Quotes Dictionary** (Phase 2+):
-```text
-Quotes := dict<str, Price> where keys are:
-  "ask_A_in_B", "bid_A_in_B", "p_min", "p_max"  // Barter A↔B
-  "ask_A_in_M", "bid_A_in_M"                     // Monetary A↔M
-  "ask_B_in_M", "bid_B_in_M"                     // Monetary B↔M
-```
-
-**Legacy Quote Dataclass** (for bilateral barter only):
 ```text
 Quote := {
   ask_A_in_B: Price,  // Price seller is asking for 1 unit of A (in terms of B)
@@ -71,8 +60,7 @@ Quote := {
   p_max:      Price   // Buyer's reservation price (derived from MRS)
 }
 ```
-*   **Source of Truth:** `src/vmt_engine/core/state.py:Quote` (dataclass), `src/vmt_engine/core/agent.py:Agent.quotes` (dict)
-*   **Current Implementation:** Agents use `quotes: dict[str, float]` for money-aware exchange pairs
+*   **Source of Truth:** `src/vmt_engine/core/state.py:Quote`
 *   **Invariant:** For barter pairs, `ask_A_in_B ≥ p_min` and `bid_A_in_B ≤ p_max`. With non-zero `spread`, ask strictly exceeds bid.
 
 #### 2.3 Agent State
@@ -91,14 +79,12 @@ AgentConfig := {
 AgentState := {
   pos:               Position,
   inventory:         Inventory,
-  quotes:            dict<str, Price>, // Money-aware: keys for all exchange pairs [IMPLEMENTED Phase 2]
+  quotes:            dict<str, Price>,
   inventory_changed: bool,             // Flag to trigger quote recalculation
   target_pos:        optional<Position>,
   target_agent_id:   optional<AgentID>,
   trade_cooldowns:   map<AgentID, Tick>, // Cooldown until tick for a given partner
-  paired_with_id:    optional<AgentID>,  // Trade partner ID (pairing system) [IMPLEMENTED]
-  lambda_money:      float,              // Marginal utility of money [IMPLEMENTED Phase 1]
-  lambda_changed:    bool                // Flag for lambda update detection [IMPLEMENTED Phase 1]
+  paired_with_id:    optional<AgentID>   // Trade partner ID (pairing system) [IMPLEMENTED]
 }
 ```
 *   **Source of Truth:** `src/vmt_engine/core/agent.py:Agent`
@@ -248,7 +234,6 @@ The simulation proceeds in a fixed, deterministic sequence of 7 phases. **This o
     *   Stale claims cleared at start of tick
 3.  **Movement:** Agents move towards their target (paired partner, resource, or other).
 4.  **Trade:** Paired agents attempt to execute trades if within interaction radius.
-    *   Generic money-aware matching (Phase 2): supports A↔B, A↔M, B↔M
     *   Only paired agents trade (enforces commitment)
     *   Failed trades unpair agents and set cooldown
 5.  **Forage:** Agents harvest resources from their current cell.
@@ -258,8 +243,6 @@ The simulation proceeds in a fixed, deterministic sequence of 7 phases. **This o
 7.  **Housekeeping:** Internal state is updated.
     *   Quotes recomputed if inventories changed
     *   Pairing integrity checks
-    *   Lambda updates (KKT mode, Phase 3+)
-
 *   **Determinism Rule:** Within each phase, agents are always processed in ascending order of their `agent.id`. Trade pairs are processed in ascending order of `(min_id, max_id)`.
 
 ---
@@ -358,7 +341,7 @@ Stores metadata for each simulation run.
 *   `num_agents` (INTEGER): Number of agents in the run.
 *   `grid_width`, `grid_height` (INTEGER): Dimensions of the grid.
 *   `config_json` (TEXT): A JSON dump of the full scenario configuration.
-*   **NOTE**: Money system parameters (exchange_regime, money_mode, money_scale) have been removed - VMT is now a pure barter economy
+*   **NOTE**: Money system parameters have been removed - VMT is a pure barter economy
 
 #### Table: `agent_snapshots`
 Records the state of each agent at periodic intervals.
@@ -368,15 +351,9 @@ Records the state of each agent at periodic intervals.
 *   `agent_id` (INTEGER)
 *   `x`, `y` (INTEGER): Agent's position.
 *   `inventory_A`, `inventory_B` (INTEGER): Agent's goods inventory (stored as integer minor units: value × 10^4).
-*   `inventory_M` (INTEGER): Agent's money holdings in minor units `[IMPLEMENTED Phase 1]`
 *   `utility` (REAL): Agent's calculated utility value.
 *   `ask_A_in_B`, `bid_A_in_B` (REAL): Barter quotes for A in terms of B.
 *   `p_min`, `p_max` (REAL): Reservation prices for barter.
-*   `ask_A_in_M`, `bid_A_in_M` (REAL): Monetary quotes for A `[IMPLEMENTED Phase 2]`
-*   `ask_B_in_M`, `bid_B_in_M` (REAL): Monetary quotes for B `[IMPLEMENTED Phase 2]`
-*   `perceived_price_A`, `perceived_price_B` (REAL): Aggregated neighbor prices (KKT mode) `[IMPLEMENTED Phase 2]`
-*   `lambda_money` (REAL): Marginal utility of money `[IMPLEMENTED Phase 1]`
-*   `lambda_changed` (INTEGER): Boolean flag for lambda update detection `[IMPLEMENTED Phase 1]`
 *   `target_agent_id` (INTEGER, nullable): The ID of the agent's current trade target.
 *   `target_x`, `target_y` (INTEGER, nullable): The coordinates of the agent's current target.
 *   `utility_type` (TEXT): The class name of the agent's utility function.
@@ -398,12 +375,9 @@ Records every successful trade that occurs.
 *   `x`, `y` (INTEGER): Location of the trade.
 *   `buyer_id`, `seller_id` (INTEGER)
 *   `dA`, `dB` (INTEGER): The amounts of goods A and B exchanged (stored as integer minor units: value × 10^4 using `to_storage_int()` conversion).
-*   `dM` (INTEGER): Money transfer amount (0 for barter) `[IMPLEMENTED Phase 2]`
 *   `price` (REAL): The price of the trade.
 *   `direction` (TEXT): String indicating who initiated the trade.
-*   `exchange_pair_type` (TEXT): Exchange pair ("A<->B", "A<->M", "B<->M") `[IMPLEMENTED Phase 3]` — Properly logged with money-first tie-breaking in mixed regimes
-*   `buyer_lambda`, `seller_lambda` (REAL): Lambda values at trade time `[IMPLEMENTED Phase 2]`
-*   `buyer_surplus`, `seller_surplus` (REAL): Utility gains for each party `[IMPLEMENTED Phase 2]`
+*   `buyer_surplus`, `seller_surplus` (REAL): Utility gains for each party
 
 #### Table: `decisions`
 Records the outcome of the decision-making phase for each agent at each tick.
@@ -427,15 +401,6 @@ Records the outcome of the decision-making phase for each agent at each tick.
 *   `run_id`, `tick`, `buyer_id`, `seller_id` (INTEGER)
 *   ... (many columns detailing the initial/final states, feasibility, and outcome of the compensating block search)
 
-#### Table: `tick_states` `[IMPLEMENTED Phase 1]`
-Tracks combined mode+regime state per tick (Option A-plus observability).
-*   `tick_id` (INTEGER, PK)
-*   `run_id` (INTEGER, FK)
-*   `tick` (INTEGER)
-*   `current_mode` (TEXT): Temporal control ("forage", "trade", "both")
-*   `exchange_regime` (TEXT): Type control ("barter_only", "money_only", "mixed")
-*   `active_pairs` (TEXT): JSON array of active exchange pair types, e.g., `["A<->M", "B<->M"]`
-
 #### Table: `pairings` `[IMPLEMENTED]`
 Records pairing and unpairing events between agents.
 *   `pairing_id` (INTEGER, PK)
@@ -458,17 +423,6 @@ Records agent preference rankings (top 3 by default, configurable to full list).
 *   `discounted_surplus` (REAL): Distance-discounted surplus (= surplus × β^distance)
 *   `distance` (INTEGER): Manhattan distance to partner
 
-#### Table: `lambda_updates` `[PLANNED Phase 3+]`
-Tracks KKT lambda estimation diagnostics (KKT mode only).
-*   `update_id` (INTEGER, PK)
-*   `run_id` (INTEGER, FK)
-*   `tick` (INTEGER)
-*   `agent_id` (INTEGER)
-*   `lambda_old`, `lambda_new` (REAL): Lambda before/after update
-*   `lambda_hat_A`, `lambda_hat_B`, `lambda_hat` (REAL): Intermediate estimates
-*   `clamped` (INTEGER): Boolean flag if bounds were hit
-*   `clamp_type` (TEXT, nullable): "lower", "upper", or NULL
-
 ---
 
 ## Part 3: Future & Cross-Platform
@@ -484,6 +438,11 @@ This section documents the barter trade system.
 *   **Trade Mechanism:** Agents directly exchange Good A for Good B using bilateral matching
 *   Quotes computed based on marginal utilities
 *   Compensating block logic finds mutually beneficial trade quantities
+
+#### 7.2 Monetary Economy `[PLANNED]`
+A theoretically rigorous monetary system is a high-priority feature for future development. It will involve:
+*   A dedicated `Good` ("M") to serve as a medium of exchange.
+*   New protocols for monetary exchange and price formation.
 
 #### 7.3 Market Maker & Order Book `[PLANNED]`
 A new type of entity, the `MarketMakerAgent`, will be introduced to facilitate centralized exchange.
@@ -581,10 +540,7 @@ This section tracks major revisions to this type and data contract specification
     *   Removed money system - VMT is now a pure barter economy (A↔B trades only)
     *   Removed money parameters: exchange_regime, money_mode, money_scale, lambda_money, M inventory
     *   Updated all documentation to reflect barter-only trading
-*   **Implementation Status Clarification (2025-01-27):**
-    *   Updated all documents to reflect actual implementation status
-    *   Documented protocol modularization requirement
-*   **Decimal Precision Migration (2025-12-19):**
+*   **Decimal Precision Migration (2025-11-01):**
     *   Migrated all quantity representations from `int` to `Decimal` for fixed-precision arithmetic
     *   Created `decimal_config.py` with centralized precision configuration (`QUANTITY_DECIMAL_PLACES = 4`)
     *   Implemented `quantize_quantity()` and `decimal_from_numeric()` for consistent `Decimal` handling
@@ -596,4 +552,12 @@ This section tracks major revisions to this type and data contract specification
     *   All telemetry INTEGER columns now store quantities as minor units (value × 10^4)
     *   Ensures exact, reproducible arithmetic operations and maintains determinism
     *   Updated trade block search to use `quantize_quantity()` for proper decimal rounding (not integer rounding)
+*   **Implementation Status Clarification (2025-11-01):**
+    *   Updated all documents to reflect actual implementation status
+    *   Documented protocol modularization requirement
+*   **Documentation Cleanup (2025-11-04):**
+    *   Performed a full audit of this document to remove all inconsistent references to the legacy money system.
+    *   Simplified state objects, telemetry schemas, and economic logic sections to align with the pure barter model.
+    *   Ensured consistency with the main project README and Technical Manual.
+
 ---

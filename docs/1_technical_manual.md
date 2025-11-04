@@ -1,5 +1,3 @@
-# OUTDATED -- NEEDS A THOROUGH REWRITE
-# SEE docs/planning_thinking_etc/BIGGEST_PICTURE/opus_plan for updated thinking
 # VMT Technical Manual
 
 This document provides a detailed technical overview of the Visualizing Microeconomic Theory (VMT) engine. It is intended for developers, researchers, and users who wish to understand the internal mechanics of the simulation.
@@ -14,17 +12,19 @@ The VMT engine is designed around a set of core principles that ensure determini
 
 ```
 vmt-dev/
-├── docs/                    # Consolidated documentation
-├── scenarios/               # User-facing YAML scenario files
 ├── src/
-│   ├── vmt_engine/          # Core simulation engine
-│   ├── vmt_launcher/        # GUI Launcher application
-│   ├── vmt_log_viewer/      # GUI Log Viewer application
-│   ├── telemetry/           # SQLite logging system
-│   └── scenarios/           # Scenario-related Python code (schema, loader)
-├── tests/                   # Test suite (55+ tests)
-├── launcher.py              # GUI entry point
-└── main.py                  # CLI entry point
+│   ├── vmt_engine/         # Core simulation engine
+│   │   ├── agent_based/    # Agent-based protocols (e.g., search)
+│   │   ├── game_theory/    # Game theory protocols (e.g., matching, bargaining)
+│   │   ├── systems/        # Phase-specific execution logic
+│   │   ├── core/           # Agents, grid, core data structures
+│   │   └── econ/           # Utility functions
+│   ├── vmt_launcher/       # GUI Launcher and Scenario Builder
+│   └── vmt_log_viewer/     # Interactive telemetry database viewer
+├── scenarios/              # YAML configuration files for simulations
+├── docs/                   # Documentation, plans, and specifications
+├── tests/                  # Pytest suite (determinism is key!)
+└── scripts/                # Analysis and utility scripts
 ```
 
 ### The 7-Phase Tick Cycle
@@ -33,24 +33,38 @@ The simulation proceeds in discrete time steps called "ticks." Each tick, the en
 
 1.  **Perception**: Each agent observes its local environment within its `vision_radius`. This includes the positions of other agents, their broadcasted trade quotes, and the location of resources. To prevent race conditions, this perception is a **frozen snapshot** of the world at the beginning of the tick.
 
-2.  **Decision**: Based on the perception snapshot, agents decide on actions and establish trade pairings using a **three-pass algorithm**:
-    *   **Pass 1: Target Selection & Preference Ranking** — Each agent (processed in ID order) evaluates all visible neighbors and builds a ranked preference list. Preferences are ranked by **distance-discounted surplus** = `surplus × β^distance`, where β is the discount factor and distance is Manhattan distance. 
-        - **Barter Surplus Calculation**: Agents use `compute_surplus()` which evaluates A↔B barter exchanges only.
-        - **Inventory Feasibility**: The surplus estimator checks inventory constraints to prevent pairing when trades are impossible (e.g., if neither agent has goods to exchange).
-        - **⚠️ Important Limitation**: The surplus estimator uses **quote overlaps** (bid - ask price differences) as a heuristic proxy for actual utility gains. Quote overlaps may not perfectly predict true utility changes, especially with non-linear utility functions (CES, Quadratic) where the relationship between MRS and utility depends on function curvature. However, once paired, agents execute the ACTUAL best trade using full utility calculations, so they still achieve good outcomes. This design trades perfect accuracy for performance: O(1) per neighbor vs O(inventory_A × prices) for exact calculation.
-    *   Agents skip neighbors in cooldown. Already-paired agents validate their pairing and maintain target lock.
-    *   **Pass 2: Mutual Consent Pairing** — Agents who mutually list each other as their top choice are paired via "mutual consent." Lower-ID agent executes the pairing to avoid duplication. Cooldowns are cleared for both agents.
-    *   **Pass 3: Best-Available Fallback** — Unpaired agents with remaining preferences use **surplus-based greedy matching**: all potential pairings are sorted by descending discounted surplus, and pairs are greedily assigned in order. When an agent claims a partner, that partner's target is updated to point back at the claimer (reciprocal commitment).
-    *   **Resource Claiming**: When agents select forage targets, they **claim** the resource to prevent clustering (if `enable_resource_claiming=True`). Stale claims are cleared at the start of each tick.
-    *   **Pairing Commitment**: Once paired, both agents commit exclusively to each other. They move toward each other and attempt trades until opportunities are exhausted (trade fails) or mode changes. Paired agents do not re-evaluate preferences or seek new partners until unpaired.
+2.  **Decision**: Based on the perception snapshot, agents select targets and form trading pairs via configurable **search** and **matching protocols**:
+    *   **Sub-phase 1: Search (Target Selection)** — Each agent uses a search protocol to evaluate visible options and select a target:
+        - Search protocols build ranked preference lists from `WorldView` (agent's local perspective)
+        - Default: `distance_discounted` uses distance-discounted surplus scoring
+        - Alternative: `random_walk` (exploration), `myopic` (nearest-neighbor only)
+        - **Preference Ranking**: Scored by `surplus × β^distance` where surplus is estimated via quote overlaps
+        - **⚠️ Heuristic Nature**: Quote overlaps are fast O(1) heuristics that may not perfectly predict utility changes for non-linear utilities. However, once paired, Phase 4 uses full utility calculations, so agents still find good trades.
+        - Agents skip neighbors in cooldown; paired agents maintain their pairing
+        - **Resource Claiming**: Forage targets are claimed to prevent clustering (if `enable_resource_claiming=True`)
+    *   **Sub-phase 2-3: Matching (Pairing Formation)** — A matching protocol processes all agent preferences using `ProtocolContext` (global perspective):
+        - Matching protocols have omniscient access via `context.agents[id]` for evaluation
+        - Default: `legacy_three_pass` implements mutual consent + greedy fallback
+        - Alternative: `greedy_surplus` (welfare maximization), `random_matching` (baseline)
+        - **Lightweight Evaluation**: Matching uses `TradePotentialEvaluator` (heuristic, fast)
+        - **Pairing Commitment**: Once paired, both agents commit exclusively to each other until trade fails or mode changes
 
 3.  **Movement**: Agents move towards their chosen targets (paired partner, resource, or other position) according to their `move_budget_per_tick`. Movement is deterministic, following specific tie-breaking rules (x-axis before y-axis, negative direction on ties, diagonal deadlock resolution by higher ID).
 
-4.  **Trade**: Only **paired agents** within `interaction_radius` attempt trades. The engine uses a sophisticated price search algorithm to find mutually beneficial terms:
-    *   **Barter Matching**: Direct A↔B goods exchange only
-    *   **Compensating Block Search**: Scans trade sizes ΔA from 1 to seller's inventory, testing candidate prices in [seller.ask, buyer.bid]
-    *   **First-Acceptable-Trade Principle**: Accepts the first (ΔA, ΔB, price) tuple that yields strict utility gain (ΔU > 0) for both parties
-    *   **Trade Outcome**: Successful trades maintain pairing (agents attempt another trade next tick); failed trades unpair agents and set mutual cooldown
+4.  **Trade**: Only **paired agents** within `interaction_radius` attempt trades via configurable **bargaining protocols**:
+    *   **Protocol Selection**: Bargaining protocols determine negotiation mechanism (configurable in YAML)
+    *   **Direct Agent Access**: Protocols receive full agent state directly (no params hacking)
+    *   **Available Protocols**:
+        - `compensating_block` (default): First feasible trade using VMT's foundational algorithm
+        - `split_difference`: Equal surplus division (NOT IMPLEMENTED - stub)
+        - `take_it_or_leave_it`: Asymmetric power (NOT IMPLEMENTED - stub)
+    *   **Trade Discovery**: Protocols implement self-contained search logic
+        - `compensating_block`: Discrete quantity search (1, 2, 3, ...) with price candidates
+        - Searches both directions (i gives A, j gives A)
+        - Returns first mutually beneficial trade where both ΔU > ε
+        - Full utility calculations (not heuristics)
+        - Each protocol defines its own complete mechanism (search + allocation)
+    *   **Trade Outcome**: Successful trades maintain pairing (agents try again next tick); failed trades unpair agents and set mutual cooldown
 
 5.  **Foraging**: Agents located on a resource cell harvest that resource, increasing their inventory. The amount harvested is limited by the `forage_rate`.
     *   **Paired Agent Skip**: Paired agents skip foraging (exclusive commitment to trading).
@@ -59,10 +73,129 @@ The simulation proceeds in discrete time steps called "ticks." Each tick, the en
 6.  **Resource Regeneration**: Resource cells that have been harvested regenerate over time. A cell must wait `resource_regen_cooldown` ticks before it can begin regenerating at a rate of `resource_growth_rate` per tick.
 
 7.  **Housekeeping**: The tick concludes with cleanup and maintenance tasks:
-    *   **Quote Refresh**: Agents refresh their trade quotes if `inventory_changed` or `lambda_changed` flags are set
+    *   **Quote Refresh**: Agents refresh their trade quotes if `inventory_changed` flag is set
     *   **Pairing Integrity Checks**: Detect and repair asymmetric pairings (defensive validation)
     *   **Lambda Updates** (Phase 3+, KKT mode): Adaptive marginal utility estimation from neighbor prices
     *   **Telemetry Logging**: Agent snapshots, resource snapshots, tick states, pairing events, preferences logged to database
+
+---
+
+## 🔌 Protocol Architecture (Post-Decoupling)
+
+VMT uses a modular protocol system that allows swapping economic mechanisms via YAML configuration. As of November 2025, the architecture has been fully decoupled to separate concerns between matching (pairing decisions) and bargaining (negotiation logic).
+
+### Protocol Categories
+
+**Search Protocols** (`agent_based.search`) - Phase 2, Sub-phase 1
+- Determine how agents select targets and build preference lists
+- Examples: `distance_discounted`, `myopic`, `random_walk`
+- Input: `WorldView` (agent's local perspective)
+- Output: `SetTarget` effects
+
+**Matching Protocols** (`game_theory.matching`) - Phase 2, Sub-phase 2-3
+- Determine how agents are paired for trading
+- Examples: `greedy_surplus`, `random_matching`, `legacy_three_pass`
+- Input: `ProtocolContext` (global matchmaker perspective)
+- Output: `Pair`/`Unpair` effects
+
+**Bargaining Protocols** (`game_theory.bargaining`) - Phase 4
+- Determine trade terms between paired agents
+- Examples: `compensating_block`, `split_difference`, `take_it_or_leave_it`
+- Input: `(pair, agents, world)` - direct agent access
+- Output: `Trade`/`Unpair` effects
+
+### Decoupling Architecture (2025-11-03 Refactor)
+
+Prior to the decoupling refactor, matching and bargaining protocols were tightly coupled through shared functions. This created three problems:
+1. Matching protocols ran full bargaining algorithms just to decide pairings (behavioral issue)
+2. Bargaining protocols couldn't use alternative discovery methods (flexibility issue)
+3. Params hacks smuggled state through dictionaries (code quality issue)
+
+**The solution**: Two abstraction interfaces that separate concerns:
+
+#### TradePotentialEvaluator (Matching Phase)
+
+Lightweight heuristic for "Can these agents trade?"
+
+```python
+class TradePotential(NamedTuple):
+    is_feasible: bool                  # Can they trade?
+    estimated_surplus: float           # Estimated gains (heuristic)
+    preferred_direction: str | None    # "i_gives_A" or "i_gives_B"
+    confidence: float                  # 0.0 to 1.0
+
+class TradePotentialEvaluator(ABC):
+    @abstractmethod
+    def evaluate_pair_potential(
+        self, agent_i: Agent, agent_j: Agent
+    ) -> TradePotential:
+        """Fast heuristic evaluation for pairing decisions."""
+        pass
+```
+
+**Default Implementation**: `QuoteBasedTradeEvaluator`
+- Uses `compute_surplus()` (quote overlaps)
+- O(1) per pair evaluation
+- No full utility calculations
+- Used by: `greedy_surplus` matching protocol
+
+#### TradeTuple (Bargaining Utility Type)
+
+Convenient format for representing trades in agent-centric terms before converting to Trade effects.
+
+```python
+class TradeTuple(NamedTuple):
+    dA_i: Decimal      # Change in A for agent_i
+    dB_i: Decimal      # Change in B for agent_i
+    dA_j: Decimal      # Change in A for agent_j
+    dB_j: Decimal      # Change in B for agent_j
+    surplus_i: float   # Utility gain for agent_i
+    surplus_j: float   # Utility gain for agent_j
+    price: float       # Price of A in terms of B
+    pair_name: str     # "A<->B"
+```
+
+**Conversion Utility**: `trade_tuple_to_effect()` converts TradeTuple (agent-centric) to Trade effect (role-centric buyer/seller).
+
+**Design Principle**: TradeTuple is a utility type, not an abstraction interface. Each bargaining protocol implements its own complete search logic internally. The `compensating_block` protocol implements VMT's foundational algorithm inline (searches quantities 1, 2, 3, ... and prices, returns first feasible trade).
+
+### Context Objects
+
+**WorldView** (Individual agent perspective)
+- Immutable snapshot of what one agent perceives
+- Own state: inventory, utility, quotes, position
+- Visible neighbors: positions, quotes (public info only)
+- Used by: Search protocols, Bargaining protocols (for tick/params/rng)
+- Mutation control: Agents read-only, return Effects
+
+**ProtocolContext** (Central matchmaker perspective)
+- Immutable snapshot of global simulation state
+- All agents: Direct access via `agents` dict (omniscient planner)
+- All agent views: Public information (`all_agent_views`)
+- Used by: Matching protocols
+- Philosophy: Information hiding applies to agent-to-agent interactions, not protocol coordination
+
+### Direct Agent Access (Params Hack Elimination)
+
+**Bargaining protocols** receive agents directly:
+```python
+def negotiate(
+    self,
+    pair: tuple[int, int],
+    agents: tuple[Agent, Agent],  # Direct access
+    world: WorldView
+) -> list[Effect]:
+```
+
+**Matching protocols** access via context:
+```python
+def find_matches(
+    self, preferences: dict, world: ProtocolContext
+) -> list[Effect]:
+    agent = world.agents[agent_id]  # Direct access
+```
+
+**Why this works**: Protocols can read full agent state for decisions but cannot mutate (must return Effects). Debug assertions enforce immutability in development.
 
 ---
 
@@ -139,13 +272,16 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
 -   **Quotes**: Agents maintain a dictionary of quotes (`Agent.quotes: dict[str, float]`) with keys for barter exchange:
     *   Barter: `"ask_A_in_B"`, `"bid_A_in_B"`, `"p_min_A_in_B"`, `"p_max_A_in_B"`, `"ask_B_in_A"`, `"bid_B_in_A"`, `"p_min_B_in_A"`, `"p_max_B_in_A"`
     *   Quotes are calculated from reservation bounds: `ask = p_min * (1 + spread)` and `bid = p_max * (1 - spread)`
--   **Barter Matching Algorithm**: The engine finds mutually beneficial A↔B trades:
-    *   Function: `find_best_trade(agent_i, agent_j, params)` in `src/vmt_engine/systems/matching.py`
-    *   Only A↔B barter trades are supported
--   **Price Search Algorithm**: Because goods are discrete quantities, a price that looks good on paper (based on MRS) might not result in a mutually beneficial trade after rounding. The `find_compensating_block_generic` function solves this:
-    *   Probes multiple prices within the valid `[ask_seller, bid_buyer]` range
-    *   For each price, scans trade quantities from `ΔA=1` up to seller's inventory (converts Decimal to int for range iteration)
-    *   Applies **decimal quantization**: `ΔB = quantize_quantity(Decimal(str(price)) * Decimal(str(ΔA)))`
+-   **Trade Discovery Architecture** (Post-Decoupling): Finding mutually beneficial trades is handled by self-contained bargaining protocols:
+    *   **Protocol Responsibility**: Each bargaining protocol implements its own complete search logic
+    *   **Default**: `compensating_block` implements VMT's foundational algorithm inline
+    *   **Barter Only**: All trades are A↔B goods exchanges
+-   **Compensating Block Algorithm**: The foundational VMT trade discovery method (implemented in `compensating_block` protocol):
+    *   Probes multiple prices within valid `[ask_seller, bid_buyer]` range
+    *   For each price, scans discrete quantities from `ΔA=1` up to seller's inventory
+    *   Applies **decimal quantization**: `ΔB = quantize_quantity(Decimal(price) * Decimal(ΔA))`
+    *   Returns **first feasible trade** where both agents gain utility (ΔU > ε)
+    *   Searches both directions (i sells A, j sells A) and returns immediately when found
     *   Accepts the **first** trade block `(ΔA, ΔB)` that provides **strict utility improvement (ΔU > 0)** for both agents
     *   All quantity deltas are `Decimal` values quantized to configured precision (4 decimal places)
     *   This is the **first-acceptable-trade principle**, not highest-surplus search
@@ -218,30 +354,43 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
 
 #### Trade System
 -   **Pure Barter Economy**: All trades are direct A↔B good-for-good exchanges
--   **Mode Scheduling** (Implemented): Temporal control of agent activities:
+-   **Mode Scheduling**: Temporal control of agent activities:
     *   **`mode_schedule`**: WHEN activities occur (forage/trade/both modes)
     *   In forage mode, no trading occurs
     *   In trade/both modes, agents can engage in A↔B barter
--   **Matching**: 
-    *   `find_best_trade()`: Finds first feasible A↔B barter trade
-    *   `find_all_feasible_trades()`: Returns ALL feasible barter trades for ranking
-    *   Uses compensating block search to find mutually beneficial exchanges
+-   **Bargaining Protocols**: Configurable negotiation mechanisms:
+    *   `compensating_block` (default): First feasible trade, VMT's core algorithm (self-contained)
+    *   `split_difference`: Equal surplus division (NOT IMPLEMENTED - stub)
+    *   `take_it_or_leave_it`: Asymmetric power dynamics (NOT IMPLEMENTED - stub)
+    *   Each protocol implements its own complete mechanism (search + allocation)
+-   **Trade Discovery**: 
+    *   `compensating_block` uses inline discrete search (1, 2, 3, ... quantities)
+    *   Returns `TradeTuple` with full trade specification (quantities, surpluses, price)
+    *   Performs full utility calculations (not heuristics like matching phase)
 -   **Telemetry**: Trade telemetry logs A and B quantities exchanged, along with the price and surplus for each agent
 
 ---
 
 ## 🔬 Testing and Validation
 
-The VMT engine is rigorously tested to ensure both technical correctness and theoretical soundness. The test suite (`tests/`) contains 316+ tests covering:
+The VMT engine is rigorously tested to ensure both technical correctness and theoretical soundness. The test suite (`tests/`) contains tests covering:
 -   **Core State**: Grid logic, agent creation, state management, pairing state
 -   **Utilities**: Correctness of all utility function calculations, especially at edge cases
 -   **Reservation Bounds**: Correctness of the zero-inventory guard
 -   **Trade Logic**: Correctness of rounding, compensating multi-lot search, cooldowns, and pairing
--   **Barter Matching**: Matching algorithm, quote computation, trade feasibility
+-   **Trade Evaluation Abstractions** (New): 
+    *   `TradePotentialEvaluator` interface and implementations (matching phase)
+    *   `TradeTuple` utility type for trade specification (bargaining protocols)
+    *   NamedTuple return types (immutability, zero overhead)
+    *   Immutability enforcement (protocols don't mutate agent state)
+    *   Self-contained protocols (each protocol implements complete mechanism)
 -   **Trade Pairing**: Mutual consent pairing, fallback pairing, pairing integrity, cooldown interactions
 -   **Resource Claiming**: Claim recording, stale clearing, single-harvester enforcement
 -   **Resource Regeneration**: Correctness of cooldowns, growth rates, and caps
 -   **Protocol System**: Search, matching, and bargaining protocol implementations
+    *   Protocol signature compliance (all protocols use correct interfaces)
+    *   Direct agent access (no params hacks)
+    *   Protocol integration (end-to-end with Effect system)
 -   **Mode Management**: Mode schedule transitions and phase execution
 -   **Determinism**: End-to-end tests that verify bit-identical log outputs for the same seed
 -   **Performance**: Benchmark scenarios validating TPS thresholds with 400 agents

@@ -217,8 +217,8 @@ matching_protocol: "legacy_three_pass"  # Options: "legacy_three_pass", "random_
                                    # If omitted, uses legacy protocol
 
 # Bargaining protocol - determines how paired agents negotiate trades
-bargaining_protocol: "legacy_compensating_block"  # Options: "legacy_compensating_block", "split_difference"
-                                   # Default: "legacy_compensating_block" (first feasible trade)
+bargaining_protocol: "compensating_block"  # Options: "compensating_block", "split_difference"
+                                   # Default: "compensating_block" (first feasible trade)
                                    # If omitted, uses legacy protocol
 
 # Protocol Resolution Order:

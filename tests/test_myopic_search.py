@@ -43,13 +43,11 @@ class TestMyopicSearchInterface:
         world = WorldView(
             tick=0,
             mode="trade",
-            exchange_regime="barter_only",
             agent_id=1,
             pos=(5, 5),
-            inventory={"A": 10, "B": 10, "M": 0},
+            inventory={"A": 10, "B": 10},
             utility=None,  # Would need real utility for full test
             quotes={},
-            lambda_money=1.0,
             paired_with_id=None,
             trade_cooldowns={},
             visible_agents=[],

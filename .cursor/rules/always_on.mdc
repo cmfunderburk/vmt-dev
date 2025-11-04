@@ -1,0 +1,25 @@
+---
+alwaysApply: true
+---
+
+### Setup & Running
+- **Virtual Environment**: ALWAYS work within the Python virtual environment.
+  ```bash
+  # Set up once
+  python3 -m venv venv
+  pip install -r requirements.txt
+
+  # Activate for each session
+  source venv/bin/activate
+  
+  # NOTE: On some systems, you may need to use bash explicitly:
+  bash -c "source venv/bin/activate && <your_command>"
+  ```
+
+### Testing
+- **Framework**: We use `pytest`. Run the suite with the `pytest` command.
+- **Determinism is CRITICAL**: Every new feature or protocol **must** have a determinism test. This involves running the simulation twice with the same seed and asserting that the final states are identical. See `tests/test_simulation_init.py` for examples.
+- **Test Scenarios**: Use `tests.helpers.scenarios.create_minimal_scenario()` to build scenarios for unit tests. For integration tests, use dedicated files in `scenarios/test/`.
+
+### Debugging
+- **Telemetry Database**: The primary debugging tool is the SQLite database at `logs/telemetry.db`. It contains detailed, tick-by-tick logs of agent state, trades, pairings, and more.
