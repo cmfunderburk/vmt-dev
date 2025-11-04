@@ -9,7 +9,7 @@ Phase 4 of the 7-phase simulation tick:
 3. Apply trade or unpair effects
 4. Log trades to telemetry
 
-Version: 2025.10.26 (Phase 1 - Refactored for Protocol System)
+Version: 2025.10.26
 """
 
 from __future__ import annotations

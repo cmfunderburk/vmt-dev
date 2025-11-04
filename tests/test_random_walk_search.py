@@ -8,7 +8,7 @@ Validates:
 - Proper RNG usage
 - Economic properties (zero information efficiency)
 
-Version: 2025.10.28 (Phase 2a)
+Version: 2025.10.28
 """
 
 import pytest

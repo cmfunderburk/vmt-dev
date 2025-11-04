@@ -5,7 +5,7 @@ Factory functions for creating WorldView and ProtocolContext objects from
 simulation state. These are used by the decision and trade systems to build
 immutable protocol contexts.
 
-Version: 2025.10.26 (Phase 1 - Context Builder Infrastructure)
+Version: 2025.10.26
 """
 
 from typing import TYPE_CHECKING

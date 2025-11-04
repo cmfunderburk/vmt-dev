@@ -9,7 +9,7 @@ Phase 2 of the 7-phase simulation tick:
 3. Matching phase: agents form bilateral pairs
 4. Log decisions to telemetry
 
-Version: 2025.10.26 (Phase 1 - Refactored for Protocol System)
+Version: 2025.10.26
 """
 
 from __future__ import annotations

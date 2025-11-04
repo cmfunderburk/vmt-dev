@@ -44,7 +44,6 @@ if TYPE_CHECKING:
     properties=["stub", "not_implemented"],
     complexity="O(K·P) proposer-optimal",
     references=["Rubinstein (1982)"],
-    phase="future",
 )
 class TakeItOrLeaveIt(BargainingProtocol):
     """

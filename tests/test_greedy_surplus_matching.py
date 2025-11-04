@@ -9,7 +9,7 @@ Validates:
 - Comparison with legacy matching
 - Potential IR violations (pedagogical property)
 
-Version: 2025.10.28 (Phase 2b)
+Version: 2025.10.28
 """
 
 import pytest

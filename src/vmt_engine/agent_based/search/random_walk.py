@@ -13,7 +13,7 @@ References:
 - Stigler (1961) "The Economics of Information"
 - Random search models in labor economics
 
-Version: 2025.10.28 (Phase 2a - Baseline Protocol)
+Version: 2025.10.28
 """
 
 from typing import Any
@@ -34,7 +34,6 @@ from ...protocols.context import WorldView
         "Stigler (1961) The Economics of Information",
         "Random search models in labor economics",
     ],
-    phase="2a",
 )
 class RandomWalkSearch(SearchProtocol):
     """

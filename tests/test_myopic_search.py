@@ -8,7 +8,7 @@ Validates:
 - Comparison with legacy search
 - Information constraint effects
 
-Version: 2025.10.28 (Phase 2b)
+Version: 2025.10.28
 """
 
 import pytest

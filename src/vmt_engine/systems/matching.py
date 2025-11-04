@@ -279,7 +279,7 @@ def generate_price_candidates(ask: float, bid: float, dA: Decimal) -> list[float
 
 
 # ============================================================================
-# Phase 2b: Trade Execution
+# Trade Execution
 # ============================================================================
 
 def execute_trade_generic(

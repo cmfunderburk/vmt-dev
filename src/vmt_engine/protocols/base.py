@@ -16,7 +16,7 @@ defined in their respective domain modules:
 - MatchingProtocol: game_theory/matching/base.py
 - BargainingProtocol: game_theory/bargaining/base.py
 
-Version: 2025.10.26 (Phase 0 - Infrastructure)
+Version: 2025.10.26
 Post-restructure: 2025.11.02
 """
 

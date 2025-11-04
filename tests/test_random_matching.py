@@ -8,7 +8,7 @@ Validates:
 - No double-pairing constraint
 - Comparison with legacy matching
 
-Version: 2025.10.28 (Phase 2a)
+Version: 2025.10.28
 """
 
 import pytest

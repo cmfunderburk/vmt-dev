@@ -13,7 +13,7 @@ References:
 - Random assignment as null hypothesis in market design
 - Benchmark for stable matching algorithms (Gale-Shapley)
 
-Version: 2025.10.28 (Phase 2a - Baseline Protocol)
+Version: 2025.10.28
 """
 
 from typing import Any
@@ -34,7 +34,6 @@ from ...protocols.context import ProtocolContext
         "Random assignment as null in market design",
         "Gale-Shapley benchmarking"
     ],
-    phase="2a",
 )
 class RandomMatching(MatchingProtocol):
     """

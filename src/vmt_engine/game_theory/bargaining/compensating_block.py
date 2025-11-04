@@ -31,7 +31,6 @@ if TYPE_CHECKING:
     properties=["deterministic", "first_feasible"],
     complexity="O(K·P)",  # K = quantities tried, P = prices per quantity
     references=["VMT foundational algorithm"],
-    phase="4",
 )
 class CompensatingBlockBargaining(BargainingProtocol):
     """

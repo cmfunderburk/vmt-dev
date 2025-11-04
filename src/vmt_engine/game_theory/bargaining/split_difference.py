@@ -39,7 +39,6 @@ if TYPE_CHECKING:
     properties=["stub", "not_implemented"],
     complexity="O(K·P) exhaustive",
     references=["Nash (1950)"],
-    phase="future",
 )
 class SplitDifference(BargainingProtocol):
     """

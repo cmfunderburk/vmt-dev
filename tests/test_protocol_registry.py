@@ -55,7 +55,6 @@ def test_metadata_complete_for_random_walk():
     assert isinstance(meta.properties, list)
     assert isinstance(meta.complexity, str)
     assert isinstance(meta.references, list)
-    assert isinstance(meta.phase, str)
 
 
 def test_invalid_protocol_raises_helpful_error():
@@ -98,7 +97,7 @@ def test_list_and_describe_helpers():
     assert "random_walk" in desc["search"]
     rw = desc["search"]["random_walk"]
     # Check minimal shape
-    for key in ["version", "description", "properties", "complexity", "references", "phase"]:
+    for key in ["version", "description", "properties", "complexity", "references"]:
         assert key in rw
 
 

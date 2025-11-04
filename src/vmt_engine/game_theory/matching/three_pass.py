@@ -8,7 +8,7 @@ Implements the original VMT three-pass pairing algorithm:
 
 This protocol is bit-compatible with the pre-protocol DecisionSystem implementation.
 
-Version: 2025.10.26 (Phase 1 - Three-Pass Matching Protocol)
+Version: 2025.10.26
 """
 
 from typing import Optional
@@ -26,7 +26,6 @@ from ...systems.matching import compute_surplus, estimate_barter_surplus
     properties=["deterministic"],
     complexity="O(n^2)",
     references=[],
-    phase="1",
 )
 class ThreePassMatching(MatchingProtocol):
     """

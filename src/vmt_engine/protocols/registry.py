@@ -9,7 +9,7 @@ Decisions locked:
 - Docstring parsing fallback for description
 - Validate decorator name matches class `.name` if present
 
-Version: 2025.10.28 (Phase 2a - Infrastructure)
+Version: 2025.10.28
 """
 
 from dataclasses import dataclass
@@ -27,7 +27,6 @@ class ProtocolMetadata:
     properties: list[str]        # Tags: ["stochastic", "baseline", ...]
     complexity: str              # Big-O notation
     references: list[str]        # Literature citations
-    phase: str                   # Implementation phase
 
 
 class ProtocolRegistry:
@@ -91,7 +90,6 @@ def register_protocol(
     properties: Optional[list[str]] = None,
     complexity: str = "O(1)",
     references: Optional[list[str]] = None,
-    phase: str = "1",
 ):
     """
     Decorator to register a protocol with the global registry.
@@ -127,7 +125,6 @@ def register_protocol(
             properties=properties or [],
             complexity=complexity,
             references=references or [],
-            phase=phase,
         )
 
         ProtocolRegistry.register(category, metadata)
@@ -157,7 +154,6 @@ def describe_all_protocols() -> dict:
                 'properties': meta.properties,
                 'complexity': meta.complexity,
                 'references': meta.references,
-                'phase': meta.phase,
             }
     return catalog
 
@@ -173,7 +169,6 @@ def get_protocol_info(name: str, category: str) -> dict:
         'properties': meta.properties,
         'complexity': meta.complexity,
         'references': meta.references,
-        'phase': meta.phase,
     }
 
 

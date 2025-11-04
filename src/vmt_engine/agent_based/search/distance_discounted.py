@@ -7,7 +7,7 @@ utility gain for foraging targets.
 
 This protocol is bit-compatible with the pre-protocol DecisionSystem implementation.
 
-Version: 2025.10.26 (Phase 1 - Distance-Discounted Search Protocol)
+Version: 2025.10.26
 """
 
 from typing import Optional
@@ -31,7 +31,6 @@ Preference = tuple[int, float, float, int, str]
     properties=["deterministic"],
     complexity="O(V log V)",
     references=[],
-    phase="1",
 )
 class DistanceDiscountedSearch(SearchProtocol):
     """

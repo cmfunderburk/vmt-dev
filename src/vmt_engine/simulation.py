@@ -277,7 +277,7 @@ class Simulation:
     def step(self):
         """Execute one simulation tick with mode-aware phase execution.
         
-        7-phase tick order (see PLANS/Planning-Post-v1.md):
+        7-phase tick order:
         1. Perception → 2. Decision → 3. Movement → 4. Trade → 
         5. Forage → 6. Resource Regeneration → 7. Housekeeping
         """
@@ -298,7 +298,7 @@ class Simulation:
             if self._should_execute_system(system, self.current_mode):
                 system.execute(self)
         
-        # Log tick state for observability (Phase 1)
+        # Log tick state for observability
         if self.telemetry:
             self.telemetry.log_tick_state(
                 self.tick,

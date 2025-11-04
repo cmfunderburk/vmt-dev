@@ -10,7 +10,7 @@ Key Classes:
 - ResourceView: Simplified view of a resource cell
 - ProtocolContext: Additional context for protocol execution
 
-Version: 2025.10.26 (Phase 0 - Infrastructure)
+Version: 2025.10.26
 """
 
 from dataclasses import dataclass

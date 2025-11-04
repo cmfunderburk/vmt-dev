@@ -23,7 +23,7 @@ References:
 - Market vs planner comparisons
 - Mechanism design literature
 
-Version: 2025.10.28 (Phase 2b - Pedagogical Protocol)
+Version: 2025.10.28
 """
 
 from typing import Any
@@ -44,7 +44,6 @@ from ...systems.trade_evaluation import TradePotentialEvaluator, QuoteBasedTrade
         "First-best welfare economics",
         "Market vs planner comparisons"
     ],
-    phase="2b",
 )
 class GreedySurplusMatching(MatchingProtocol):
     """

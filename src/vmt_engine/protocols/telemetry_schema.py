@@ -7,11 +7,11 @@ telemetry logging. These tables track:
 - Effect history for debugging and analysis
 - Protocol-specific state updates
 
-Version: 2025.10.26 (Phase 0 - Infrastructure)
+Version: 2025.10.26
 """
 
 # SQL schema for protocol telemetry tables
-# These will be integrated into src/telemetry/database.py in Phase 2
+# To be integrated into src/telemetry/database.py
 
 
 PROTOCOL_RUNS_TABLE = """
@@ -170,14 +170,6 @@ Example row (Memory-based search):
     state_key='price_map'
     state_value='{"(5,10)": 1.5, "(12,8)": 2.1}'
 
-
-## Usage Notes
-
-1. **Phase 0 (Infrastructure):** Schema defined but not yet integrated
-2. **Phase 1 (Standard Protocols):** Standard protocols (distance_discounted_search, three_pass_matching) 
-   use existing telemetry for backward compatibility
-3. **Phase 2 (Core Integration):** Effect logging integrated into simulation core
-4. **Phase 3+ (Alternative Protocols):** New protocols log all effects to these tables
 
 ## Integration with Existing Telemetry
 

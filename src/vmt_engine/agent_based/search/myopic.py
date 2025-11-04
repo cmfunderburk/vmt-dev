@@ -21,7 +21,7 @@ References:
 - Search models in labor economics
 - Network effects in markets
 
-Version: 2025.10.28 (Phase 2b - Pedagogical Protocol)
+Version: 2025.10.28
 """
 
 from typing import Any
@@ -42,7 +42,6 @@ from ...systems.matching import compute_surplus, estimate_barter_surplus
         "Stigler (1961) Economics of Information",
         "Search models in labor economics"
     ],
-    phase="2b",
 )
 class MyopicSearch(SearchProtocol):
     """
