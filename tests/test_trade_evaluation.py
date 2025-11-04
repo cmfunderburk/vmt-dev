@@ -12,9 +12,7 @@ from src.vmt_engine.systems.trade_evaluation import (
     TradePotentialEvaluator,
     QuoteBasedTradeEvaluator,
     TradeTuple,
-    TradeDiscoverer,
 )
-from src.vmt_engine.game_theory.bargaining.discovery import CompensatingBlockDiscoverer
 from tests.helpers.builders import build_agent
 
 
@@ -158,99 +156,3 @@ class TestTradeTupleNamedTuple:
         # Mutual benefit
         assert trade.surplus_i > 0
         assert trade.surplus_j > 0
-
-
-class TestCompensatingBlockDiscoverer:
-    """Test the compensating block trade discovery algorithm."""
-    
-    def test_discover_trade_no_overlap_returns_none(self):
-        """No quote overlap should return None."""
-        agent_i = build_agent(
-            id=1, inv_A=10, inv_B=10,
-            quotes={'bid_A_in_B': 1.0, 'ask_A_in_B': 2.0}
-        )
-        agent_j = build_agent(
-            id=2, inv_A=10, inv_B=10,
-            quotes={'bid_A_in_B': 1.0, 'ask_A_in_B': 2.0}
-        )
-        
-        discoverer = CompensatingBlockDiscoverer()
-        result = discoverer.discover_trade(agent_i, agent_j, epsilon=1e-9)
-        
-        assert result is None
-    
-    def test_discover_trade_with_overlap_returns_tuple(self):
-        """Quote overlap with utility improvement should return TradeTuple."""
-        # Build agents with overlapping quotes and complementary preferences
-        # agent_i values A more (vA=2, vB=1), has less A
-        agent_i = build_agent(
-            id=1,
-            inv_A=Decimal("5"),
-            inv_B=Decimal("15"),
-            quotes={'bid_A_in_B': 3.0, 'ask_A_in_B': 2.0},
-            utility_type="linear",
-            utility_params={"vA": 2.0, "vB": 1.0}
-        )
-        # agent_j values B more (vA=1, vB=2), has less B
-        agent_j = build_agent(
-            id=2,
-            inv_A=Decimal("15"),
-            inv_B=Decimal("5"),
-            quotes={'bid_A_in_B': 2.5, 'ask_A_in_B': 1.0},
-            utility_type="linear",
-            utility_params={"vA": 1.0, "vB": 2.0}
-        )
-        
-        discoverer = CompensatingBlockDiscoverer()
-        result = discoverer.discover_trade(agent_i, agent_j, epsilon=1e-9)
-        
-        assert result is not None
-        assert isinstance(result, TradeTuple)
-        assert result.surplus_i > 0
-        assert result.surplus_j > 0
-        assert 1.0 <= result.price <= 3.0  # Between ask_j and bid_i
-    
-    def test_discoverer_does_not_mutate_agents(self):
-        """Verify trade discovery doesn't mutate agent inventories."""
-        agent_i = build_agent(id=1, inv_A=Decimal("10"), inv_B=Decimal("10"))
-        agent_j = build_agent(id=2, inv_A=Decimal("10"), inv_B=Decimal("10"))
-        
-        # Snapshot state
-        inv_i_before = (agent_i.inventory.A, agent_i.inventory.B)
-        inv_j_before = (agent_j.inventory.A, agent_j.inventory.B)
-        
-        # Call discoverer
-        discoverer = CompensatingBlockDiscoverer()
-        discoverer.discover_trade(agent_i, agent_j)
-        
-        # Verify no mutation
-        assert (agent_i.inventory.A, agent_i.inventory.B) == inv_i_before
-        assert (agent_j.inventory.A, agent_j.inventory.B) == inv_j_before
-    
-    def test_discoverer_returns_first_feasible(self):
-        """Verify discoverer returns first feasible trade, not optimal."""
-        # agent_i values A more (vA=2, vB=1)
-        agent_i = build_agent(
-            id=1,
-            inv_A=Decimal("10"),
-            inv_B=Decimal("20"),
-            quotes={'bid_A_in_B': 2.5, 'ask_A_in_B': 1.5},
-            utility_type="linear",
-            utility_params={"vA": 2.0, "vB": 1.0}
-        )
-        # agent_j values B more (vA=1, vB=2)
-        agent_j = build_agent(
-            id=2,
-            inv_A=Decimal("20"),
-            inv_B=Decimal("10"),
-            quotes={'bid_A_in_B': 2.0, 'ask_A_in_B': 1.0},
-            utility_type="linear",
-            utility_params={"vA": 1.0, "vB": 2.0}
-        )
-        
-        discoverer = CompensatingBlockDiscoverer()
-        result = discoverer.discover_trade(agent_i, agent_j, epsilon=1e-9)
-        
-        # Should return first feasible (dA=1) not optimal
-        assert result is not None
-        # The algorithm searches dA = 1, 2, 3, ... and returns first

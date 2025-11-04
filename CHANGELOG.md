@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Bargaining Protocol Architecture Correction** (2025-11-04): Removed incorrect abstraction
+  - Deleted `TradeDiscoverer` interface (protocols should be self-contained)
+  - Inlined search logic into `CompensatingBlockBargaining` protocol
+  - Converted `SplitDifference` and `TakeItOrLeaveIt` to honest stubs (not_implemented)
+  - Added `trade_tuple_to_effect()` shared utility for TradeTuple conversion
+  - Clarified architectural principle: protocols define mechanisms, not just allocation rules
+
 - **Matching-Bargaining Decoupling Refactor** (2025-11-03): Separated matching from bargaining concerns
   - Decoupled matching protocols from bargaining implementations via abstraction interfaces
   - `BargainingProtocol.negotiate()` now receives agents directly (breaking change)
@@ -21,10 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `TradePotentialEvaluator` interface for lightweight matching phase evaluation
-- `TradeDiscoverer` interface for full trade discovery in bargaining phase
 - `QuoteBasedTradeEvaluator`: Default evaluator using quote overlaps (fast heuristic)
-- `CompensatingBlockDiscoverer`: Default discoverer implementing VMT's core algorithm
 - `TradePotential` and `TradeTuple` NamedTuples for zero-overhead data passing
+- `trade_tuple_to_effect()` utility function for converting TradeTuple to Trade effect
 - Debug immutability assertions in `TradeSystem` (activated via `debug_immutability` param)
 - Comprehensive test suite for trade evaluation abstractions
 
@@ -36,6 +42,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `find_best_trade()` from `matching.py` (no longer needed)
 - All `_build_agent_from_world()` adapter methods from bargaining protocols
 - All `_build_agent_from_context()` adapter methods from matching protocols
+- `TradeDiscoverer` ABC and `CompensatingBlockDiscoverer` as separate class
+- `discovery.py` module
+- Incomplete implementations masquerading as working protocols (split_difference, take_it_or_leave_it)
 
 - **Protocol Architecture Restructure** (2025-11-02): Moved protocols to domain-specific modules
   - Search protocols moved from `vmt_engine.protocols.search` to `vmt_engine.agent_based.search`

@@ -1,14 +1,15 @@
 """
 Trade Evaluation Abstractions
 
-Provides protocol-agnostic interfaces for trade evaluation and discovery.
+Provides protocol-agnostic interfaces for trade evaluation.
 Decouples matching protocols from bargaining protocol implementations.
 
-This module defines two key abstraction layers:
+This module defines:
 1. TradePotentialEvaluator: Lightweight heuristic evaluation for matching phase
-2. TradeDiscoverer: Full trade discovery for bargaining phase
+2. TradeTuple: Utility type for trade specification (bargaining protocols)
+3. trade_tuple_to_effect(): Shared utility for converting TradeTuple to Trade effect
 
-Version: 2025.11.03 (Decoupling Refactor)
+Version: 2025.11.04 (Architecture Correction)
 """
 
 from abc import ABC, abstractmethod
@@ -17,6 +18,8 @@ from decimal import Decimal
 
 if TYPE_CHECKING:
     from ..core import Agent
+    from ..protocols.context import WorldView
+    from ..protocols.base import Trade
 
 
 class TradePotential(NamedTuple):
@@ -132,8 +135,11 @@ class TradeTuple(NamedTuple):
     """
     Complete trade specification.
     
-    Used by bargaining protocols for negotiation.
-    NamedTuple for performance (tuple overhead, named access).
+    Utility type for bargaining protocols. Convenient format for representing
+    trades in agent-centric terms (i/j) before converting to role-centric
+    (buyer/seller) Trade effects.
+    
+    NamedTuple for performance (zero-overhead tuple).
     """
     dA_i: Decimal      # Change in A for agent_i
     dB_i: Decimal      # Change in B for agent_i
@@ -145,41 +151,58 @@ class TradeTuple(NamedTuple):
     pair_name: str     # Exchange pair name (e.g., "A<->B")
 
 
-class TradeDiscoverer(ABC):
+def trade_tuple_to_effect(
+    pair: tuple[int, int],
+    trade_tuple: TradeTuple,
+    world: "WorldView",
+    protocol_name: str
+) -> "Trade":
     """
-    Abstract interface for discovering trade terms between agents.
+    Convert TradeTuple to Trade effect.
     
-    Each bargaining protocol can implement its own discovery algorithm.
-    This allows different bargaining protocols to use different
-    trade discovery strategies (e.g., compensating block, Nash bargaining,
-    optimization-based search, etc.)
+    Shared utility for bargaining protocols. Handles agent-centric 
+    (i/j) to role-centric (buyer/seller) transformation.
     
-    Unlike TradePotentialEvaluator, implementations perform full utility
-    calculations and detailed trade search.
+    Args:
+        pair: (agent_a_id, agent_b_id) - must match i/j ordering in trade_tuple
+        trade_tuple: Trade specification from search
+        world: WorldView context for tick
+        protocol_name: Name of bargaining protocol
+        
+    Returns:
+        Trade effect ready for system application
     """
+    agent_a_id, agent_b_id = pair
     
-    @abstractmethod
-    def discover_trade(
-        self,
-        agent_i: "Agent",
-        agent_j: "Agent",
-        params: dict[str, Any] | None = None,
-        epsilon: float = 1e-9
-    ) -> TradeTuple | None:
-        """
-        Discover a mutually beneficial trade between two agents.
-        
-        Returns the first feasible trade found (not exhaustive search).
-        This performs full utility calculations and detailed trade search.
-        
-        Args:
-            agent_i: First agent
-            agent_j: Second agent
-            params: Optional simulation parameters
-            epsilon: Threshold for utility improvement (strict positivity)
-            
-        Returns:
-            TradeTuple if feasible trade exists, None otherwise
-        """
-        pass
+    # Determine buyer/seller from trade direction
+    if trade_tuple.dA_i > 0:  # agent_a receives A (buyer)
+        buyer_id, seller_id = agent_a_id, agent_b_id
+        dA = trade_tuple.dA_i
+        dB = -trade_tuple.dB_i
+        surplus_buyer = trade_tuple.surplus_i
+        surplus_seller = trade_tuple.surplus_j
+    else:  # agent_b receives A (buyer)
+        buyer_id, seller_id = agent_b_id, agent_a_id
+        dA = -trade_tuple.dA_i
+        dB = trade_tuple.dB_i
+        surplus_buyer = trade_tuple.surplus_j
+        surplus_seller = trade_tuple.surplus_i
+    
+    from ..protocols.base import Trade
+    
+    return Trade(
+        protocol_name=protocol_name,
+        tick=world.tick,
+        buyer_id=buyer_id,
+        seller_id=seller_id,
+        pair_type="A<->B",
+        dA=abs(dA),
+        dB=abs(dB),
+        price=trade_tuple.price,
+        metadata={
+            "surplus_buyer": surplus_buyer,
+            "surplus_seller": surplus_seller,
+            "total_surplus": trade_tuple.surplus_i + trade_tuple.surplus_j,
+        }
+    )
 

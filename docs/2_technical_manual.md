@@ -54,13 +54,14 @@ The simulation proceeds in discrete time steps called "ticks." Each tick, the en
     *   **Direct Agent Access**: Protocols receive full agent state directly (no params hacking)
     *   **Available Protocols**:
         - `compensating_block` (default): First feasible trade using VMT's foundational algorithm
-        - `split_difference`: Equal surplus division (Nash bargaining approximation)
-        - `take_it_or_leave_it`: Asymmetric power (ultimatum game)
-    *   **Trade Discovery**: Protocols use injected `TradeDiscoverer` for finding terms
-        - `CompensatingBlockDiscoverer`: Discrete quantity search (1, 2, 3, ...) with price candidates
+        - `split_difference`: Equal surplus division (NOT IMPLEMENTED - stub)
+        - `take_it_or_leave_it`: Asymmetric power (NOT IMPLEMENTED - stub)
+    *   **Trade Discovery**: Protocols implement self-contained search logic
+        - `compensating_block`: Discrete quantity search (1, 2, 3, ...) with price candidates
         - Searches both directions (i gives A, j gives A)
         - Returns first mutually beneficial trade where both ΔU > ε
         - Full utility calculations (not heuristics)
+        - Each protocol defines its own complete mechanism (search + allocation)
     *   **Trade Outcome**: Successful trades maintain pairing (agents try again next tick); failed trades unpair agents and set mutual cooldown
 
 5.  **Foraging**: Agents located on a resource cell harvest that resource, increasing their inventory. The amount harvested is limited by the `forage_rate`.
@@ -136,9 +137,9 @@ class TradePotentialEvaluator(ABC):
 - No full utility calculations
 - Used by: `greedy_surplus` matching protocol
 
-#### TradeDiscoverer (Bargaining Phase)
+#### TradeTuple (Bargaining Utility Type)
 
-Full trade discovery for "What exact terms?"
+Convenient format for representing trades in agent-centric terms before converting to Trade effects.
 
 ```python
 class TradeTuple(NamedTuple):
@@ -150,22 +151,11 @@ class TradeTuple(NamedTuple):
     surplus_j: float   # Utility gain for agent_j
     price: float       # Price of A in terms of B
     pair_name: str     # "A<->B"
-
-class TradeDiscoverer(ABC):
-    @abstractmethod
-    def discover_trade(
-        self, agent_i: Agent, agent_j: Agent, epsilon: float
-    ) -> TradeTuple | None:
-        """Full utility calculation and discrete search."""
-        pass
 ```
 
-**Default Implementation**: `CompensatingBlockDiscoverer`
-- Implements VMT's foundational algorithm
-- Searches quantities (1, 2, 3, ...) and prices
-- Returns first feasible trade
-- O(K×P) where K=quantities, P=prices per quantity
-- Used by: All bargaining protocols
+**Conversion Utility**: `trade_tuple_to_effect()` converts TradeTuple (agent-centric) to Trade effect (role-centric buyer/seller).
+
+**Design Principle**: TradeTuple is a utility type, not an abstraction interface. Each bargaining protocol implements its own complete search logic internally. The `compensating_block` protocol implements VMT's foundational algorithm inline (searches quantities 1, 2, 3, ... and prices, returns first feasible trade).
 
 ### Context Objects
 
@@ -280,11 +270,11 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
 -   **Quotes**: Agents maintain a dictionary of quotes (`Agent.quotes: dict[str, float]`) with keys for barter exchange:
     *   Barter: `"ask_A_in_B"`, `"bid_A_in_B"`, `"p_min_A_in_B"`, `"p_max_A_in_B"`, `"ask_B_in_A"`, `"bid_B_in_A"`, `"p_min_B_in_A"`, `"p_max_B_in_A"`
     *   Quotes are calculated from reservation bounds: `ask = p_min * (1 + spread)` and `bid = p_max * (1 - spread)`
--   **Trade Discovery Architecture** (Post-Decoupling): Finding mutually beneficial trades is now handled by `TradeDiscoverer` implementations:
-    *   **Interface**: `TradeDiscoverer.discover_trade(agent_i, agent_j, epsilon) -> TradeTuple | None`
-    *   **Default**: `CompensatingBlockDiscoverer` implements VMT's foundational algorithm
+-   **Trade Discovery Architecture** (Post-Decoupling): Finding mutually beneficial trades is handled by self-contained bargaining protocols:
+    *   **Protocol Responsibility**: Each bargaining protocol implements its own complete search logic
+    *   **Default**: `compensating_block` implements VMT's foundational algorithm inline
     *   **Barter Only**: All trades are A↔B goods exchanges
--   **Compensating Block Algorithm**: The foundational VMT trade discovery method:
+-   **Compensating Block Algorithm**: The foundational VMT trade discovery method (implemented in `compensating_block` protocol):
     *   Probes multiple prices within valid `[ask_seller, bid_buyer]` range
     *   For each price, scans discrete quantities from `ΔA=1` up to seller's inventory
     *   Applies **decimal quantization**: `ΔB = quantize_quantity(Decimal(price) * Decimal(ΔA))`
@@ -367,12 +357,12 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
     *   In forage mode, no trading occurs
     *   In trade/both modes, agents can engage in A↔B barter
 -   **Bargaining Protocols**: Configurable negotiation mechanisms:
-    *   `compensating_block` (default): First feasible trade, VMT's core algorithm
-    *   `split_difference`: Equal surplus division for fairness
-    *   `take_it_or_leave_it`: Asymmetric power dynamics
-    *   Protocols inject custom `TradeDiscoverer` implementations
+    *   `compensating_block` (default): First feasible trade, VMT's core algorithm (self-contained)
+    *   `split_difference`: Equal surplus division (NOT IMPLEMENTED - stub)
+    *   `take_it_or_leave_it`: Asymmetric power dynamics (NOT IMPLEMENTED - stub)
+    *   Each protocol implements its own complete mechanism (search + allocation)
 -   **Trade Discovery**: 
-    *   `CompensatingBlockDiscoverer`: Default discoverer using discrete search
+    *   `compensating_block` uses inline discrete search (1, 2, 3, ... quantities)
     *   Returns `TradeTuple` with full trade specification (quantities, surpluses, price)
     *   Performs full utility calculations (not heuristics like matching phase)
 -   **Telemetry**: Trade telemetry logs A and B quantities exchanged, along with the price and surplus for each agent
@@ -387,10 +377,11 @@ The VMT engine is rigorously tested to ensure both technical correctness and the
 -   **Reservation Bounds**: Correctness of the zero-inventory guard
 -   **Trade Logic**: Correctness of rounding, compensating multi-lot search, cooldowns, and pairing
 -   **Trade Evaluation Abstractions** (New): 
-    *   `TradePotentialEvaluator` interface and implementations
-    *   `TradeDiscoverer` interface and implementations
+    *   `TradePotentialEvaluator` interface and implementations (matching phase)
+    *   `TradeTuple` utility type for trade specification (bargaining protocols)
     *   NamedTuple return types (immutability, zero overhead)
     *   Immutability enforcement (protocols don't mutate agent state)
+    *   Self-contained protocols (each protocol implements complete mechanism)
 -   **Trade Pairing**: Mutual consent pairing, fallback pairing, pairing integrity, cooldown interactions
 -   **Resource Claiming**: Claim recording, stale clearing, single-harvester enforcement
 -   **Resource Regeneration**: Correctness of cooldowns, growth rates, and caps
