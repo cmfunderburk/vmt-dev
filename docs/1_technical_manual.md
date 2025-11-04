@@ -12,17 +12,19 @@ The VMT engine is designed around a set of core principles that ensure determini
 
 ```
 vmt-dev/
-├── docs/                    # Consolidated documentation
-├── scenarios/               # User-facing YAML scenario files
 ├── src/
-│   ├── vmt_engine/          # Core simulation engine
-│   ├── vmt_launcher/        # GUI Launcher application
-│   ├── vmt_log_viewer/      # GUI Log Viewer application
-│   ├── telemetry/           # SQLite logging system
-│   └── scenarios/           # Scenario-related Python code (schema, loader)
-├── tests/                   # Test suite (55+ tests)
-├── launcher.py              # GUI entry point
-└── main.py                  # CLI entry point
+│   ├── vmt_engine/         # Core simulation engine
+│   │   ├── agent_based/    # Agent-based protocols (e.g., search)
+│   │   ├── game_theory/    # Game theory protocols (e.g., matching, bargaining)
+│   │   ├── systems/        # Phase-specific execution logic
+│   │   ├── core/           # Agents, grid, core data structures
+│   │   └── econ/           # Utility functions
+│   ├── vmt_launcher/       # GUI Launcher and Scenario Builder
+│   └── vmt_log_viewer/     # Interactive telemetry database viewer
+├── scenarios/              # YAML configuration files for simulations
+├── docs/                   # Documentation, plans, and specifications
+├── tests/                  # Pytest suite (determinism is key!)
+└── scripts/                # Analysis and utility scripts
 ```
 
 ### The 7-Phase Tick Cycle
@@ -34,7 +36,7 @@ The simulation proceeds in discrete time steps called "ticks." Each tick, the en
 2.  **Decision**: Based on the perception snapshot, agents select targets and form trading pairs via configurable **search** and **matching protocols**:
     *   **Sub-phase 1: Search (Target Selection)** — Each agent uses a search protocol to evaluate visible options and select a target:
         - Search protocols build ranked preference lists from `WorldView` (agent's local perspective)
-        - Default: `legacy_distance_discounted` uses distance-discounted surplus scoring
+        - Default: `distance_discounted` uses distance-discounted surplus scoring
         - Alternative: `random_walk` (exploration), `myopic` (nearest-neighbor only)
         - **Preference Ranking**: Scored by `surplus × β^distance` where surplus is estimated via quote overlaps
         - **⚠️ Heuristic Nature**: Quote overlaps are fast O(1) heuristics that may not perfectly predict utility changes for non-linear utilities. However, once paired, Phase 4 uses full utility calculations, so agents still find good trades.
@@ -71,7 +73,7 @@ The simulation proceeds in discrete time steps called "ticks." Each tick, the en
 6.  **Resource Regeneration**: Resource cells that have been harvested regenerate over time. A cell must wait `resource_regen_cooldown` ticks before it can begin regenerating at a rate of `resource_growth_rate` per tick.
 
 7.  **Housekeeping**: The tick concludes with cleanup and maintenance tasks:
-    *   **Quote Refresh**: Agents refresh their trade quotes if `inventory_changed` or `lambda_changed` flags are set
+    *   **Quote Refresh**: Agents refresh their trade quotes if `inventory_changed` flag is set
     *   **Pairing Integrity Checks**: Detect and repair asymmetric pairings (defensive validation)
     *   **Lambda Updates** (Phase 3+, KKT mode): Adaptive marginal utility estimation from neighbor prices
     *   **Telemetry Logging**: Agent snapshots, resource snapshots, tick states, pairing events, preferences logged to database
@@ -86,7 +88,7 @@ VMT uses a modular protocol system that allows swapping economic mechanisms via 
 
 **Search Protocols** (`agent_based.search`) - Phase 2, Sub-phase 1
 - Determine how agents select targets and build preference lists
-- Examples: `random_walk`, `legacy_distance_discounted`, `myopic`
+- Examples: `distance_discounted`, `myopic`, `random_walk`
 - Input: `WorldView` (agent's local perspective)
 - Output: `SetTarget` effects
 
@@ -371,7 +373,7 @@ Agents are not required to be homogeneous. The `scenarios/*.yaml` format allows 
 
 ## 🔬 Testing and Validation
 
-The VMT engine is rigorously tested to ensure both technical correctness and theoretical soundness. The test suite (`tests/`) contains 320+ tests covering:
+The VMT engine is rigorously tested to ensure both technical correctness and theoretical soundness. The test suite (`tests/`) contains tests covering:
 -   **Core State**: Grid logic, agent creation, state management, pairing state
 -   **Utilities**: Correctness of all utility function calculations, especially at edge cases
 -   **Reservation Bounds**: Correctness of the zero-inventory guard
