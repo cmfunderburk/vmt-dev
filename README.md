@@ -13,26 +13,6 @@ The platform is architected to be a modular laboratory for comparative economics
 
 The project is under active development, with a focus on expanding the library of protocols and economic models available for comparative analysis.
 
-## Core Concepts
-
-The simulation is built on a few key ideas:
-
-- **Protocol-Driven Architecture**: The "rules of the game" are defined by swappable protocols for **Search** (how agents find partners), **Matching** (how pairs form), and **Bargaining** (how they agree on a trade). This architecture is central to the project's goal of enabling systematic comparison of different market structures.
-- **Pure Barter Economy**: The simulation currently models a pure barter economy where agents directly exchange goods. A robust monetary system is a high-priority feature planned for future development.
-- **Agent Coordination**: Agents use sophisticated strategies to coordinate. This includes a **resource claiming** system to avoid inefficient clustering and a **trade pairing** system where agents can form committed partnerships before negotiating.
-- **Data-Rich Simulation**: Every detail of the simulation is captured in a comprehensive **SQLite telemetry database**. An interactive log viewer allows for deep analysis of agent states, decisions, trades, and economic aggregates over time.
-
-## Key Features
-
-- **Pure Barter System**: A foundational barter economy serves as the baseline for all analysis.
-- **Pluggable Protocols**: A modular protocol system for Search, Matching, and Bargaining.
-- **Diverse Utility Functions**: Includes CES, Linear, Quadratic, Stone-Geary, and Translog utility models.
-- **Advanced Agent Coordination**: Features resource claiming and a three-pass trade pairing system.
-- **Rich Visualization**: A Pygame-based renderer with smart agent co-location, target arrows for visualizing agent intent, and data overlays.
-- **Comprehensive Telemetry**: All simulation data is logged to a SQLite database for deep analysis.
-- **Interactive Log Viewer**: A powerful GUI tool to scrub through simulation history, inspect agent states, and export data.
-- **Deterministic & Reproducible**: Simulations are fully deterministic for reproducible research.
-
 ## Installation
 
 ```bash
@@ -128,20 +108,19 @@ agents:
 The protocol system is a key area of ongoing development. The following protocols are currently available.
 
 **Search** (how agents find partners):
-- `myopic`: A heuristic-based search where agents pursue the best nearby opportunity. This is the primary implementation.
+- `distance_discounted`: Chooses targets within vision radius by distance-discounted utility -- U(resource) vs U(trade-and-which-partner)
+- `myopic`: A heuristic-based search where agents pursue the best nearby opportunity.
 - `random_walk`: Agents explore the grid randomly. Useful for baseline comparisons.
 
 **Matching** (how pairs form):
-- `greedy_surplus`: Forms pairs based on the highest potential gains from trade. This is the primary implementation.
+- `greedy_surplus`: Forms pairs based on the highest potential gains from trade.
 - `random_matching`: Forms pairs randomly for baseline scenarios.
 
 **Bargaining** (how prices are negotiated):
-- `compensating_block`: A sophisticated search for the first mutually beneficial integer block trade. This is the only fully implemented bargaining protocol and serves as the primary model for bilateral exchange.
+- `compensating_block`: A search for the first mutually beneficial integer-to-decimal block trade. This is the only fully implemented bargaining protocol and serves as the primary model for bilateral exchange.
 - *Note*: Other bargaining protocols like `split_difference` and `take_it_or_leave_it` exist in the codebase as placeholders for future development but are not yet implemented.
 
 ## Development & Contribution
-
-We use `pytest` for testing. Determinism is critical: every new feature must have a determinism test that runs the simulation twice with the same seed and asserts identical final states.
 
 ```bash
 # Activate virtual environment first
@@ -151,7 +130,7 @@ source venv/bin/activate
 pytest
 ```
 
-Priority areas for contribution include:
+Priority areas:
 1.  **Protocol Implementation**: Flesh out planned bargaining protocols or add new search and matching mechanisms.
 2.  **Scenario Development**: Create pedagogical examples that highlight specific economic phenomena.
 3.  **Analysis Tools**: Build new scripts for visualization and statistical analysis.

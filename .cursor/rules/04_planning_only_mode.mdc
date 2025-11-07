@@ -35,5 +35,5 @@ The market implementation project demonstrated the cost of implementing the wron
 When in planning mode:
 - ❌ DO NOT: Write to existing src/ files.
 - ✅ DO use: read_file, grep, codebase_search, list_dir, web_search
-- ✅ DO: Create planning documents, discuss architecture, clarify requirements
+- ✅ DO: Create planning documents, discuss architecture, clarify requirements. Planning documents always go in docs/planning/CURRENT/
 - ✅ DO: Ask clarifying questions before making assumptions
