@@ -105,9 +105,6 @@ tmp/
 local/
 .dump/
 docs/.archive/
-llm_counter/
-
-
 # Exception: Track docs/tmp/ for versioned temporary documentation
 !docs/tmp/
 !docs/tmp/**
