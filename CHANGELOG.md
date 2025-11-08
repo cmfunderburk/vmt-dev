@@ -55,9 +55,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - YAML scenario files work identically (backward compatible via registry)
   - Import paths now reflect theoretical paradigms (Agent-Based vs Game Theory)
   - Benefits: clearer architecture, better extensibility for future domain-specific modules
-
-- **GUI Framework Migration** (2025-10-22): Migrated from PyQt5 to PyQt6
-  - Updated all imports from `PyQt5` to `PyQt6`
-  - Updated Qt enum references to use proper namespaces (e.g., `Qt.UserRole` → `Qt.ItemDataRole.UserRole`)
-  - Replaced deprecated `exec_()` with `exec()`
-  - Updated documentation and requirements.txt
