@@ -61,7 +61,7 @@ class WalrasianAuctioneer:
         self.equilibrium_prices = None
         self.equilibrium_allocation = None
         
-    def find_equilibrium(self, method='fsolve'):
+    def compute_equilibrium(self, method='fsolve'):
         """
         Solve for market-clearing prices
         
@@ -245,7 +245,7 @@ class Agent:
         """
         coefficients = self.utility_params['coefficients']
         
-        # Find cheapest bundle satisfying proportions
+        # Compute cheapest bundle satisfying proportions
         bundle_cost = sum(coefficients[i] * prices[i] 
                          for i in range(self.n_goods))
         
@@ -621,7 +621,7 @@ class ScarfCounterexample:
         agents = self.create_scarf_economy()
         auctioneer = WalrasianAuctioneer(agents, ['good1', 'good2', 'good3'])
         
-        # Try to find equilibrium with tatonnement
+        # Try to compute equilibrium with tatonnement
         tatonnement = TatonnementProcess(auctioneer)
         tatonnement.max_iterations = 500
         
@@ -701,7 +701,7 @@ class NeoclassicalAnalyzer:
         auctioneer = WalrasianAuctioneer(agents, scenario['goods'])
         
         # Find equilibrium
-        eq_prices, eq_allocation = auctioneer.find_equilibrium()
+        eq_prices, eq_allocation = auctioneer.compute_equilibrium()
         
         # Compute welfare metrics
         metrics = self.compute_welfare_metrics(eq_allocation)

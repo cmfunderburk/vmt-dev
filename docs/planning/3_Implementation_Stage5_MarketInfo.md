@@ -596,8 +596,8 @@ class MarketInformedBargaining(BargainingProtocol):
         else:
             anchor_price = price_b
         
-        # Find trade at anchor price
-        trade = self.find_trade_at_price(
+        # Compute trade consistent with anchor price
+        trade = self.compute_trade_at_price(
             agent_a, agent_b, anchor_price
         )
         
@@ -617,9 +617,9 @@ class MarketInformedBargaining(BargainingProtocol):
         else:
             return [UnpairEffect(agent_a_id, agent_b_id)]
     
-    def find_trade_at_price(self, agent_a, agent_b, price_ratio):
+    def compute_trade_at_price(self, agent_a, agent_b, price_ratio):
         """
-        Find mutually beneficial trade at given price ratio
+        Compute mutually beneficial trade at the specified price ratio
         """
         total_endowment = agent_a.inventory + agent_b.inventory
         

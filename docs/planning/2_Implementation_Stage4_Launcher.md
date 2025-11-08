@@ -488,7 +488,7 @@ class LaunchManager:
             engine.compute_contract_curve()
         
         if config.get('compute_equilibrium'):
-            engine.find_competitive_equilibrium()
+            engine.compute_competitive_equilibrium()
         
         # Show in separate window
         visualizer.show()

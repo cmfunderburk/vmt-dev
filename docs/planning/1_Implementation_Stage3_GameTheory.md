@@ -8,6 +8,8 @@
 
 ## Architecture Overview
 
+> **Terminology Note**: In this stage, reserve verbs like "compute", "determine", or "solve" for coordination tasks that require global information. Use "find" only for local search behaviors that an individual agent could perform autonomously. The pseudocode below follows this convention.
+
 ```python
 # src/vmt_engine/game_theory/__init__.py
 class GameTheoryTrack:
@@ -44,7 +46,7 @@ class TwoAgentExchange:
         
     def compute_contract_curve(self, n_points=100):
         """
-        Find all Pareto efficient allocations
+        Compute the set of Pareto efficient allocations
         """
         contract_curve = []
         
@@ -53,8 +55,8 @@ class TwoAgentExchange:
             # Start from alpha-weighted allocation
             initial_alloc_a = alpha * self.total_endowment
             
-            # Find Pareto efficient allocation with this utility level
-            efficient_alloc = self.find_efficient_allocation(
+        # Compute Pareto efficient allocation with this utility level
+        efficient_alloc = self.compute_efficient_allocation(
                 initial_alloc_a,
                 self.agent_a.compute_utility(initial_alloc_a)
             )
@@ -70,9 +72,9 @@ class TwoAgentExchange:
         self.contract_curve = contract_curve
         return contract_curve
     
-    def find_efficient_allocation(self, initial_alloc_a, target_utility_a):
+    def compute_efficient_allocation(self, initial_alloc_a, target_utility_a):
         """
-        Find Pareto efficient allocation given agent A's utility level
+        Compute the Pareto efficient allocation consistent with agent A's target utility level
         """
         from scipy.optimize import minimize
         
@@ -115,7 +117,7 @@ class TwoAgentExchange:
             return (alloc_a, alloc_b)
         return None
     
-    def find_competitive_equilibrium(self):
+    def compute_competitive_equilibrium(self):
         """
         Compute market-clearing prices and allocation
         """
@@ -143,11 +145,11 @@ class TwoAgentExchange:
             # Excess demand for good 2 (good 1 is numeraire)
             return total_demand[1] - total_supply[1]
         
-        # Find equilibrium price ratio
+        # Solve for the equilibrium price ratio
         initial_price = [1.0]  # Initial guess for p2/p1
         eq_price = fsolve(excess_demand, initial_price)[0]
         
-        # Compute equilibrium allocation
+        # Compute equilibrium allocation given prices
         prices = np.array([1.0, eq_price])
         
         budget_a = np.dot(prices, self.agent_a.inventory)
@@ -497,7 +499,7 @@ class EdgeworthBoxVisualizer:
         Compute and display competitive equilibrium
         """
         if self.engine.competitive_equilibrium is None:
-            self.engine.find_competitive_equilibrium()
+            self.engine.compute_competitive_equilibrium()
         
         eq = self.engine.competitive_equilibrium
         
@@ -538,7 +540,7 @@ class NashBargaining(BargainingProtocol):
     
     def negotiate(self, pair: Tuple[int, int], world_view: WorldView) -> List[Effect]:
         """
-        Find Nash bargaining solution for agent pair
+        Compute the Nash bargaining solution for the agent pair
         """
         agent_a_id, agent_b_id = pair
         agent_a = world_view.get_agent(agent_a_id)
@@ -616,21 +618,21 @@ class KalaiSmorodinsky(BargainingProtocol):
     
     def compute_ks_solution(self, agent_a, agent_b):
         """
-        Find allocation where gains are proportional to max possible gains
+        Compute the allocation where gains are proportional to the maximum attainable gains
         """
         # Disagreement point
         d_a = agent_a.compute_utility(agent_a.inventory)
         d_b = agent_b.compute_utility(agent_b.inventory)
         
-        # Find ideal points (maximum utility each agent could achieve)
-        ideal_a = self.find_ideal_point(agent_a, agent_b, 'a')
-        ideal_b = self.find_ideal_point(agent_a, agent_b, 'b')
+        # Compute ideal points (maximum utility each agent could achieve)
+        ideal_a = self.compute_ideal_point(agent_a, agent_b, 'a')
+        ideal_b = self.compute_ideal_point(agent_a, agent_b, 'b')
         
         # Maximum possible gains
         max_gain_a = ideal_a - d_a
         max_gain_b = ideal_b - d_b
         
-        # Find allocation on Pareto frontier with proportional gains
+        # Determine allocation on Pareto frontier with proportional gains
         from scipy.optimize import minimize_scalar
         
         def objective(t):
@@ -639,8 +641,8 @@ class KalaiSmorodinsky(BargainingProtocol):
             target_gain_a = t * max_gain_a
             target_utility_a = d_a + target_gain_a
             
-            # Find Pareto efficient allocation with this utility for A
-            alloc = self.find_efficient_allocation_with_utility(
+            # Compute Pareto efficient allocation with this utility for A
+            alloc = self.compute_efficient_allocation_with_utility(
                 agent_a, agent_b, target_utility_a
             )
             
@@ -662,7 +664,7 @@ class KalaiSmorodinsky(BargainingProtocol):
             t_star = result.x
             target_utility_a = d_a + t_star * max_gain_a
             
-            return self.find_efficient_allocation_with_utility(
+            return self.compute_efficient_allocation_with_utility(
                 agent_a, agent_b, target_utility_a
             )
         
@@ -695,7 +697,7 @@ class RubinsteinBargaining(BargainingProtocol):
         # Compute total surplus
         total_endowment = agent_a.inventory + agent_b.inventory
         
-        # Find efficient frontier
+        # Compute efficient frontier
         contract_curve = self.compute_contract_curve(agent_a, agent_b)
         
         # Disagreement utilities
@@ -713,8 +715,8 @@ class RubinsteinBargaining(BargainingProtocol):
         target_u_a = d_a + share_a * max_surplus
         target_u_b = d_b + share_b * max_surplus
         
-        # Find allocation achieving these utilities
-        return self.find_allocation_with_utilities(
+        # Determine allocation achieving these utilities
+        return self.compute_allocation_with_utilities(
             agent_a, agent_b, target_u_a, target_u_b
         )
     
