@@ -36,8 +36,8 @@ The simulation proceeds in discrete time steps called "ticks." Each tick, the en
 2.  **Decision**: Based on the perception snapshot, agents select targets and form trading pairs via configurable **search** and **matching protocols**:
     *   **Sub-phase 1: Search (Target Selection)** — Each agent uses a search protocol to evaluate visible options and select a target:
         - Search protocols build ranked preference lists from `WorldView` (agent's local perspective)
-        - Default: `distance_discounted` uses distance-discounted surplus scoring
-        - Alternative: `random_walk` (exploration), `myopic` (nearest-neighbor only)
+        - Default: `distance_discounted_search` uses distance-discounted surplus scoring
+        - Alternative: `random_walk_search` (exploration)
         - **Preference Ranking**: Scored by `surplus × β^distance` where surplus is estimated via quote overlaps
         - **⚠️ Heuristic Nature**: Quote overlaps are fast O(1) heuristics that may not perfectly predict utility changes for non-linear utilities. However, once paired, Phase 4 uses full utility calculations, so agents still find good trades.
         - Agents skip neighbors in cooldown; paired agents maintain their pairing
@@ -88,7 +88,7 @@ VMT uses a modular protocol system that allows swapping economic mechanisms via 
 
 **Search Protocols** (`agent_based.search`) - Phase 2, Sub-phase 1
 - Determine how agents select targets and build preference lists
-- Examples: `distance_discounted`, `myopic`, `random_walk`
+- Examples: `distance_discounted_search`, `random_walk_search`
 - Input: `WorldView` (agent's local perspective)
 - Output: `SetTarget` effects
 

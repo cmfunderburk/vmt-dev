@@ -270,9 +270,6 @@ Now understand the configurable mechanisms:
    - Preference list construction
    - **Most complex search protocol** — read carefully
 
-3. **`src/vmt_engine/agent_based/search/myopic.py`** (15 min)
-   - Nearest-neighbor greedy search
-   - Simpler alternative to distance_discounted
 
 4. **`src/vmt_engine/agent_based/search/random_walk.py`** (10 min)
    - Random exploration (baseline comparison)
@@ -426,7 +423,6 @@ All systems are **high priority** — they implement the 7 phases.
 |------|-------|------------|---------|----------|
 | `base.py` | ~80 | Low | SearchProtocol ABC, WorldView | High |
 | `distance_discounted.py` | ~200 | **High** | Default search (distance-discounted surplus) | **Critical** |
-| `myopic.py` | ~100 | Low | Nearest-neighbor search | Medium |
 | `random_walk.py` | ~80 | Low | Random exploration | Low |
 
 #### Game Theory Track (`game_theory/`)
@@ -513,7 +509,6 @@ for i in {1..10}; do pytest tests/test_simulation_init.py::test_deterministic_ex
 | Test File | Protocol | What to Check |
 |-----------|----------|---------------|
 | `test_distance_discounted.py` | Search (N/A yet) | Would test preference list construction |
-| `test_myopic_search.py` | Search | Nearest-neighbor selection |
 | `test_random_walk_search.py` | Search | Random exploration |
 | `test_three_pass_matching.py` | Matching (N/A yet) | Would test 3-pass algorithm |
 | `test_greedy_surplus_matching.py` | Matching | Greedy pairing |

@@ -87,7 +87,7 @@ def make_sim(
     Args:
         scenario: Scenario configuration
         seed: Random seed
-        search: Protocol name (str) or config dict (e.g., {"name": "myopic", "params": {}})
+        search: Protocol name (str) or config dict (e.g., {"name": "random_walk_search", "params": {}})
         matching: Protocol name (str) or config dict
         bargaining: Protocol name (str) or config dict (e.g., {"name": "take_it_or_leave_it", "params": {"proposer_power": 0.9}})
     """

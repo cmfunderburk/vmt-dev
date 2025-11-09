@@ -105,7 +105,7 @@ Each simulation tick executes 7 phases in strict deterministic order:
 
 1. **Search Protocols** (`agent_based.search`)
    - Agent perspective, uses `WorldView`
-   - Examples: `distance_discounted`, `myopic`, `random_walk`
+   - Examples: `distance_discounted_search`, `random_walk_search`
    - Build preference lists from local observations
 
 2. **Matching Protocols** (`game_theory.matching`)

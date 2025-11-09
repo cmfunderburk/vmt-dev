@@ -882,7 +882,6 @@ class UnifiedProtocolRegistry:
         )
         
         self.register('search', 'random_walk', RandomWalk)
-        self.register('search', 'myopic', MyopicSearch)
         
     def get_protocols_for_track(self, track):
         """

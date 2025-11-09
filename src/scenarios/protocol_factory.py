@@ -13,8 +13,8 @@ def get_search_protocol(protocol_config: Optional[Union[str, dict[str, Any]]]):
         protocol_config: Either a string (protocol name) or dict with 'name' and optional 'params'
             Examples:
                 "distance_discounted_search"
-                {"name": "myopic"}
-                {"name": "myopic", "params": {}}
+                {"name": "random_walk_search"}
+                {"name": "random_walk_search", "params": {}}
     
     Returns:
         Instantiated protocol instance

@@ -160,7 +160,6 @@ How agents locate potential partners. *Agent perspective, uses local `WorldView`
 | Protocol | Description |
 |----------|-------------|
 | `distance_discounted` | Heuristic: chooses targets within vision radius by discounted utility |
-| `myopic` | Greedy search for best nearby opportunity |
 | `random_walk` | Random exploration; useful for baseline comparisons |
 
 ### Matching Protocols (`game_theory.matching`)

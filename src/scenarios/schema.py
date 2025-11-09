@@ -136,7 +136,7 @@ class ScenarioConfig:
     
     # Protocol configuration (optional - defaults to standard protocols)
     # Can be string (protocol name) or dict with "name" and optional "params"
-    search_protocol: Optional[Union[str, dict[str, Any]]] = None  # e.g., "distance_discounted_search" or {"name": "myopic", "params": {}}
+    search_protocol: Optional[Union[str, dict[str, Any]]] = None  # e.g., "distance_discounted_search" or {"name": "random_walk_search", "params": {}}
     matching_protocol: Optional[Union[str, dict[str, Any]]] = None  # e.g., "three_pass_matching" or {"name": "greedy_surplus", "params": {}}
     bargaining_protocol: Optional[Union[str, dict[str, Any]]] = None  # e.g., "compensating_block" or {"name": "take_it_or_leave_it", "params": {"proposer_power": 0.9}}
     
