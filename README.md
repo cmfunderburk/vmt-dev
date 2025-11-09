@@ -2,8 +2,6 @@
 
 A modular agent-based simulation platform for studying microeconomic exchange mechanisms through interactive comparison of institutional designs. VMT lets you build markets from individual agent interactions, compare emergent outcomes with economic theory, and understand why institutional details matter.
 
-## The Core Insight
-
 Markets are **institutional constructions**, not natural phenomena. VMT demonstrates how market-like behavior—or the lack thereof—emerges from:
 - **Agent interactions** (bilateral bargaining, resource competition)
 - **Institutional rules** (search protocols, matching mechanisms, bargaining procedures)
@@ -13,11 +11,7 @@ Instead of assuming equilibrium, VMT models the *process* of exchange.
 
 ---
 
-## Three-Track Vision
-
-VMT is architected as a comprehensive pedagogical and research platform with three complementary paradigms:
-
-### 1. **Agent-Based Track** 🗺️
+### 1. **Agent-Based Track**
 Emergent market phenomena from spatial bilateral trading. Agents with heterogeneous preferences operate in a spatial environment, foraging for resources and trading with one another based on configurable institutional rules.
 
 **Use cases:**
@@ -26,7 +20,7 @@ Emergent market phenomena from spatial bilateral trading. Agents with heterogene
 - Observe market failures and inefficiencies
 - Understand path-dependency and coordination problems
 
-### 2. **Game Theory Track** 📈
+### 2. **Game Theory Track**
 Strategic interactions with rigorous theoretical grounding. Two-agent Edgeworth Box visualizations, contract curve computation, and implementation of classic bargaining solutions (Nash, Kalai-Smorodinsky, etc.).
 
 **Use cases:**
@@ -35,7 +29,7 @@ Strategic interactions with rigorous theoretical grounding. Two-agent Edgeworth 
 - Validate experimental outcomes against theory
 - Teach core microeconomic concepts
 
-### 3. **Neoclassical Track** ⚖️  
+### 3. **Neoclassical Track** 
 Equilibrium benchmarks using traditional solution methods (Walrasian auctioneer, tatonnement, general equilibrium solvers).
 
 **Use cases:**
