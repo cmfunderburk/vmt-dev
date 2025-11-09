@@ -39,7 +39,7 @@ def main():
     clock = pygame.time.Clock()
     running = True
     paused = False
-    tick_rate = 5  # Ticks per second
+    tick_rate = 1  # Ticks per second
     
     print("\nControls:")
     print("  SPACE: Pause/Resume")
@@ -86,7 +86,7 @@ def main():
                     sim.step()
                 
                 elif event.key == pygame.K_UP:
-                    tick_rate = min(60, tick_rate + 1)
+                    tick_rate = tick_rate + 1
                     print(f"Speed: {tick_rate} ticks/sec")
                 
                 elif event.key == pygame.K_DOWN:
@@ -119,12 +119,6 @@ def main():
                     renderer.show_trade_arrows = False
                     renderer.show_forage_arrows = False
                     print("All arrows: OFF")
-                
-                elif event.key == pygame.K_i:
-                    # Toggle mode/regime info overlay
-                    renderer.show_mode_regime_overlay = not renderer.show_mode_regime_overlay
-                    status = "ON" if renderer.show_mode_regime_overlay else "OFF"
-                    print(f"Mode/regime overlay: {status}")
                 
                 elif event.key == pygame.K_LEFTBRACKET:
                     # Toggle left panel

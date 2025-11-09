@@ -120,9 +120,6 @@ class VMTRenderer:
         self.show_trade_arrows = False
         self.show_forage_arrows = False
         
-        # Mode overlay
-        self.show_mode_regime_overlay = True  # Toggle with 'I' - shows mode only
-        
         # Exchange rate tracking
         self.trade_history = []  # List of (tick, exchange_pair_type, rate) tuples
     
@@ -990,11 +987,6 @@ class VMTRenderer:
         arrow_label = self.small_font.render(arrow_status, True, self.COLOR_TEXT)
         self.screen.blit(arrow_label, (10, hud_y + 95))
         
-        # Mode overlay status
-        overlay_status = "Mode Overlay: ON" if self.show_mode_regime_overlay else "Mode Overlay: OFF"
-        overlay_label = self.small_font.render(overlay_status, True, self.COLOR_TEXT)
-        self.screen.blit(overlay_label, (200, hud_y + 95))
-
         # Recent trades (right-justified, accounting for total window width)
         trade_hud_y = hud_y
         trade_title = self.font.render("Recent Trades:", True, self.COLOR_TEXT)
