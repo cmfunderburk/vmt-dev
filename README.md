@@ -94,7 +94,7 @@ Each simulation tick follows a deterministic cycle:
 6. **Resource Regeneration** — Resources regrow per scenario rules
 7. **Housekeeping** — Quote updates, pairing integrity, telemetry logging
 
-**Key Property:** Full determinism. Same scenario + seed = identical outcomes. Critical for research validity.
+**Key Property:** Full determinism. Same scenario + seed = identical outcomes.
 
 ---
 
