@@ -37,7 +37,7 @@ class Simulation:
         Args:
             scenario_config: Loaded and validated scenario
             seed: Random seed for reproducibility
-            log_config: Configuration for new database logging system (optional)
+            log_config: Configuration for database logging system (optional)
             search_protocol: Optional search protocol (CLI override)
             matching_protocol: Optional matching protocol (CLI override)
             bargaining_protocol: Optional bargaining protocol (CLI override)
