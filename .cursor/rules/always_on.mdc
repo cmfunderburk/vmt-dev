@@ -1,7 +1,6 @@
 ---
-alwaysApply: true
+alwaysApply: false
 ---
-
 ### Setup & Running
 - **Virtual Environment**: ALWAYS work within the Python virtual environment.
   ```bash

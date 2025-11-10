@@ -1,0 +1,3 @@
+The **foundational** model is the Agent-Based model. Game Theory stuff will be **used** by the Agent-Based model (e.g. matching, bargaining protocols are fundamentally game theoretic mechanisms) to determine behavior. But there will *also* be a separate GUI visualization for *just* the game theory protocols, so that those aspects can be explored in isolation from the full agent based model. This allows inspection of the protocols themselves without reliance on excavating results from a full agent based simulation run.
+
+The neoclassical model will be a **separate** computational engine that follows the standard textbook approach to markets -- equilibrium solutions to systems of equations, which we will visualize and manipulate through a GUI.

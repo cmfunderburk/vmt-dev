@@ -15,7 +15,7 @@ vmt-engine/
 ```
 
 This is unwieldy. The logical structure should align with:
-1. **The launcher** — users choose agent-based, game theory, or neoclassical engine
+1. **The launcher** — users choose agent-based, game theory, or neoclassical
 2. **Economic theory** — agents, space, interaction, outcomes
 3. **Code clarity** — single responsibility, clear dependencies
 
