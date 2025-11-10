@@ -5,7 +5,7 @@ alwaysApply: false
 
 ## Critical Rule: No Implementation During Planning Phase
 
-**ABSOLUTE RULE**: When working on market implementation or any complex feature planning, DO NOT make any code changes until explicitly told by the user to start implementation.
+**ABSOLUTE RULE**: When working on any complex feature planning, DO NOT make any code changes until explicitly told by the user to start implementation.
 
 ## Planning Phase Requirements
 

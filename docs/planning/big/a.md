@@ -1,10 +1,8 @@
 # BIG Refactor Plan to De-LLM the Project
 
-Functionally, the current project provides a sound baseline. Structurally, it needs a lot of work for extensibility and maintainability.
+Functionally, the current project provides a sound baseline. Structurally, it needs work for extensibility.
 
-As it stands, the vmt-engine/ directory is fragmented beyond what either economic theory or code clarity would suggest. 
-
-The folder structure:
+Current structure is fragmented:
 ```
 vmt-engine/
 ├── agent_based/
@@ -14,24 +12,62 @@ vmt-engine/
 ├── protocols/
 ├── systems/
 ├── simulation.py
-├── __init__.py
 ```
 
-This is extremely unwieldy.
+This is unwieldy. The logical structure should align with:
+1. **The launcher** — users choose agent-based, game theory, or neoclassical engine
+2. **Economic theory** — agents, space, interaction, outcomes
+3. **Code clarity** — single responsibility, clear dependencies
 
-To fix this, we need to think hard about the logical coherence of the project.
+---
 
-The main entry point, for the user, is through the launcher. In the launcher, they will be presented with a menu to choose
-whether to enter the agent-based engine, the game theory engine, or the neoclassical engine.
+## Three Options to Consider
 
-For the developer/maintainer: the vmt-engine/ structure needs to be in accordance with economic and code clarity logic.
-
-For example,
-
+### Option A: Component-Oriented
+```
 vmt-engine/
-├── spatial/ # will contain code strictly dedicated to the spatial model, e.g. grid.
-├── agent/ # will contain BaseAgent and other necessary agent-centric code. A utility_fn/ subdirectory will contain all utility functions.
-├── game_theory/ # will contain code related to running the protocols through the game theory GUI (not yet created); all protocols will live here in subdirectories for search, matching, and bargaining.
-├── simulation.py
-├── __init__.py
+├── agent/          (BaseAgent + utilities)
+├── spatial/        (grid, indexing, movement)
+├── interaction/    (search, matching, bargaining protocols)
+├── protocol/       (protocol orchestration)
+├── simulation/     (simulation engine)
+└── core/           (just decimal_config)
 ```
+**Pros**: Clean layering, domain-aligned, clear where to add things  
+**Cons**: More files to reorganize
+
+### Option B: Engines-First
+```
+vmt-engine/
+├── engines/
+│   ├── agent_based_engine.py
+│   ├── game_theory_engine.py
+│   └── neoclassical_engine.py
+├── shared/         (agent, spatial, protocols, etc.)
+```
+**Pros**: Explicit entry points, future-proofs for multiple engines  
+**Cons**: Shared/ still needs internal structure
+
+### Option C: Minimal Consolidation
+```
+vmt-engine/
+├── agent/          (core/agent.py + econ/utility.py)
+├── space/          (core/grid.py, spatial_index.py)
+├── protocols/      (merge game_theory/ into here)
+├── systems/        (systems/ as-is, just organized)
+└── simulation.py
+```
+**Pros**: Fewest file moves, quickest  
+**Cons**: Less thorough restructuring
+
+---
+
+## Key Questions
+
+1. **How coupled should protocols be?** Are search+matching+bargaining always used together, or can they be mixed independently?
+
+2. **Where do movement & trade helpers belong?** Currently scattered in systems/; should they move to protocols/ or domain layers?
+
+3. **How much refactoring bandwidth do we have?** (Quick vs. thorough trade-off)
+
+Which option resonates? Or do you want to hybridize?
